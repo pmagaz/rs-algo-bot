@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "rs_algo_ws_server",
+    "rs_algo_bot",
+]
+default-members = ["rs_algo_ws_server","rs_algo_bot"]
