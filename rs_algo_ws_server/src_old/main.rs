@@ -1,15 +1,13 @@
 use actix_web::{middleware::Logger, web, App, Error, HttpRequest, HttpServer, Responder};
-use tokio::{ task::{spawn }};
 
 mod message;
-mod clients;
-mod session;
 mod server;
 mod services;
-//mod session;
+mod session;
 
 use services::ws::chat_ws;
-use rs_algo_shared::broker::Broker;
+
+use actix::Actor;
 use dotenv::dotenv;
 use std::{
     env,
@@ -18,9 +16,6 @@ use std::{
         Arc,
     },
 };
-
-use server::{ChatServer, ChatServerHandle};
-
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -38,12 +33,10 @@ async fn main() -> std::io::Result<()> {
     //let server = server::ChatServer::new(app_state.clone()).start();
 
     log::info!("Starting {} on port {} !", app_name, port.clone());
-    let (chat_server, server_tx) = ChatServer::new();
-    let chat_server = spawn(chat_server.run());
 
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(server_tx.clone()))
+            //.app_data(web::Data::new(server.clone()))
             .service(web::resource("/").to(chat_ws))
             .wrap(Logger::default())
     })

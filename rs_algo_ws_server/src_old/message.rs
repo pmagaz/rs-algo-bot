@@ -1,8 +1,5 @@
 use actix::prelude::*;
 
-pub use actix_ws::Message;
-
-
 #[derive(Clone, Message)]
 #[rtype(result = "()")]
 pub struct ChatMessage(pub String);
