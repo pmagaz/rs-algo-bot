@@ -6,9 +6,11 @@ use std::{
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
-    },
+    }, cell::RefCell,
 };
 
+use std::rc::Rc;
+use futures::lock::Mutex;
 use crate::session::Session;
 use rs_algo_shared::broker::xtb::*;
 use rs_algo_shared::broker::*;
@@ -56,17 +58,20 @@ enum Command {
     },
 }
 
+    async fn lechess(leches: Arc<futures_util::lock::Mutex<&Arc<futures_util::lock::Mutex<HashMap<ConnId, Session>>>>>) {
+    }
 
-    async fn send_system_message(room: &str, msg: impl Into<String>, rooms: &HashMap<RoomId, HashSet<ConnId>>, leches: &HashMap<ConnId, Session>) {
+
+    async fn send_system_message(room: &str, msg: impl Into<String>, rooms: Arc<futures_util::lock::Mutex<HashMap<RoomId, HashSet<ConnId>>>>, leches: Arc<futures_util::lock::Mutex<HashMap<ConnId, Session>>>) {
 
         log::info!("msssssssg {room}");
 
-        if let Some(sessions) = rooms.get(room) {
-            let msg = msg.into();
+        if let Some(sessions) = rooms.lock().await.get(room) {
+            let msg= msg.into();
 
             for conn_id in sessions {
                 //if *conn_id != skip {
-                    if let Some(session) = leches.get(conn_id) {
+                    if let Some(session) = leches.lock().await.get(conn_id) {
                         // errors if client disconnected abruptly and hasn't been timed-out yet
                         let _ = session.tx.send(msg.clone());
                     }
@@ -83,10 +88,10 @@ enum Command {
 #[derive(Debug)]
 pub struct ChatServer {
     /// Map of connection IDs to their message receivers.
-    sessions: HashMap<ConnId, Session>,
+    sessions: Arc<Mutex<HashMap<ConnId, Session>>>,
 
     /// Map of room name to participant IDs in that room.
-    rooms: HashMap<RoomId, HashSet<ConnId>>,
+    rooms: Arc<Mutex<HashMap<RoomId, HashSet<ConnId>>>>,
 
     /// Tracks total number of historical connections established.
     visitor_count: Arc<AtomicUsize>,
@@ -107,8 +112,8 @@ impl ChatServer {
 
         (
             Self {
-                sessions: HashMap::new(),
-                rooms,
+                sessions: Arc::new(Mutex::new(HashMap::new())),
+                rooms: Arc::new(Mutex::new(rooms)),
                 visitor_count: Arc::new(AtomicUsize::new(0)),
                 cmd_rx,
             },
@@ -123,12 +128,14 @@ impl ChatServer {
 
         log::info!("msssssssg {room}");
 
-        if let Some(sessions) = self.rooms.get(room) {
+
+
+        if let Some(sessions) = self.rooms.lock().await.get(room) {
             let msg = msg.into();
 
             for conn_id in sessions {
                 //if *conn_id != skip {
-                    if let Some(session) = self.sessions.get(conn_id) {
+                    if let Some(session) = self.sessions.lock().await.get(conn_id) {
                         // errors if client disconnected abruptly and hasn't been timed-out yet
                         let _ = session.tx.send(msg.clone());
                     }
@@ -145,6 +152,7 @@ impl ChatServer {
         
         if let Some(room) = self
             .rooms
+            .lock().await
             .iter()
             .find_map(|(room, participants)| participants.contains(&conn).then_some(room))
         {
@@ -165,7 +173,7 @@ impl ChatServer {
 
         let mut new_session = Session::new(id, tx,"hola".to_string(), "aiods".to_string()).await;
         //new_session.broker.login("11111", "222222").await.unwrap();
-        self.sessions.insert(id, new_session);
+        self.sessions.lock().await.insert(id, new_session);
 
         // let mut broker = new_session.broker;
         // broker.login("11111", "222222").await.unwrap();
@@ -212,8 +220,8 @@ impl ChatServer {
     }
 
     /// Returns list of created room names.
-    fn list_rooms(&mut self) -> Vec<String> {
-        self.rooms.keys().cloned().collect()
+    async fn list_rooms(&mut self) -> Vec<String> {
+        self.rooms.lock().await.keys().cloned().collect()
     }
 
     /// Join room, send disconnect message to old room send join message to new room.
@@ -222,48 +230,72 @@ impl ChatServer {
         let username = &env::var("BROKER_USERNAME").unwrap();
         let password = &env::var("BROKER_PASSWORD").unwrap();
 
-        let mut rooms = Vec::new();
-
         log::info!("joining room {conn_id} {room}");
 
-        let session = self.sessions.get(&conn_id).unwrap();
+        //here let session = self.sessions.lock().await.get(&conn_id).unwrap();
         let mut broker = Xtb::new().await;
-        
+        broker.login(username, password).await;
         log::info!("retrieving session data {conn_id} {room}");
         
-        //broker.login(username, password).await.unwrap();
-        //let symbols = broker.get_symbols().await.unwrap().symbols;
-        //let data = &serde_json::to_string(&symbols).unwrap();
-        // remove session from all rooms
-        for (n, sessions) in &mut self.rooms {
-            if sessions.remove(&conn_id) {
-                rooms.push(n.to_owned());
-            }
-        }
-        // send message to other users
-        for room in rooms {
-            self.send_system_message(&room, 0, "Someone disconnected")
-                .await;
-        }
+        // let mut rooms = Vec::new();
 
-        let leches = room.clone();
-        let rooms = self.rooms.clone();
-        let sessions = &self.sessions;
-        //log::info!("11111 {data}");
-
-        broker.listen(|res: Response<VEC_DOHLC>| async move {
-            let data = &serde_json::to_string(&res).unwrap();
-            log::info!("22222222222");
-
-            //send_system_message(&leches, data, &rooms, &sessions).await;
-            Ok(())
-        });
+        // for (n, sessions) in &mut self.rooms.lock().await {
+        //     if sessions.remove(&conn_id) {
+        //         rooms.push(n.to_owned());
+        //     }
+        // }
+        // // send message to other users
+        // for room in rooms {
+        //     self.send_system_message(&room, 0, "Someone disconnected")
+        //         .await;
+        // }
 
 
         self.rooms
+            .lock().await
             .entry(room.clone())
             .or_insert_with(HashSet::new)
             .insert(conn_id);
+
+        // let rooms = self.rooms.lock().await.clone();
+        // let sessions = self.sessions.lock().await.clone();
+        //log::info!("11111 {data}");
+
+        //let leches = room.clone();
+        let rooms = self.rooms.clone();
+        let sessions = self.sessions.clone();
+        let sessions = Arc::new(Mutex::new(&self.sessions));
+        let sessions2 = sessions.clone();
+        
+        // let res = broker
+        //     .get_instrument_data("BITCOIN", 1440, 1516109158)
+        //     .await
+        //     .unwrap();
+        // let data = &serde_json::to_string(&res).unwrap();
+          let data = broker.get_symbols2().await;
+        //tokio::spawn(async move {
+            loop {
+              //handle_connection(state.clone(),&mut stream,addr );
+              let res = broker.read().await.unwrap();
+              println!("111111111{:?}", res);
+            }
+    
+
+
+        // broker.listen(|res: Response<VEC_DOHLC>| async move {
+
+        //     // let data = &serde_json::to_string(&res).unwrap();
+        //     // log::info!("22222222222");
+           
+        //     println!("1111111111 {:?}", res);
+        //     //lechess(sessions2);
+        //     //send_system_message(&leches.clone(), data.clone(), rooms.clone(), sessions.clone()).await;
+        //     //self.send_system_message("aaaa", 12, "Someone connected").await;
+
+        //     Ok(())
+        // }).await;
+
+
 
 
         //  self.send_system_message(&room, conn_id, format!("Subscribing to {room}"))
@@ -286,7 +318,7 @@ impl ChatServer {
                 }
 
                 Command::List { res_tx } => {
-                    let _ = res_tx.send(self.list_rooms());
+                    let _ = res_tx.send(self.list_rooms().await);
                 }
 
                 Command::Join { conn, room, res_tx } => {

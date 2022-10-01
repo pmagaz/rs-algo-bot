@@ -12,6 +12,7 @@ pub async fn chat_ws(
 ) -> Result<HttpResponse, Error> {
     let (res, session, msg_stream) = actix_ws::handle(&req, stream)?;
     // spawn websocket handler (and don't await it) so that the response is returned immediately
+
     spawn_local(clients::chat_ws(
         (**chat_server).clone(),
         session,

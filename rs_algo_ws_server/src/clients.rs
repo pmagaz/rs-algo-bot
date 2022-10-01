@@ -6,7 +6,8 @@ use futures_util::{
     StreamExt as _,
 };
 use tokio::{pin, sync::mpsc, time::interval};
-
+use rs_algo_shared::broker::xtb::*;
+use rs_algo_shared::broker::*;
 use crate::server::{ChatServerHandle, ConnId};
 use std::env;
 
@@ -37,8 +38,18 @@ pub async fn chat_ws(
 
     // unwrap: chat server is not dropped before the HTTP server
     let conn_id = chat_server.connect(conn_tx).await;
+    //   let username = &env::var("BROKER_USERNAME").unwrap();
+    //     let password = &env::var("BROKER_PASSWORD").unwrap();
+    //     let mut broker = Xtb::new().await;
+    //     broker.login(username, password).await;
+    
+        let close_reason = loop {
+        
+      
 
-    let close_reason = loop {
+        //here let session = self.sessions.lock().await.get(&conn_id).unwrap();
+
+        
         // most of the futures we process need to be stack-pinned to work with select()
 
         let tick = interval.tick();
@@ -69,7 +80,21 @@ pub async fn chat_ws(
 
                     Message::Text(msg) => {
 
-                        log::info!("MSG22222: {:?}", msg);
+                       
+        //             broker.listen(|res: Response<VEC_DOHLC>| async move {
+
+        //     // let data = &serde_json::to_string(&res).unwrap();
+        //     // log::info!("22222222222");
+           
+        //     println!("1111111111 {:?}", res);
+            
+        //     //lechess(sessions2);
+        //     //send_system_message(&leches.clone(), data.clone(), rooms.clone(), sessions.clone()).await;
+        //     //self.send_system_message("aaaa", 12, "Someone connected").await;
+
+        //     Ok(())
+        // }).await;
+
 
                         process_text_msg(&chat_server, &mut session, &msg, conn_id, &mut name)
                             .await;

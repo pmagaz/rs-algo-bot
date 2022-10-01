@@ -4,12 +4,12 @@ use rs_algo_shared::broker::xtb::*;
 
 use crate::server::Msg;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Session {
     id: usize,
     subscription: String,
     client_name: String,
-    pub broker: Xtb,
+    //pub broker: Xtb,
     pub tx: mpsc::UnboundedSender<Msg>
 }
 
@@ -21,7 +21,7 @@ impl  Session {
         subscription,
         client_name,
         tx,
-        broker: Xtb::new().await,
+        //broker: Xtb::new().await,
        } 
     }
 }
