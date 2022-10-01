@@ -115,17 +115,23 @@ fn handle_message(msg: Message, broker: &mut Xtb) -> String {
             data
 }
 
-fn send_message(sessions: Sessions, addr: SocketAddr, data: String){
-        let peers = sessions.lock().unwrap();
+fn send_message(sessions: Sessions, addr: SocketAddr, msg: Message) {
+    let recipients = sessions.lock().unwrap();
+    let recipient = match recipients.get(&addr) {
+        Some(recp) => recp.unbounded_send(msg).unwrap(),
+        None => panic!("recipient not found!")
+    };
+}
 
-    let broadcast_recipients = peers
+fn broadcast_message(sessions: Sessions, addr: SocketAddr, msg: Message) {
+    let recipients = sessions.lock().unwrap();
+    let broadcast_recipients = recipients
         .iter()
-        .filter(|(peer_addr, _)| peer_addr == &&addr)
+        .filter(|(peer_addr, _)| peer_addr != &&addr)
         .map(|(_, ws_sink)| ws_sink);
 
     for recp in broadcast_recipients {
-        let message = Message::Text(data.to_string());
-        recp.unbounded_send(message).unwrap();
+        recp.unbounded_send(msg.clone()).unwrap();
     }
 }
 
@@ -155,7 +161,8 @@ async fn handle_connection(
         let ws_stream = tokio_tungstenite::accept_async(&mut *raw_stream)
             .await
             .expect("Error during the websocket handshake occurred");
-        println!("WebSocket connection established: {}", addr);
+        
+            println!("WebSocket connection established: {}", addr);
 
         // Insert the write part of this peer to the peer map.
         let (tx, rx) = unbounded();
@@ -166,7 +173,9 @@ async fn handle_connection(
             log::info!("MSG received from {}: {}", addr,msg.to_text().unwrap());
 
             let data = handle_message(msg, &mut broker);
-            send_message(sessions.clone(),addr,data);
+            let message = Message::Text(data.to_string());
+
+            send_message(sessions.clone(),addr,message);
             future::ok(())
         });
 
