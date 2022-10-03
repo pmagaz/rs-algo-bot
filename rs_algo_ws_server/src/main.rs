@@ -1,5 +1,6 @@
 use dotenv::dotenv;
 use std::{env, io::Error as IoError};
+use rs_algo_shared::broker::xtb::*;
 
 mod heart_beat;
 mod message;

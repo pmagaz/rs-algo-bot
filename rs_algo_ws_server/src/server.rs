@@ -1,4 +1,4 @@
-use crate::heart_beat;
+use crate::heart_beat::*;
 use crate::message::*;
 use crate::session::*;
 
@@ -32,7 +32,7 @@ async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr
     
     let mut broker = Xtb::new().await;
     broker.login(username, password).await.unwrap();
-    heart_beat::init_heart_beat(&mut sessions, addr).await;
+    init_heart_beat(&mut sessions, addr).await;
 
     loop {
         let ws_stream = tokio_tungstenite::accept_async(&mut *raw_stream)
@@ -41,13 +41,13 @@ async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr
 
         let (recipient, receiver) = unbounded();
         let new_session = Session::new(recipient);
-        sessions.lock().unwrap().insert(addr, new_session);
-        heart_beat::check_heart_beat(&sessions, addr).await;
+        create_session(&mut sessions, &addr, new_session);
+        check_heart_beat(&sessions, addr).await;
 
         let (outgoing, incoming) = ws_stream.split();
         let broadcast_incoming = incoming.try_for_each(|msg| {
-            println!("Message received from {addr}");
-
+            println!("received from {addr}");
+            
             match handle_message(&mut sessions, &addr, msg, &mut broker) {
                 Some(msg) => send_message(&mut sessions, &addr, Message::Text(msg)),
                 None => (),
@@ -61,7 +61,10 @@ async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr
         pin_mut!(broadcast_incoming, receive_from_others);
         future::select(broadcast_incoming, receive_from_others).await;
 
-        println!("{} disconnected", &addr);
-        sessions.lock().unwrap().remove(&addr);
+        //handle_disconnect(&mut sessions, &addr);
+
+        // println!("{} disconnected", &addr);
+        // sessions.lock().unwrap().remove(&addr);
     }
 }
+

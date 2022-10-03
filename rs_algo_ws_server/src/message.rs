@@ -3,6 +3,7 @@ use crate::session::*;
 use serde_json::Value;
 use std::net::SocketAddr;
 use tungstenite::protocol::Message;
+use crate::heart_beat;
 
 use rs_algo_shared::broker::xtb::*;
 use rs_algo_shared::broker::*;
@@ -25,12 +26,14 @@ pub fn broadcast_message(sessions: Sessions, addr: SocketAddr, msg: Message) {
     }
 }
 
-pub fn handle_message(
+pub fn handle_message<BK>(
     sessions: &mut Sessions,
     addr: &SocketAddr,
     msg: Message,
-    broker: &mut Xtb,
-) -> Option<String> {
+    broker: &mut BK,
+) -> Option<String> where
+    BK: Broker
+    {
     let data = match msg {
         Message::Ping(bytes) => {
             log::info!("Ping received");
@@ -38,7 +41,7 @@ pub fn handle_message(
         }
         Message::Pong(_) => {
             log::info!("Pong received from {addr} ");
-
+            
             find_session(sessions, &addr, |session| {
                 session.update_ping();
             });
