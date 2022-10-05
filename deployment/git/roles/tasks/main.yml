@@ -1,0 +1,8 @@
+---
+- name: Get updates from Github repository 
+  ansible.builtin.git:
+    repo: "{{ repo_url }}" 
+    dest: "{{ local_path }}"
+    clone: no
+    update: yes
+    version: "main"

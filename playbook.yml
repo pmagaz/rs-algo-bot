@@ -1,0 +1,7 @@
+---
+- name: Deploy RS-ALGO-BOT
+  hosts: all
+  roles:
+    - { role: "deployment/git/roles" }
+    - { role: "deployment/mongodb-bot/roles/" }
+    #- { role: "rs_algo_backend/deployment/roles/" }
