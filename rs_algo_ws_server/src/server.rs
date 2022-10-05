@@ -42,24 +42,24 @@ async fn handle_session(
 ) {
     log::info!("Incoming TCP connection from: {addr}");
 
-    let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
-    let password = env::var("DB_PASSWORD").expect("DB_PASSWORD not found");
-    let db_mem_name = env::var("MONGO_BOT_DB_NAME").expect("MONGO_BOT_DB_NAME not found");
-    let db_mem_uri = env::var("MONGO_BOT_DB_URI").expect("MONGO_BOT_DB_URI not found");
+    // let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
+    // let password = env::var("DB_PASSWORD").expect("DB_PASSWORD not found");
+    // let db_mem_name = env::var("MONGO_BOT_DB_NAME").expect("MONGO_BOT_DB_NAME not found");
+    // let db_mem_uri = env::var("MONGO_BOT_DB_URI").expect("MONGO_BOT_DB_URI not found");
 
-    let mongo_client: mongodb::Client =
-        db::mongo::connect(&username, &password, &db_mem_name, &db_mem_uri)
-            .await
-            .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
-            .unwrap();
+    // let mongo_client: mongodb::Client =
+    //     db::mongo::connect(&username, &password, &db_mem_name, &db_mem_uri)
+    //         .await
+    //         .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
+    //         .unwrap();
 
-    let username = &env::var("BROKER_USERNAME").unwrap();
-    let password = &env::var("BROKER_PASSWORD").unwrap();
-    let mut broker = Xtb::new().await;
-    broker.login(username, password).await.unwrap();
+    // let username = &env::var("BROKER_USERNAME").unwrap();
+    // let password = &env::var("BROKER_PASSWORD").unwrap();
+    // let mut broker = Xtb::new().await;
+    // broker.login(username, password).await.unwrap();
 
-    let bk = Arc::new(Mutex::new(broker));
-    let db_c = Arc::new(mongo_client);
+    // let bk = Arc::new(Mutex::new(broker));
+    // let db_c = Arc::new(mongo_client);
     //let m2 = Arc::new(Mutex::new(message2));
 
     heart_beat::init(&mut sessions, addr).await;
@@ -77,8 +77,8 @@ async fn handle_session(
         let (outgoing, incoming) = ws_stream.split();
 
         let broadcast_incoming = incoming.try_for_each(|msg| {
-            let broker = Arc::clone(&bk);
-            let db_client = Arc::clone(&db_c);
+            // let broker = Arc::clone(&bk);
+            // let db_client = Arc::clone(&db_c);
             let mut sessions = sessions.clone();
             let mut message2 = Arc::clone(&message2);
             async move {
