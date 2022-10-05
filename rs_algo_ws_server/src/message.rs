@@ -1,10 +1,10 @@
+use crate::db;
+use crate::error::RsAlgoErrorKind;
+use crate::heart_beat;
 use crate::{
     session,
     session::{Session, Sessions},
 };
-
-use crate::db;
-use crate::error::RsAlgoErrorKind;
 use serde_json::Value;
 use std::{collections::HashMap, env, net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
@@ -13,26 +13,49 @@ use tungstenite::protocol::Message;
 use rs_algo_shared::broker::xtb::*;
 use rs_algo_shared::broker::*;
 
-pub struct Message2 {
+pub struct Message2<BK> {
+    broker: BK,
     sessions: Sessions,
-    broker: Xtb,
     db_client: mongodb::Client,
 }
 
-impl Message2 {
-    pub async fn new(sessions: Sessions) -> Self {
-        let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
-        let password = env::var("DB_PASSWORD").expect("DB_PASSWORD not found");
-        let db_mem_name = env::var("MONGO_BOT_DB_NAME").expect("MONGO_BOT_DB_NAME not found");
-        let db_mem_uri = env::var("MONGO_BOT_DB_URI").expect("MONGO_BOT_DB_URI not found");
+impl<BK> Message2<BK> {
+    pub async fn new(sessions: Sessions, db_client: mongodb::Client) -> Message2<BK>
+    where
+        BK: Broker,
+    {
+        let mut broker = BK::new().await;
+        let username = env::var("BROKER_USERNAME").expect("BROKER_USERNAME not found");
+        let password = env::var("BROKER_PASSWORD").expect("BROKER_PASSWORD not found");
+        broker.login(&username, &password).await.unwrap();
         Self {
-            sessions: Sessions::new(Mutex::new(HashMap::new())),
-            broker: Xtb::new().await,
-            db_client: db::mongo::connect(&username, &password, &db_mem_name, &db_mem_uri)
-                .await
-                .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
-                .unwrap(),
+            sessions,
+            broker: broker,
+            db_client,
         }
+    }
+
+    pub async fn send(&mut self, addr: &SocketAddr, msg: Message) {
+        session::find(&mut self.sessions, &addr, |session| {
+            session.recipient.unbounded_send(msg).unwrap();
+        })
+        .await;
+    }
+
+    pub async fn create_session(&mut self, session: Session, addr: SocketAddr) {
+        self.sessions.lock().await.insert(addr, session);
+    }
+
+    pub fn sessions(&mut self) -> &Sessions {
+        &self.sessions
+    }
+
+    pub async fn init_heartbeat(&mut self, addr: SocketAddr) {
+        heart_beat::init(&mut self.sessions, addr).await;
+    }
+
+    pub async fn check_heartbeat(&mut self, addr: SocketAddr) {
+        heart_beat::check(&mut self.sessions, addr).await;
     }
 
     pub async fn handle(
@@ -42,7 +65,10 @@ impl Message2 {
         msg: Message,
         // broker: Arc<Mutex<BK>>,
         //  db_client: &mongodb::Client,
-    ) -> Option<String> {
+    ) -> Option<String>
+    where
+        BK: Broker,
+    {
         let data = match msg {
             Message::Ping(bytes) => {
                 log::info!("Ping received");
@@ -51,11 +77,10 @@ impl Message2 {
             Message::Pong(_) => {
                 log::info!("Pong received from {addr} ");
 
-                // self.sessions
-                //     .find(sessions, &addr, |session| {
-                //         session.update_ping();
-                //     })
-                //     .await;
+                session::find(&mut self.sessions, &addr, |session| {
+                    session.update_ping();
+                })
+                .await;
                 None
             }
             Message::Text(msg) => {

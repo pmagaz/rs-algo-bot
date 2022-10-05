@@ -20,49 +20,42 @@ use rs_algo_shared::broker::*;
 
 pub async fn run(addr: String) {
     let addr = addr.parse::<SocketAddr>().unwrap();
-    let sessions = Sessions::new(Mutex::new(HashMap::new()));
     let socket = TcpListener::bind(&addr).await.unwrap();
 
-    let message2 = Message2::new(sessions.clone()).await;
+    let sessions = Sessions::new(Mutex::new(HashMap::new()));
+
+    let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
+    let password = env::var("DB_PASSWORD").expect("DB_PASSWORD not found");
+    let db_mem_name = env::var("MONGO_BOT_DB_NAME").expect("MONGO_BOT_DB_NAME not found");
+    let db_mem_uri = env::var("MONGO_BOT_DB_URI").expect("MONGO_BOT_DB_URI not found");
+
+    let db_client = db::mongo::connect(&username, &password, &db_mem_name, &db_mem_uri)
+        .await
+        .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
+        .unwrap();
+
+    let message2 = Message2::<Xtb>::new(sessions, db_client).await;
     let m2 = Arc::new(Mutex::new(message2));
+
     while let Ok((mut stream, addr)) = socket.accept().await {
-        let sessions = sessions.clone();
-        let m2 = m2.clone();
+        let m2 = Arc::clone(&m2);
         tokio::spawn(async move {
-            handle_session(sessions, &mut stream, addr, m2).await;
+            handle_session::<Xtb>(&mut stream, addr, m2).await;
         });
     }
 }
 
-async fn handle_session(
-    mut sessions: Sessions,
+async fn handle_session<BK>(
     raw_stream: &mut TcpStream,
     addr: SocketAddr,
-    message2: Arc<Mutex<Message2>>,
-) {
+    message2: Arc<Mutex<Message2<BK>>>,
+) where
+    BK: Broker,
+{
     log::info!("Incoming TCP connection from: {addr}");
 
-    // let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
-    // let password = env::var("DB_PASSWORD").expect("DB_PASSWORD not found");
-    // let db_mem_name = env::var("MONGO_BOT_DB_NAME").expect("MONGO_BOT_DB_NAME not found");
-    // let db_mem_uri = env::var("MONGO_BOT_DB_URI").expect("MONGO_BOT_DB_URI not found");
-
-    // let mongo_client: mongodb::Client =
-    //     db::mongo::connect(&username, &password, &db_mem_name, &db_mem_uri)
-    //         .await
-    //         .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
-    //         .unwrap();
-
-    // let username = &env::var("BROKER_USERNAME").unwrap();
-    // let password = &env::var("BROKER_PASSWORD").unwrap();
-    // let mut broker = Xtb::new().await;
-    // broker.login(username, password).await.unwrap();
-
-    // let bk = Arc::new(Mutex::new(broker));
-    // let db_c = Arc::new(mongo_client);
-    //let m2 = Arc::new(Mutex::new(message2));
-
-    heart_beat::init(&mut sessions, addr).await;
+    let mut leches = message2.lock().await;
+    leches.init_heartbeat(addr).await;
 
     loop {
         let ws_stream = tokio_tungstenite::accept_async(&mut *raw_stream)
@@ -71,20 +64,17 @@ async fn handle_session(
 
         let (recipient, receiver) = unbounded();
         let new_session = Session::new(recipient);
-        session::create(&mut sessions, &addr, new_session).await;
-        //heart_beat::check(&sessions, addr).await;
+        leches.create_session(new_session, addr).await;
+        leches.check_heartbeat(addr).await;
 
         let (outgoing, incoming) = ws_stream.split();
 
         let broadcast_incoming = incoming.try_for_each(|msg| {
-            // let broker = Arc::clone(&bk);
-            // let db_client = Arc::clone(&db_c);
-            let mut sessions = sessions.clone();
-            let mut message2 = Arc::clone(&message2);
+            let message2 = Arc::clone(&message2);
             async move {
-                match message2.lock().await.handle(&addr, msg).await {
-                    //match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
-                    Some(msg) => message::send(&mut sessions, &addr, Message::Text(msg)).await,
+                let mut leches = message2.lock().await;
+                match leches.handle(&addr, msg).await {
+                    Some(msg) => leches.send(&addr, Message::Text(msg)).await,
                     None => (),
                 }
                 Ok(())
