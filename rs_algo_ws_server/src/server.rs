@@ -23,15 +23,23 @@ pub async fn run(addr: String) {
     let sessions = Sessions::new(Mutex::new(HashMap::new()));
     let socket = TcpListener::bind(&addr).await.unwrap();
 
+    let message2 = Message2::new(sessions.clone()).await;
+    let m2 = Arc::new(Mutex::new(message2));
     while let Ok((mut stream, addr)) = socket.accept().await {
         let sessions = sessions.clone();
+        let m2 = m2.clone();
         tokio::spawn(async move {
-            handle_session(sessions.clone(), &mut stream, addr).await;
+            handle_session(sessions, &mut stream, addr, m2).await;
         });
     }
 }
 
-async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr: SocketAddr) {
+async fn handle_session(
+    mut sessions: Sessions,
+    raw_stream: &mut TcpStream,
+    addr: SocketAddr,
+    message2: Arc<Mutex<Message2>>,
+) {
     log::info!("Incoming TCP connection from: {addr}");
 
     let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
@@ -52,6 +60,7 @@ async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr
 
     let bk = Arc::new(Mutex::new(broker));
     let db_c = Arc::new(mongo_client);
+    //let m2 = Arc::new(Mutex::new(message2));
 
     heart_beat::init(&mut sessions, addr).await;
 
@@ -63,7 +72,7 @@ async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr
         let (recipient, receiver) = unbounded();
         let new_session = Session::new(recipient);
         session::create(&mut sessions, &addr, new_session).await;
-        heart_beat::check(&sessions, addr).await;
+        //heart_beat::check(&sessions, addr).await;
 
         let (outgoing, incoming) = ws_stream.split();
 
@@ -71,9 +80,10 @@ async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr
             let broker = Arc::clone(&bk);
             let db_client = Arc::clone(&db_c);
             let mut sessions = sessions.clone();
-
+            let mut message2 = Arc::clone(&message2);
             async move {
-                match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
+                match message2.lock().await.handle(&addr, msg).await {
+                    //match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
                     Some(msg) => message::send(&mut sessions, &addr, Message::Text(msg)).await,
                     None => (),
                 }

@@ -52,6 +52,7 @@ async fn main() {
         }),
     };
 
+
     ws_client
         .send(&serde_json::to_string(&subscribe_command).unwrap())
         .await
@@ -66,7 +67,11 @@ async fn main() {
             }
             Message::Ping(txt) => {
                 log::info!("Ping received");
-                ws_client.pong(b"");
+                //ws_client.pong(b"");
+                // ws_client
+                // .send("adios")
+                // .await
+                // .unwrap();
                 "hola".to_string()
             }
             _ => panic!(),
