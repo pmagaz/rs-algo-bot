@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "mongodb-mem.fullname" . }}
+  name: {{ include "mongodb-bot.fullname" . }}
   labels:
     app: {{ .Values.service.metadata.labels.app }}
-    {{- include "mongodb-mem.labels" . | nindent 4 }}
+    {{- include "mongodb-bot.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -16,4 +16,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "mongodb-mem.selectorLabels" . | nindent 4 }}
+    {{- include "mongodb-bot.selectorLabels" . | nindent 4 }}

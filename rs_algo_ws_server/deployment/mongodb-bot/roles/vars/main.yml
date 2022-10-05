@@ -1,3 +1,0 @@
-release_name: mongodb-bot
-local_path: /home/dev/rs-algo-bot
-chart_path: deployment/mongodb-bot/chart
