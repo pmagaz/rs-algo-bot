@@ -3,15 +3,16 @@ use rs_algo_shared::helpers::date::*;
 use std::{
     collections::HashMap,
     net::SocketAddr,
-    sync::{Arc, Mutex, PoisonError},
+    sync::{Arc, PoisonError},
 };
+use tokio::sync::Mutex;
 use tungstenite::protocol::Message;
 
 #[derive(Debug, Clone)]
 pub enum SessionStatus {
     Up,
     Down,
-    Connecting
+    Connecting,
 }
 
 #[derive(Debug, Clone)]
@@ -32,7 +33,7 @@ impl Session {
             symbol: "init".to_string(),
             strategy: "init".to_string(),
             last_ping: Local::now(),
-            client_status: SessionStatus::Up
+            client_status: SessionStatus::Up,
         }
     }
 
@@ -51,21 +52,19 @@ impl Session {
         self.client_status = status;
         self
     }
-
 }
 
-
-pub fn find_session<'a, F>(sessions: &'a mut Sessions, addr: &SocketAddr, mut callback: F)
+pub async fn find<'a, F>(sessions: &'a mut Sessions, addr: &SocketAddr, mut callback: F)
 where
     F: Send + FnOnce(&mut Session),
 {
-    let mut sessions = sessions.lock().unwrap_or_else(PoisonError::into_inner);
+    let mut sessions = sessions.lock().await;
     match sessions.get_mut(addr) {
         Some(session) => callback(session),
         None => panic!("Session not found!"),
     };
 }
 
-pub fn create_session<'a>(sessions: &'a mut Sessions, addr: &SocketAddr, session: Session) {
-    sessions.lock().unwrap().insert(*addr, session);
+pub async fn create<'a>(sessions: &'a mut Sessions, addr: &SocketAddr, session: Session) {
+    sessions.lock().await.insert(*addr, session);
 }
