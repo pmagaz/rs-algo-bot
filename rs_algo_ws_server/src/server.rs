@@ -21,7 +21,6 @@ use rs_algo_shared::broker::*;
 pub async fn run(addr: String) {
     let addr = addr.parse::<SocketAddr>().unwrap();
     let socket = TcpListener::bind(&addr).await.unwrap();
-
     let sessions = Sessions::new(Mutex::new(HashMap::new()));
 
     let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");

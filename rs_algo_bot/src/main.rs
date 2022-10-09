@@ -1,4 +1,3 @@
-use actix::prelude::*;
 use dotenv::dotenv;
 use rs_algo_shared::models::backtest_strategy::StrategyType;
 use rs_algo_shared::ws::message::{Command, CommandType, Message, Subscribe};
@@ -47,11 +46,10 @@ async fn main() {
         arguments: Some(Subscribe {
             strategy: "EMA200-2",
             strategy_type: StrategyType::OnlyLong,
-            symbol: "EURUSD",
+            symbol: "BITCOIN",
             time_frame: "W",
         }),
     };
-
 
     ws_client
         .send(&serde_json::to_string(&subscribe_command).unwrap())

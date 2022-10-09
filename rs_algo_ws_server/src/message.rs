@@ -24,13 +24,21 @@ impl<BK> Message2<BK> {
     where
         BK: Broker,
     {
-        let mut broker = BK::new().await;
+
         let username = env::var("BROKER_USERNAME").expect("BROKER_USERNAME not found");
         let password = env::var("BROKER_PASSWORD").expect("BROKER_PASSWORD not found");
-        broker.login(&username, &password).await.unwrap();
+
+        let mut broker = BK::
+            listen(&username, &password, |x| async move {
+                println!("1111111111111 {:?}", x);
+                Ok(())
+            })
+            .await;
+
+        //broker.login(&username, &password).await.unwrap();
         Self {
             sessions,
-            broker: broker,
+            broker: BK::new().await,
             db_client,
         }
     }
