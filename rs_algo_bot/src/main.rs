@@ -5,6 +5,7 @@ use rs_algo_shared::ws::message::{Command, CommandType, Message, Subscribe};
 use rs_algo_shared::ws::ws_client::WebSocket;
 use serde::{Deserialize, Serialize};
 use std::env;
+use serde_json::Value;
 
 #[tokio::main]
 async fn main() {
@@ -14,10 +15,10 @@ async fn main() {
 
     let server_url = env::var("WS_SERVER_URL").expect("WS_SERVER_URL not found");
     let port = env::var("WS_SERVER_PORT").expect("WS_SERVER_PORT not found");
-
-    log::info!("Connecting to {} on port {} !", server_url, port);
-
     let url = [&server_url, ":", &port].concat();
+
+
+    log::info!("Connecting to {} !", &url);
 
     let mut ws_client = WebSocket::connect(&url).await;
 
@@ -32,7 +33,7 @@ async fn main() {
     };
 
     let subscribe_command = Command {
-        command: "subscribe",
+        command: "subscribe_symbol_data",
         arguments: Some(Subscribe {
             strategy: "EMA200-2",
             strategy_type: StrategyType::OnlyLong,
@@ -46,21 +47,24 @@ async fn main() {
         .await
         .unwrap();
 
+    ws_client
+        .send(&serde_json::to_string(&subscribe_command).unwrap())
+        .await
+        .unwrap();
+
     loop {
         let msg = ws_client.read().await.unwrap();
-        let txt_msg = match msg {
+        match msg {
             Message::Text(txt) => {
+                // let parsed : Value = serde_json::from_str(&txt).expect("Can't parse to JSON");
+                // let msg_type = &parsed["msg_type"];
                 log::info!("MSG received {}", txt);
-                txt
             }
-            Message::Ping(txt) => {
+            Message::Ping(_txt) => {
                 log::info!("Ping received");
-     
                 ws_client.pong(b"").await;
-                "hola".to_string()
             }
-            _ => panic!("aaaaaa"),
+            _ => panic!("Unexpected message type!"),
         };
- 
     }
 }

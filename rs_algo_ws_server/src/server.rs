@@ -33,7 +33,6 @@ pub async fn run(addr: String) {
         .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
         .unwrap();
 
-
     let username = &env::var("BROKER_USERNAME").unwrap();
     let password = &env::var("BROKER_PASSWORD").unwrap();
     let mut broker = Xtb::new().await;
@@ -67,9 +66,27 @@ async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr
         session::create(&mut sessions, &addr, new_session).await;
         heart_beat::check(&sessions, addr).await;
 
-        message::send(&mut sessions, &addr, Message::Text("conected".to_owned())).await;
+        //message::send(&mut sessions, &addr, Message::Text("conected".to_owned())).await;
 
         let (outgoing, incoming) = ws_stream.split();
+        tokio::spawn({
+            let broker = broker.clone();
+            let mut sessions = sessions.clone();
+            async move {
+        let res = broker.lock()
+                            .await.listen("BITCOIN", |msg| {
+                                let mut sessions = sessions.clone();
+                                let addr = addr.clone();
+                                async move{
+                               
+                                println!("77777777777 {:?}", msg);
+                                message::send(&mut sessions, &addr, Message::Text(msg.to_string())).await;
+                                //future::success(Ok(()))
+                                Ok(())
+                                }
+                            }).await;
+                        }
+          });
 
         let broadcast_incoming = incoming.try_for_each(|msg| {
             let broker = Arc::clone(&broker);
