@@ -22,6 +22,7 @@ pub async fn init(sessions: &mut Sessions, addr: SocketAddr) {
         let mut interval = time::interval(Duration::from_millis(hb_interval));
         loop {
             interval.tick().await;
+            println!("sending ping");
             message::send(&mut sessions, &addr, Message::Ping("".as_bytes().to_vec())).await;
         }
     });

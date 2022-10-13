@@ -61,12 +61,13 @@ where
                 .await
                 .unwrap();
 
-            log::info!("[FINDONE] {:?}", instrument);
-
             let msg: Value = serde_json::from_str(&msg).expect("Can't parse to JSON");
+
+            log::info!("[MSG] {:?}", msg);
+
             let data = match msg["command"].clone() {
                 Value::String(com) => match com.as_ref() {
-                    "subscribe" => {
+                    "get_symbol_data" => {
                         let symbol = match &msg["arguments"]["symbol"] {
                             Value::String(s) => s,
                             _ => panic!("symbol parse error"),
@@ -92,8 +93,13 @@ where
                         let res = broker
                             .lock()
                             .await
-                            .get_instrument_data2(symbol, 1440, 1656109158)
-                            .unwrap();
+                            .get_instrument_data(symbol, 1440, 1656109158)
+                            .await.unwrap();
+
+                    // let res = broker
+                    //         .lock()
+                    //         .await
+                    //         .get_instrument_data2(symbol, 1440, 1656109158).unwrap();
 
                         let data = Some(serde_json::to_string(&res).unwrap());
 

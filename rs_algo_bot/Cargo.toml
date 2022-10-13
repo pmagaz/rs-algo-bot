@@ -19,6 +19,7 @@ round = "0.1.2"
 futures = "0.3.21"
 env_logger = "0.9.0"
 log = "0.4"
+futures-util = "0.3.17"
 rs_algo_shared = { path = "../../rs_algo_shared", features = ["websocket"] }
 #rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", features = ["broker","websocket"], rev="aa8fdaa"}
 

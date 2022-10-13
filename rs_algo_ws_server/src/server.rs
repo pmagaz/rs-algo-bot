@@ -33,7 +33,6 @@ pub async fn run(addr: String) {
 
 async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr: SocketAddr) {
     log::info!("Incoming TCP connection from: {addr}");
-
     let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
     let password = env::var("DB_PASSWORD").expect("DB_PASSWORD not found");
     let db_mem_name = env::var("MONGO_BOT_DB_NAME").expect("MONGO_BOT_DB_NAME not found");
@@ -64,6 +63,8 @@ async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr
         let new_session = Session::new(recipient);
         session::create(&mut sessions, &addr, new_session).await;
         heart_beat::check(&sessions, addr).await;
+
+        message::send(&mut sessions, &addr, Message::Text("conected".to_owned())).await;
 
         let (outgoing, incoming) = ws_stream.split();
 
