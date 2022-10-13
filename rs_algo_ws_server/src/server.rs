@@ -53,8 +53,8 @@ async fn handle_session<BK>(
 {
     log::info!("Incoming TCP connection from: {addr}");
 
-    let mut leches = message2.lock().await;
-    leches.init_heartbeat(addr).await;
+    // let mut leches = message2.lock().await;
+    // leches.init_heartbeat(addr).await;
 
     loop {
         let ws_stream = tokio_tungstenite::accept_async(&mut *raw_stream)
@@ -63,15 +63,20 @@ async fn handle_session<BK>(
 
         let (recipient, receiver) = unbounded();
         let new_session = Session::new(recipient);
-        leches.create_session(new_session, addr).await;
-        leches.check_heartbeat(addr).await;
+        //leches.create_session(new_session, addr).await;
+        // leches.check_heartbeat(addr).await;
 
         let (outgoing, incoming) = ws_stream.split();
 
         let broadcast_incoming = incoming.try_for_each(|msg| {
-            let message2 = Arc::clone(&message2);
+
+            println!("444444444 {:?}", msg);
+
+            let message3 = Arc::clone(&message2);
             async move {
-                let mut leches = message2.lock().await;
+                let mut leches = message3.lock().await;
+                            println!("1111111 {:?}", msg);
+
                 match leches.handle(&addr, msg).await {
                     Some(msg) => leches.send(&addr, Message::Text(msg)).await,
                     None => (),

@@ -28,17 +28,17 @@ impl<BK> Message2<BK> {
         let username = env::var("BROKER_USERNAME").expect("BROKER_USERNAME not found");
         let password = env::var("BROKER_PASSWORD").expect("BROKER_PASSWORD not found");
 
-        let mut broker = BK::
-            listen(&username, &password, |x| async move {
-                println!("1111111111111 {:?}", x);
-                Ok(())
-            })
-            .await;
-
+        // let mut broker = BK::
+        //     listen(&username, &password, |x| async move {
+        //         println!("1111111111111 {:?}", x);
+        //         Ok(())
+        //     })
+        //     .await;
+        let mut broker = BK::new().await;
         //broker.login(&username, &password).await.unwrap();
         Self {
             sessions,
-            broker: BK::new().await,
+            broker: broker,
             db_client,
         }
     }
@@ -77,7 +77,9 @@ impl<BK> Message2<BK> {
     where
         BK: Broker,
     {
+         println!("2222222 {:?}", msg);
         let data = match msg {
+
             Message::Ping(bytes) => {
                 log::info!("Ping received");
                 None
@@ -123,7 +125,7 @@ impl<BK> Message2<BK> {
                             };
 
                             //let broker = broker.unlock().unwrap();
-
+    println!("3333333333333");
                             let res = self
                                 .broker
                                 .get_instrument_data2(symbol, 1440, 1656109158)
@@ -133,7 +135,7 @@ impl<BK> Message2<BK> {
 
                             // let symbol = &[symbol, "_", time_frame].concat();
                             // let strategy = &[strategy, "_", strategy_type].concat();
-                            println!("3333333333333");
+                        
                             // session::find(sessions, &addr, |session| {
                             //     session.update_name(symbol, strategy);
                             // });

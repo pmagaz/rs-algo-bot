@@ -28,8 +28,6 @@ async fn main() {
 
     //     log::info!("Sending to {} on port {} !", server_url, port);
 
-    #[derive(Clone, Message)]
-    #[rtype(result = "()")]
     pub struct ChatMessage(pub String);
 
     // #[derive(Clone, Message, Serialize, Deserialize)]
@@ -56,6 +54,8 @@ async fn main() {
         .await
         .unwrap();
 
+         ws_client.pong(b"").await;
+
     loop {
         let msg = ws_client.read().await.unwrap();
         let txt_msg = match msg {
@@ -65,7 +65,7 @@ async fn main() {
             }
             Message::Ping(txt) => {
                 log::info!("Ping received");
-                //ws_client.pong(b"");
+                ws_client.pong(b"").await;
                 // ws_client
                 // .send("adios")
                 // .await
