@@ -8,15 +8,53 @@ use crate::{
 };
 
 use futures_channel::mpsc::unbounded;
-use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
+use futures_util::{future, pin_mut, stream::TryStreamExt, SinkExt, StreamExt};
 use std::sync::Arc;
 use std::{collections::HashMap, env, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 use tungstenite::protocol::Message;
-
 use rs_algo_shared::broker::xtb::*;
 use rs_algo_shared::broker::*;
+use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
+use std::time::Duration;
+use tokio::time;
+
+pub async fn leches(session: Session, session_id: String, broker: Arc<Mutex<Xtb>>) {
+    tokio::spawn({
+        //let broker = Arc::clone(&broker);
+        let mut broker = Xtb::new().await;
+    //broker.login(username, password).await.unwrap();
+        let mut session = session.clone();
+        async move {
+                    let mut session = session.clone();
+                broker
+                    .listen("BITCOIN", session_id, |msg| {
+                        let mut session = session.clone();
+                        async move {
+                            println!("2222222222{}", msg);
+                            session.recipient.unbounded_send(msg).unwrap();
+                            //message::send(&mut sessions, &addr, Message::Text(msg.to_string()))
+                            Ok(())
+                        }
+                    })
+                    .await;
+
+            //let mut broker = broker.lock().await;
+            //     println!("4444444444{:?}", session_id);
+            // broker
+            //     .get_instrument_streaming(session_id, "BITCOIN", 1000, 2)
+            //     .await
+            //     .unwrap();
+                
+            // loop {
+            //     let msg = broker.stream.read().await.unwrap();
+            //     println!("4444444444{:?}", &msg);
+            //      session.recipient.unbounded_send(msg).unwrap();
+            // }
+         }
+    });
+}
 
 pub async fn run(addr: String) {
     let addr = addr.parse::<SocketAddr>().unwrap();
@@ -37,24 +75,33 @@ pub async fn run(addr: String) {
     let password = &env::var("BROKER_PASSWORD").unwrap();
     let mut broker = Xtb::new().await;
     broker.login(username, password).await.unwrap();
-
     let broker = Arc::new(Mutex::new(broker));
-    let db= Arc::new(db_client);
+    let db = Arc::new(db_client);
 
     while let Ok((mut stream, addr)) = socket.accept().await {
         let sessions = sessions.clone();
-        let broker = Arc::clone(&broker); 
-        let db = Arc::clone(&db); 
+        let broker = Arc::clone(&broker);
+        let db = Arc::clone(&db);
         tokio::spawn(async move {
             handle_session(sessions.clone(), &mut stream, addr, broker, db).await;
         });
     }
 }
 
-async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr: SocketAddr, broker: Arc<Mutex<Xtb>>, db_client: Arc<mongodb::Client>) {
+async fn handle_session(
+    mut sessions: Sessions,
+    raw_stream: &mut TcpStream,
+    addr: SocketAddr,
+    broker: Arc<Mutex<Xtb>>,
+    db_client: Arc<mongodb::Client>,
+) {
     log::info!("Incoming TCP connection from: {addr}");
-
     heart_beat::init(&mut sessions, addr).await;
+
+    //let sessions2 = sessions.clone();
+    let mut session_id = "".to_string();
+    //let guard = broker.lock().await;
+    //session_id = guard.streamSessionId.clone();
 
     loop {
         let ws_stream = tokio_tungstenite::accept_async(&mut *raw_stream)
@@ -63,36 +110,18 @@ async fn handle_session(mut sessions: Sessions, raw_stream: &mut TcpStream, addr
 
         let (recipient, receiver) = unbounded();
         let new_session = Session::new(recipient);
+        leches(new_session.clone(), session_id.clone(), broker.clone()).await;
         session::create(&mut sessions, &addr, new_session).await;
         heart_beat::check(&sessions, addr).await;
-
+        
         //message::send(&mut sessions, &addr, Message::Text("conected".to_owned())).await;
 
         let (outgoing, incoming) = ws_stream.split();
-        tokio::spawn({
-            let broker = broker.clone();
-            let mut sessions = sessions.clone();
-            async move {
-        let res = broker.lock()
-                            .await.listen("BITCOIN", |msg| {
-                                let mut sessions = sessions.clone();
-                                let addr = addr.clone();
-                                async move{
-                               
-                                println!("77777777777 {:?}", msg);
-                                message::send(&mut sessions, &addr, Message::Text(msg.to_string())).await;
-                                //future::success(Ok(()))
-                                Ok(())
-                                }
-                            }).await;
-                        }
-          });
 
         let broadcast_incoming = incoming.try_for_each(|msg| {
             let broker = Arc::clone(&broker);
             let db_client = Arc::clone(&db_client);
-            let mut sessions = sessions.clone();
-
+            let mut sessions = Arc::clone(&sessions);
             async move {
                 match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
                     Some(msg) => message::send(&mut sessions, &addr, Message::Text(msg)).await,

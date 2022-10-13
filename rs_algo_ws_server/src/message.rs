@@ -15,7 +15,6 @@ use rs_algo_shared::broker::*;
 
 pub async fn send(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
     session::find(sessions, &addr, |session| {
-        println!("88888888 {:?}", msg);
         session.recipient.unbounded_send(msg).unwrap();
     })
     .await;
@@ -93,7 +92,8 @@ where
                             .lock()
                             .await
                             .get_instrument_data(symbol, 1440, 1656109158)
-                            .await.unwrap();
+                            .await
+                            .unwrap();
 
                         let data = Some(serde_json::to_string(&res).unwrap());
 
@@ -102,31 +102,31 @@ where
                         // });
 
                         data
-                    },
+                    }
                     "subscribe_symbol_data" => {
                         let symbol = match &msg["arguments"]["symbol"] {
                             Value::String(s) => s,
                             _ => panic!("symbol parse error"),
                         };
-                       
-                    // tokio::spawn(async move {
-                    //     let res = broker
-                    //         .lock()
-                    //         .await.listen(symbol, |msg| {
-                    //             let mut sessions = sessions.clone();
-                    //             let addr = addr.clone();
-                    //             async move{
-                               
-                    //             println!("66666666666 {:?}", msg);
-                    //             self::send(&mut sessions, &addr, Message::Text(msg.to_string())).await;
-                    //             //future::success(Ok(()))
-                    //             Ok(())
-                    //             }
-                    //         }).await;
-                    //     });
+
+                        // tokio::spawn(async move {
+                        //     let res = broker
+                        //         .lock()
+                        //         .await.listen(symbol, |msg| {
+                        //             let mut sessions = sessions.clone();
+                        //             let addr = addr.clone();
+                        //             async move{
+
+                        //             println!("66666666666 {:?}", msg);
+                        //             self::send(&mut sessions, &addr, Message::Text(msg.to_string())).await;
+                        //             //future::success(Ok(()))
+                        //             Ok(())
+                        //             }
+                        //         }).await;
+                        //     });
 
                         Some("".to_string())
-                    },
+                    }
                     &_ => {
                         log::error!("unknown command received {}", com);
                         None
