@@ -1,10 +1,10 @@
 use actix::prelude::*;
 use dotenv::dotenv;
+use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
 use rs_algo_shared::models::backtest_strategy::StrategyType;
 use rs_algo_shared::ws::message::{Command, CommandType, Message, Subscribe};
 use rs_algo_shared::ws::ws_client::WebSocket;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::env;
 
 #[tokio::main]
@@ -25,7 +25,7 @@ async fn main() {
         arguments: Some(Subscribe {
             strategy: "EMA200-2",
             strategy_type: StrategyType::OnlyLong,
-            symbol: "EURUSD",
+            symbol: "BITCOIN",
             time_frame: "W",
         }),
     };
@@ -50,6 +50,9 @@ async fn main() {
         .await
         .unwrap();
 
+    let mut last_msg = Local::now();
+    let msg_timeout = env::var("MSG_TIMEOUT").unwrap().parse::<u64>().unwrap();
+
     loop {
         let msg = ws_client.read().await.unwrap();
         match msg {
@@ -57,6 +60,13 @@ async fn main() {
                 // let parsed : Value = serde_json::from_str(&txt).expect("Can't parse to JSON");
                 // let msg_type = &parsed["msg_type"];
                 log::info!("MSG received {}", txt);
+
+                let timeout = Local::now() - Dur::milliseconds(msg_timeout as i64);
+                if last_msg < timeout {
+                    log::error!("Lost connection!");
+                } else {
+                    last_msg = Local::now();
+                }
             }
             Message::Ping(_txt) => {
                 log::info!("Ping received");

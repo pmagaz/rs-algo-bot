@@ -1,27 +1,21 @@
 use crate::db;
 use crate::error::RsAlgoErrorKind;
 use crate::heart_beat;
-use crate::{message, message::*};
+use crate::message;
 use crate::{
     session,
     session::{Session, Sessions},
 };
+use rs_algo_shared::broker::xtb::*;
+use rs_algo_shared::broker::*;
 
 use futures_channel::mpsc::unbounded;
 use futures_util::{future, pin_mut, stream::TryStreamExt, SinkExt, StreamExt};
-use rs_algo_shared::broker::xtb::*;
-use rs_algo_shared::broker::*;
-use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
+
 use std::sync::Arc;
-use std::time::Duration;
 use std::{collections::HashMap, env, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
-use tokio::time;
-use tokio_tungstenite::{
-    connect_async,
-    tungstenite::{Error, Result},
-};
 use tungstenite::protocol::Message;
 
 pub async fn run(addr: String) {
@@ -34,24 +28,18 @@ pub async fn run(addr: String) {
     let db_mem_name = env::var("MONGO_BOT_DB_NAME").expect("MONGO_BOT_DB_NAME not found");
     let db_mem_uri = env::var("MONGO_BOT_DB_URI").expect("MONGO_BOT_DB_URI not found");
 
-    let db_client = db::mongo::connect(&username, &password, &db_mem_name, &db_mem_uri)
+    let mongo_client = db::mongo::connect(&username, &password, &db_mem_name, &db_mem_uri)
         .await
         .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
         .unwrap();
 
-    let username = &env::var("BROKER_USERNAME").unwrap();
-    let password = &env::var("BROKER_PASSWORD").unwrap();
-    let mut broker = Xtb::new().await;
-    broker.login(username, password).await.unwrap();
-    let broker = Arc::new(Mutex::new(broker));
-    let db = Arc::new(db_client);
+    let db_client = Arc::new(mongo_client);
 
     while let Ok((mut stream, addr)) = socket.accept().await {
         let sessions = sessions.clone();
-        let broker = Arc::clone(&broker);
-        let db = Arc::clone(&db);
+        let db_client = Arc::clone(&db_client);
         tokio::spawn(async move {
-            handle_session(sessions.clone(), &mut stream, addr, broker, db).await;
+            handle_session(sessions, &mut stream, addr, db_client).await;
         });
     }
 }
@@ -60,11 +48,16 @@ async fn handle_session(
     mut sessions: Sessions,
     raw_stream: &mut TcpStream,
     addr: SocketAddr,
-    broker: Arc<Mutex<Xtb>>,
     db_client: Arc<mongodb::Client>,
 ) {
     log::info!("Incoming TCP connection from: {addr}");
     heart_beat::init(&mut sessions, addr).await;
+
+    let username = &env::var("BROKER_USERNAME").unwrap();
+    let password = &env::var("BROKER_PASSWORD").unwrap();
+    let mut broker = Xtb::new().await;
+    broker.login(username, password).await.unwrap();
+    let broker = Arc::new(Mutex::new(broker));
 
     loop {
         let ws_stream = tokio_tungstenite::accept_async(&mut *raw_stream)

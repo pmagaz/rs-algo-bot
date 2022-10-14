@@ -11,8 +11,8 @@ use tokio::sync::Mutex;
 use tokio::time;
 use tungstenite::protocol::Message;
 
-use rs_algo_shared::broker::xtb::*;
 use rs_algo_shared::broker::*;
+use rs_algo_shared::helpers::date::Local;
 
 pub async fn send(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
     session::find(sessions, &addr, |session| {
@@ -109,19 +109,15 @@ where
                             let sessions = Arc::clone(&sessions);
                             let addr = addr.clone();
                             async move {
-                                let mut interval = time::interval(Duration::from_millis(10000));
+                                let mut guard = broker.lock().await;
+                                guard.get_instrument_streaming(&symbol, 1, 2).await.unwrap();
+                                let mut interval = time::interval(Duration::from_millis(1000));
+                                let mut sessions = Arc::clone(&sessions);
                                 loop {
                                     interval.tick().await;
-                                    let mut sessions = Arc::clone(&sessions);
-                                    let res = broker
-                                        .lock()
-                                        .await
-                                        .get_instrument_data(&symbol, 1440, 1656109158)
-                                        .await
-                                        .unwrap();
-
-                                    let data = Some(serde_json::to_string(&res).unwrap()).unwrap();
-                                    self::send(&mut sessions, &addr, Message::Text(data)).await;
+                                    let msg = guard.read_stream().await.unwrap();
+                                    log::info!("Data stream received! {}", msg);
+                                    self::send(&mut sessions, &addr, Message::Text(msg)).await;
                                 }
                             }
                         });
