@@ -9,52 +9,20 @@ use crate::{
 
 use futures_channel::mpsc::unbounded;
 use futures_util::{future, pin_mut, stream::TryStreamExt, SinkExt, StreamExt};
-use std::sync::Arc;
-use std::{collections::HashMap, env, net::SocketAddr};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Mutex;
-use tungstenite::protocol::Message;
 use rs_algo_shared::broker::xtb::*;
 use rs_algo_shared::broker::*;
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
+use std::sync::Arc;
 use std::time::Duration;
+use std::{collections::HashMap, env, net::SocketAddr};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Mutex;
 use tokio::time;
-
-pub async fn leches(session: Session, session_id: String, broker: Arc<Mutex<Xtb>>) {
-    tokio::spawn({
-        //let broker = Arc::clone(&broker);
-        let mut broker = Xtb::new().await;
-    //broker.login(username, password).await.unwrap();
-        let mut session = session.clone();
-        async move {
-                    let mut session = session.clone();
-                broker
-                    .listen("BITCOIN", session_id, |msg| {
-                        let mut session = session.clone();
-                        async move {
-                            println!("2222222222{}", msg);
-                            session.recipient.unbounded_send(msg).unwrap();
-                            //message::send(&mut sessions, &addr, Message::Text(msg.to_string()))
-                            Ok(())
-                        }
-                    })
-                    .await;
-
-            //let mut broker = broker.lock().await;
-            //     println!("4444444444{:?}", session_id);
-            // broker
-            //     .get_instrument_streaming(session_id, "BITCOIN", 1000, 2)
-            //     .await
-            //     .unwrap();
-                
-            // loop {
-            //     let msg = broker.stream.read().await.unwrap();
-            //     println!("4444444444{:?}", &msg);
-            //      session.recipient.unbounded_send(msg).unwrap();
-            // }
-         }
-    });
-}
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{Error, Result},
+};
+use tungstenite::protocol::Message;
 
 pub async fn run(addr: String) {
     let addr = addr.parse::<SocketAddr>().unwrap();
@@ -98,11 +66,6 @@ async fn handle_session(
     log::info!("Incoming TCP connection from: {addr}");
     heart_beat::init(&mut sessions, addr).await;
 
-    //let sessions2 = sessions.clone();
-    let mut session_id = "".to_string();
-    //let guard = broker.lock().await;
-    //session_id = guard.streamSessionId.clone();
-
     loop {
         let ws_stream = tokio_tungstenite::accept_async(&mut *raw_stream)
             .await
@@ -110,10 +73,9 @@ async fn handle_session(
 
         let (recipient, receiver) = unbounded();
         let new_session = Session::new(recipient);
-        leches(new_session.clone(), session_id.clone(), broker.clone()).await;
         session::create(&mut sessions, &addr, new_session).await;
         heart_beat::check(&sessions, addr).await;
-        
+
         //message::send(&mut sessions, &addr, Message::Text("conected".to_owned())).await;
 
         let (outgoing, incoming) = ws_stream.split();

@@ -4,19 +4,17 @@ use rs_algo_shared::models::backtest_strategy::StrategyType;
 use rs_algo_shared::ws::message::{Command, CommandType, Message, Subscribe};
 use rs_algo_shared::ws::ws_client::WebSocket;
 use serde::{Deserialize, Serialize};
-use std::env;
 use serde_json::Value;
+use std::env;
 
 #[tokio::main]
 async fn main() {
-
     dotenv().ok();
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let server_url = env::var("WS_SERVER_URL").expect("WS_SERVER_URL not found");
     let port = env::var("WS_SERVER_PORT").expect("WS_SERVER_PORT not found");
     let url = [&server_url, ":", &port].concat();
-
 
     log::info!("Connecting to {} !", &url);
 
@@ -37,7 +35,7 @@ async fn main() {
         arguments: Some(Subscribe {
             strategy: "EMA200-2",
             strategy_type: StrategyType::OnlyLong,
-            symbol: "EURUSD",
+            symbol: "BITCOIN",
             time_frame: "W",
         }),
     };

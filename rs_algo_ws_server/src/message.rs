@@ -4,10 +4,11 @@ use crate::{
 };
 
 use crate::db;
-
 use serde_json::Value;
+use std::time::Duration;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
+use tokio::time;
 use tungstenite::protocol::Message;
 
 use rs_algo_shared::broker::xtb::*;
@@ -40,7 +41,7 @@ pub async fn handle<BK>(
     db_client: &mongodb::Client,
 ) -> Option<String>
 where
-    BK: Broker,
+    BK: Broker + Send + 'static,
 {
     let data = match msg {
         Message::Ping(bytes) => {
@@ -56,13 +57,12 @@ where
             .await;
             None
         }
-        Message::Text(msg) => {
+        Message::Text(txt) => {
             let instrument = db::instrument::find_by_symbol(db_client, "aaaa")
                 .await
                 .unwrap();
 
-            let msg: Value = serde_json::from_str(&msg).expect("Can't parse to JSON");
-
+            let msg: Value = serde_json::from_str(&txt).expect("Can't parse to JSON");
             log::info!("[MSG] {:?}", msg);
 
             let data = match msg["command"].clone() {
@@ -96,35 +96,35 @@ where
                             .unwrap();
 
                         let data = Some(serde_json::to_string(&res).unwrap());
-
-                        // session::find(sessions, &addr, |session| {
-                        //     session.update_name(symbol, strategy);
-                        // });
-
                         data
                     }
                     "subscribe_symbol_data" => {
                         let symbol = match &msg["arguments"]["symbol"] {
                             Value::String(s) => s,
                             _ => panic!("symbol parse error"),
-                        };
+                        }
+                        .clone();
 
-                        // tokio::spawn(async move {
-                        //     let res = broker
-                        //         .lock()
-                        //         .await.listen(symbol, |msg| {
-                        //             let mut sessions = sessions.clone();
-                        //             let addr = addr.clone();
-                        //             async move{
+                        tokio::spawn({
+                            let sessions = Arc::clone(&sessions);
+                            let addr = addr.clone();
+                            async move {
+                                let mut interval = time::interval(Duration::from_millis(10000));
+                                loop {
+                                    interval.tick().await;
+                                    let mut sessions = Arc::clone(&sessions);
+                                    let res = broker
+                                        .lock()
+                                        .await
+                                        .get_instrument_data(&symbol, 1440, 1656109158)
+                                        .await
+                                        .unwrap();
 
-                        //             println!("66666666666 {:?}", msg);
-                        //             self::send(&mut sessions, &addr, Message::Text(msg.to_string())).await;
-                        //             //future::success(Ok(()))
-                        //             Ok(())
-                        //             }
-                        //         }).await;
-                        //     });
-
+                                    let data = Some(serde_json::to_string(&res).unwrap()).unwrap();
+                                    self::send(&mut sessions, &addr, Message::Text(data)).await;
+                                }
+                            }
+                        });
                         Some("".to_string())
                     }
                     &_ => {
