@@ -17,9 +17,9 @@ pub async fn init(sessions: &mut Sessions, addr: SocketAddr) {
         .unwrap()
         .parse::<u64>()
         .unwrap();
+    let mut interval = time::interval(Duration::from_millis(hb_interval));
 
     tokio::spawn(async move {
-        let mut interval = time::interval(Duration::from_millis(hb_interval));
         loop {
             interval.tick().await;
             message::send(&mut sessions, &addr, Message::Ping("".as_bytes().to_vec())).await;
@@ -30,10 +30,7 @@ pub async fn init(sessions: &mut Sessions, addr: SocketAddr) {
 pub async fn check(sessions: &Sessions, addr: SocketAddr) {
     let mut sessions = sessions.clone();
 
-    let hb_client_timeout = env::var("HB_CLIENT_TIMEOUT")
-        .unwrap()
-        .parse::<u64>()
-        .unwrap();
+    let hb_client_timeout = env::var("MSG_TIMEOUT").unwrap().parse::<u64>().unwrap();
 
     tokio::spawn(async move {
         let mut interval = time::interval(Duration::from_millis(hb_client_timeout));

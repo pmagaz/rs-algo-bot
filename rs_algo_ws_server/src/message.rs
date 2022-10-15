@@ -1,137 +1,21 @@
+use crate::db;
 use crate::{
     session,
     session::{Session, Sessions},
 };
-
-use crate::db;
-use crate::error::RsAlgoErrorKind;
-use serde_json::Value;
-use std::{collections::HashMap, env, net::SocketAddr, sync::Arc};
-use tokio::sync::Mutex;
-use tungstenite::protocol::Message;
-
-use rs_algo_shared::broker::xtb::*;
+use futures_util::{
+    stream::{SplitSink, SplitStream},
+    Future, SinkExt, StreamExt,
+};
 use rs_algo_shared::broker::*;
-
-pub struct Message2 {
-    sessions: Sessions,
-    broker: Xtb,
-    db_client: mongodb::Client,
-}
-
-impl Message2 {
-    pub async fn new(sessions: Sessions) -> Self {
-        let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
-        let password = env::var("DB_PASSWORD").expect("DB_PASSWORD not found");
-        let db_mem_name = env::var("MONGO_BOT_DB_NAME").expect("MONGO_BOT_DB_NAME not found");
-        let db_mem_uri = env::var("MONGO_BOT_DB_URI").expect("MONGO_BOT_DB_URI not found");
-        Self {
-            sessions: Sessions::new(Mutex::new(HashMap::new())),
-            broker: Xtb::new().await,
-            db_client: db::mongo::connect(&username, &password, &db_mem_name, &db_mem_uri)
-                .await
-                .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
-                .unwrap(),
-        }
-    }
-
-    pub async fn handle(
-        &mut self,
-        //sessions: &mut Sessions,
-        addr: &SocketAddr,
-        msg: Message,
-        // broker: Arc<Mutex<BK>>,
-        //  db_client: &mongodb::Client,
-    ) -> Option<String> {
-        let data = match msg {
-            Message::Ping(bytes) => {
-                log::info!("Ping received");
-                None
-            }
-            Message::Pong(_) => {
-                log::info!("Pong received from {addr} ");
-
-                // self.sessions
-                //     .find(sessions, &addr, |session| {
-                //         session.update_ping();
-                //     })
-                //     .await;
-                None
-            }
-            Message::Text(msg) => {
-                let instrument = db::instrument::find_by_symbol(&self.db_client, "aaaa")
-                    .await
-                    .unwrap();
-
-                log::info!("[FINDONE] {:?}", instrument);
-
-                let msg: Value = serde_json::from_str(&msg).expect("Can't parse to JSON");
-                let data = match msg["command"].clone() {
-                    Value::String(com) => match com.as_ref() {
-                        "subscribe" => {
-                            let symbol = match &msg["arguments"]["symbol"] {
-                                Value::String(s) => s,
-                                _ => panic!("symbol parse error"),
-                            };
-
-                            let time_frame = match &msg["arguments"]["time_frame"] {
-                                Value::String(s) => s,
-                                _ => panic!("time_frame parse error"),
-                            };
-
-                            let strategy = match &msg["arguments"]["strategy"] {
-                                Value::String(s) => s,
-                                _ => panic!("strategy parse error"),
-                            };
-
-                            let strategy_type = match &msg["arguments"]["strategy_type"] {
-                                Value::String(s) => s,
-                                _ => panic!("strategy type parse error"),
-                            };
-
-                            //let broker = broker.unlock().unwrap();
-
-                            let res = self
-                                .broker
-                                .get_instrument_data2(symbol, 1440, 1656109158)
-                                .unwrap();
-
-                            let data = Some(serde_json::to_string(&res).unwrap());
-
-                            // let symbol = &[symbol, "_", time_frame].concat();
-                            // let strategy = &[strategy, "_", strategy_type].concat();
-                            println!("3333333333333");
-                            // session::find(sessions, &addr, |session| {
-                            //     session.update_name(symbol, strategy);
-                            // });
-
-                            data
-                        }
-                        &_ => {
-                            log::error!("unknown command received {}", com);
-                            None
-                        }
-                    },
-
-                    _ => {
-                        log::error!("Wrong command format {:?}", msg);
-                        None
-                    }
-                };
-
-                data
-            }
-            //  Message::Close(msg) => {
-            //     println!("Disconected {:?}", msg);
-            // }
-            _ => {
-                println!("Error {:?}", msg);
-                None
-            }
-        };
-        data
-    }
-}
+use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
+use serde_json::Value;
+use std::time::Duration;
+use std::{net::SocketAddr, sync::Arc};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::sync::Mutex;
+use tokio::time;
+use tungstenite::protocol::Message;
 
 pub async fn send(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
     session::find(sessions, &addr, |session| {
@@ -160,7 +44,7 @@ pub async fn handle<BK>(
     db_client: &mongodb::Client,
 ) -> Option<String>
 where
-    BK: Broker,
+    BK: Broker + Send + 'static,
 {
     let data = match msg {
         Message::Ping(bytes) => {
@@ -170,61 +54,103 @@ where
         Message::Pong(_) => {
             log::info!("Pong received from {addr} ");
 
-            // session::find(sessions, &addr, |session| {
-            //     session.update_ping();
-            // })
-            // .await;
+            session::find(sessions, &addr, |session| {
+                session.update_ping();
+            })
+            .await;
             None
         }
-        Message::Text(msg) => {
+        Message::Text(txt) => {
             let instrument = db::instrument::find_by_symbol(db_client, "aaaa")
                 .await
                 .unwrap();
 
-            log::info!("[FINDONE] {:?}", instrument);
+            let msg: Value = serde_json::from_str(&txt).expect("Can't parse to JSON");
+            log::info!("[MSG] {:?}", msg);
 
-            let msg: Value = serde_json::from_str(&msg).expect("Can't parse to JSON");
             let data = match msg["command"].clone() {
                 Value::String(com) => match com.as_ref() {
-                    "subscribe" => {
+                    "get_symbol_data" => {
                         let symbol = match &msg["arguments"]["symbol"] {
                             Value::String(s) => s,
                             _ => panic!("symbol parse error"),
                         };
 
-                        let time_frame = match &msg["arguments"]["time_frame"] {
-                            Value::String(s) => s,
-                            _ => panic!("time_frame parse error"),
-                        };
+                        // let time_frame = match &msg["arguments"]["time_frame"] {
+                        //     Value::String(s) => s,
+                        //     _ => panic!("time_frame parse error"),
+                        // };
 
-                        let strategy = match &msg["arguments"]["strategy"] {
-                            Value::String(s) => s,
-                            _ => panic!("strategy parse error"),
-                        };
+                        // let strategy = match &msg["arguments"]["strategy"] {
+                        //     Value::String(s) => s,
+                        //     _ => panic!("strategy parse error"),
+                        // };
 
-                        let strategy_type = match &msg["arguments"]["strategy_type"] {
-                            Value::String(s) => s,
-                            _ => panic!("strategy type parse error"),
-                        };
+                        // let strategy_type = match &msg["arguments"]["strategy_type"] {
+                        //     Value::String(s) => s,
+                        //     _ => panic!("strategy type parse error"),
+                        // };
 
-                        //let broker = broker.unlock().unwrap();
-
+                        let time_frame = 5;
+                        let max_bars = 200;
+                        let from = (Local::now()
+                            - Dur::milliseconds(time_frame * 60000 * max_bars as i64))
+                        .timestamp();
                         let res = broker
                             .lock()
                             .await
-                            .get_instrument_data2(symbol, 1440, 1656109158)
+                            .get_instrument_data(symbol, 1440, 1656109158)
+                            //.get_instrument_data(symbol, time_frame, from)
+                            .await
                             .unwrap();
 
                         let data = Some(serde_json::to_string(&res).unwrap());
-
-                        // let symbol = &[symbol, "_", time_frame].concat();
-                        // let strategy = &[strategy, "_", strategy_type].concat();
-                        println!("3333333333333");
-                        // session::find(sessions, &addr, |session| {
-                        //     session.update_name(symbol, strategy);
-                        // });
-
                         data
+                    }
+                    "subscribe_symbol_data" => {
+                        let symbol = match &msg["arguments"]["symbol"] {
+                            Value::String(s) => s,
+                            _ => panic!("symbol parse error"),
+                        }
+                        .clone();
+
+                        tokio::spawn({
+                            let sessions = Arc::clone(&sessions);
+                            let addr = addr.clone();
+                            async move {
+                                let mut guard = broker.lock().await;
+                                guard.get_instrument_streaming(&symbol, 1, 2).await.unwrap();
+                                let mut interval = time::interval(Duration::from_millis(200));
+                                let mut sessions = Arc::clone(&sessions);
+                                let read_stream = guard.get_stream().await;
+
+                                loop {
+                                    tokio::select! {
+                                        msg = read_stream.next() => {
+                                            match msg {
+                                                Some(msg) => {
+                                                    let msg = msg.unwrap();
+                                                    if msg.is_text() || msg.is_binary() {
+                                                        self::send(&mut sessions, &addr, msg).await;
+                                                    } else if msg.is_close() {
+                                                        println!("4444444");
+                                                        break;
+                                                    }
+                                                }
+                                                None => {
+                                                     println!("5555555");
+                                                    break
+                                                }
+                                            }
+                                        }
+                                        _ = interval.tick() => {
+                                            //self::send(&mut sessions, &addr, Message::Ping(b"".to_vec())).await;
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        Some("".to_string())
                     }
                     &_ => {
                         log::error!("unknown command received {}", com);
