@@ -1,18 +1,21 @@
+use crate::db;
 use crate::{
     session,
     session::{Session, Sessions},
 };
-
-use crate::db;
+use futures_util::{
+    stream::{SplitSink, SplitStream},
+    Future, SinkExt, StreamExt,
+};
+use rs_algo_shared::broker::*;
+use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
 use serde_json::Value;
 use std::time::Duration;
 use std::{net::SocketAddr, sync::Arc};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::Mutex;
 use tokio::time;
 use tungstenite::protocol::Message;
-
-use rs_algo_shared::broker::*;
-use rs_algo_shared::helpers::date::Local;
 
 pub async fn send(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
     session::find(sessions, &addr, |session| {
@@ -88,10 +91,16 @@ where
                         //     _ => panic!("strategy type parse error"),
                         // };
 
+                        let time_frame = 5;
+                        let max_bars = 200;
+                        let from = (Local::now()
+                            - Dur::milliseconds(time_frame * 60000 * max_bars as i64))
+                        .timestamp();
                         let res = broker
                             .lock()
                             .await
                             .get_instrument_data(symbol, 1440, 1656109158)
+                            //.get_instrument_data(symbol, time_frame, from)
                             .await
                             .unwrap();
 
@@ -111,13 +120,33 @@ where
                             async move {
                                 let mut guard = broker.lock().await;
                                 guard.get_instrument_streaming(&symbol, 1, 2).await.unwrap();
-                                let mut interval = time::interval(Duration::from_millis(1000));
+                                let mut interval = time::interval(Duration::from_millis(200));
                                 let mut sessions = Arc::clone(&sessions);
+                                let read_stream = guard.get_stream().await;
+
                                 loop {
-                                    interval.tick().await;
-                                    let msg = guard.read_stream().await.unwrap();
-                                    log::info!("Data stream received! {}", msg);
-                                    self::send(&mut sessions, &addr, Message::Text(msg)).await;
+                                    tokio::select! {
+                                        msg = read_stream.next() => {
+                                            match msg {
+                                                Some(msg) => {
+                                                    let msg = msg.unwrap();
+                                                    if msg.is_text() || msg.is_binary() {
+                                                        self::send(&mut sessions, &addr, msg).await;
+                                                    } else if msg.is_close() {
+                                                        println!("4444444");
+                                                        break;
+                                                    }
+                                                }
+                                                None => {
+                                                     println!("5555555");
+                                                    break
+                                                }
+                                            }
+                                        }
+                                        _ = interval.tick() => {
+                                            //self::send(&mut sessions, &addr, Message::Ping(b"".to_vec())).await;
+                                        }
+                                    }
                                 }
                             }
                         });

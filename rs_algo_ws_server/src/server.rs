@@ -51,7 +51,6 @@ async fn handle_session(
     db_client: Arc<mongodb::Client>,
 ) {
     log::info!("Incoming TCP connection from: {addr}");
-    heart_beat::init(&mut sessions, addr).await;
 
     let username = &env::var("BROKER_USERNAME").unwrap();
     let password = &env::var("BROKER_PASSWORD").unwrap();
@@ -67,6 +66,8 @@ async fn handle_session(
         let (recipient, receiver) = unbounded();
         let new_session = Session::new(recipient);
         session::create(&mut sessions, &addr, new_session).await;
+
+        heart_beat::init(&mut sessions, addr).await;
         heart_beat::check(&sessions, addr).await;
 
         //message::send(&mut sessions, &addr, Message::Text("conected".to_owned())).await;

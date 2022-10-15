@@ -17,9 +17,9 @@ pub async fn init(sessions: &mut Sessions, addr: SocketAddr) {
         .unwrap()
         .parse::<u64>()
         .unwrap();
+    let mut interval = time::interval(Duration::from_millis(hb_interval));
 
     tokio::spawn(async move {
-        let mut interval = time::interval(Duration::from_millis(hb_interval));
         loop {
             interval.tick().await;
             message::send(&mut sessions, &addr, Message::Ping("".as_bytes().to_vec())).await;
