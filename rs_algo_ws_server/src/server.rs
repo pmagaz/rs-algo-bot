@@ -6,7 +6,7 @@ use crate::{
     session,
     session::{Session, Sessions},
 };
-use rs_algo_shared::broker::xtb::*;
+use rs_algo_shared::broker::xtb_stream::*;
 use rs_algo_shared::broker::*;
 
 use futures_channel::mpsc::unbounded;

@@ -1,10 +1,8 @@
-use actix::prelude::*;
 use dotenv::dotenv;
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
-use rs_algo_shared::models::backtest_strategy::StrategyType;
-use rs_algo_shared::ws::message::{Command, CommandType, Message, Subscribe};
+use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
-use serde::{Deserialize, Serialize};
 use std::env;
 
 #[tokio::main]
@@ -21,21 +19,21 @@ async fn main() {
     let mut ws_client = WebSocket::connect(&url).await;
 
     let get_symbol_data = Command {
-        command: "get_symbol_data",
-        arguments: Some(Subscribe {
+        command: CommandType::GetSymbolData,
+        data: Some(Data {
             strategy: "EMA200-2",
             strategy_type: StrategyType::OnlyLong,
-            symbol: "BITCOIN",
+            symbol: "ETHEREUM",
             time_frame: "W",
         }),
     };
 
     let subscribe_command = Command {
-        command: "subscribe_symbol_data",
-        arguments: Some(Subscribe {
+        command: CommandType::SubscribeStream,
+        data: Some(Data {
             strategy: "EMA200-2",
             strategy_type: StrategyType::OnlyLong,
-            symbol: "BITCOIN",
+            symbol: "ETHEREUM",
             time_frame: "W",
         }),
     };
@@ -63,7 +61,7 @@ async fn main() {
 
                 let timeout = Local::now() - Dur::milliseconds(msg_timeout as i64);
                 if last_msg < timeout {
-                    log::error!("Lost connection!");
+                    log::error!("No data received in last {} milliseconds", msg_timeout);
                 } else {
                     last_msg = Local::now();
                 }

@@ -3,6 +3,7 @@ use std::{env, io::Error as IoError};
 
 mod db;
 mod error;
+mod handlers;
 mod heart_beat;
 mod message;
 mod server;
