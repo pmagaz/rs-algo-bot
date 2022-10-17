@@ -16,6 +16,7 @@ use std::sync::Arc;
 use std::{collections::HashMap, env, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
+use tokio_tungstenite::accept_async;
 use tungstenite::protocol::Message;
 
 pub async fn run(addr: String) {
@@ -59,7 +60,7 @@ async fn handle_session(
     let broker = Arc::new(Mutex::new(broker));
 
     loop {
-        let ws_stream = tokio_tungstenite::accept_async(&mut *raw_stream)
+        let ws_stream = accept_async(&mut *raw_stream)
             .await
             .expect("Error during the websocket handshake occurred");
 
@@ -68,9 +69,6 @@ async fn handle_session(
         session::create(&mut sessions, &addr, new_session).await;
 
         heart_beat::init(&mut sessions, addr).await;
-        heart_beat::check(&sessions, addr).await;
-
-        //message::send(&mut sessions, &addr, Message::Text("conected".to_owned())).await;
 
         let (outgoing, incoming) = ws_stream.split();
 
@@ -87,8 +85,9 @@ async fn handle_session(
             }
         });
 
-        let receive_from_others = receiver.map(Ok).forward(outgoing);
+        heart_beat::check(&sessions, addr).await;
 
+        let receive_from_others = receiver.map(Ok).forward(outgoing);
         pin_mut!(broadcast_incoming, receive_from_others);
         future::select(broadcast_incoming, receive_from_others).await;
 

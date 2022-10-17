@@ -1,3 +1,5 @@
+mod message;
+
 use dotenv::dotenv;
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
 use rs_algo_shared::models::strategy::*;
@@ -55,9 +57,8 @@ async fn main() {
         let msg = ws_client.read().await.unwrap();
         match msg {
             Message::Text(txt) => {
-                // let parsed : Value = serde_json::from_str(&txt).expect("Can't parse to JSON");
-                // let msg_type = &parsed["msg_type"];
-                log::info!("MSG received {:?}", txt);
+                let msg = message::parse(&txt);
+                log::info!("MSG received {:?}", msg);
 
                 let timeout = Local::now() - Dur::milliseconds(msg_timeout as i64);
                 if last_msg < timeout {

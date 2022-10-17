@@ -71,12 +71,13 @@ pub async fn create<'a>(sessions: &'a mut Sessions, addr: &SocketAddr, session: 
     let session = session.clone();
     sessions.lock().await.insert(*addr, session.clone());
 
-    let msg: Response<String> = Response {
-        command: ResponseType::Connected,
+    let msg: ResponseBody<String> = ResponseBody {
+        response: ResponseType::Connected,
         data: Option::None,
     };
 
     let msg: String = serde_json::to_string(&msg).unwrap();
+
     session
         .recipient
         .unbounded_send(Message::Text(msg))

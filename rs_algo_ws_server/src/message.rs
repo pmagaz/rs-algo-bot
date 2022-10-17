@@ -2,7 +2,7 @@ use crate::handlers;
 use crate::{session, session::Sessions};
 use rs_algo_shared::helpers::date::{Duration as Dur, Local, Utc};
 use rs_algo_shared::ws::message::*;
-
+use serde_json::Value;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 
@@ -14,8 +14,8 @@ pub async fn send(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
 }
 
 pub async fn send_connected(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
-    let msg: Response<String> = Response {
-        command: ResponseType::Connected,
+    let msg: ResponseBody<String> = ResponseBody {
+        response: ResponseType::Connected,
         data: Option::None,
     };
 

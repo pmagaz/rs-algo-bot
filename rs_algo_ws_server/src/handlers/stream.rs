@@ -32,11 +32,10 @@ where
         let addr = addr.clone();
         async move {
             let mut guard = broker.lock().await;
-            guard.get_instrument_streaming(&symbol, 1, 2).await.unwrap();
+            guard.subscribe_stream(&symbol, 5000, 2).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(200));
             let mut sessions = Arc::clone(&sessions);
             let read_stream = guard.get_stream().await;
-
             loop {
                 tokio::select! {
                     msg = read_stream.next() => {
@@ -46,8 +45,8 @@ where
                                 log::info!("Msg from Broker received");
 
                                 if msg.is_text() || msg.is_binary() {
-                                    //tokio::spawn(callback(msg));
-                                    message::send(&mut sessions, &addr, msg).await;
+                                    let txt = BK::parse_stream_data(msg).await.unwrap();
+                                    message::send(&mut sessions, &addr, Message::Text(txt)).await;
                                 } else if msg.is_close() {
                                     log::error!("MSG close!");
                                     break;

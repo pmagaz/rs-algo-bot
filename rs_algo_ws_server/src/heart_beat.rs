@@ -38,6 +38,7 @@ pub async fn check(sessions: &Sessions, addr: SocketAddr) {
         loop {
             let hb_timeout: DateTime<Local> =
                 Local::now() - Dur::microseconds(hb_client_timeout as i64);
+
             interval.tick().await;
 
             log::info!("Checking HB for {addr}");
