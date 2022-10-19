@@ -1,11 +1,10 @@
 use crate::db;
 use crate::error::RsAlgoErrorKind;
+use crate::handlers::*;
 use crate::heart_beat;
 use crate::message;
-use crate::{
-    session,
-    session::{Session, Sessions},
-};
+
+use crate::handlers::session::{Session, Sessions};
 use rs_algo_shared::broker::xtb_stream::*;
 use rs_algo_shared::broker::*;
 
@@ -65,8 +64,7 @@ async fn handle_session(
             .expect("Error during the websocket handshake occurred");
 
         let (recipient, receiver) = unbounded();
-        let new_session = Session::new(recipient);
-        session::create(&mut sessions, &addr, new_session).await;
+        let new_session = session::create(&mut sessions, &addr, recipient).await;
 
         heart_beat::init(&mut sessions, addr).await;
 
@@ -75,10 +73,15 @@ async fn handle_session(
         let broadcast_incoming = incoming.try_for_each(|msg| {
             let broker = Arc::clone(&broker);
             let db_client = Arc::clone(&db_client);
-            let mut sessions = Arc::clone(&sessions);
+            //let mut sessions = Arc::clone(&sessions);
+            let new_session = new_session.clone();
             async move {
-                match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
-                    Some(msg) => message::send(&mut sessions, &addr, Message::Text(msg)).await,
+                match message::handle(&mut new_session.clone(), &addr, msg, broker, &db_client)
+                    .await
+                {
+                    //match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
+                    Some(msg) => message::send(&new_session, Message::Text(msg)).await,
+                    //Some(msg) => message::find_and_send(&mut sessions, &addr, Message::Text(msg)).await,
                     None => (),
                 }
                 Ok(())

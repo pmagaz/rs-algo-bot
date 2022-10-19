@@ -5,7 +5,7 @@ use mongodb::options::{FindOneAndReplaceOptions, FindOneOptions, FindOptions};
 pub use mongodb::Client;
 use mongodb::Collection;
 use rs_algo_shared::models::instrument::*;
-
+use rs_algo_shared::ws::message::*;
 use std::env;
 
 pub struct Db {
@@ -36,4 +36,24 @@ pub async fn find_by_symbol(client: &Client, symbol: &str) -> Result<Option<Inst
         .unwrap();
 
     Ok(instrument)
+}
+
+pub async fn upsert(client: &Client, doc: &Data2) -> Result<Option<Data2>, Error> {
+    let db_name = &env::var("MONGO_BOT_DB_NAME").unwrap();
+    let collection_name = &env::var("DB_BOT_COLLECTION").unwrap();
+    let collection = client
+        .database(db_name)
+        .collection::<Data2>(collection_name);
+
+    let session = collection
+        .find_one_and_replace(
+            doc! {"_id": doc.id},
+            doc,
+            FindOneAndReplaceOptions::builder()
+                .upsert(Some(true))
+                .build(),
+        )
+        .await;
+
+    session
 }

@@ -1,12 +1,17 @@
-use crate::handlers;
-use crate::{session, session::Sessions};
+use crate::handlers::*;
+use crate::handlers::{session::Session, session::Sessions};
+use crate::helpers::uuid;
+use bson::Uuid;
 use rs_algo_shared::helpers::date::{Duration as Dur, Local, Utc};
 use rs_algo_shared::ws::message::*;
-use serde_json::Value;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 
-pub async fn send(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
+pub async fn send(session: &Session, msg: Message) {
+    session.recipient.unbounded_send(msg).unwrap();
+}
+
+pub async fn find_and_send(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
     session::find(sessions, &addr, |session| {
         session.recipient.unbounded_send(msg).unwrap();
     })
@@ -43,14 +48,15 @@ pub async fn broadcast(sessions: Sessions, addr: SocketAddr, msg: Message) {
 }
 
 pub async fn handle<BK>(
-    sessions: &mut Sessions,
+    //sessions: &mut Sessions,
+    session: &mut Session,
     addr: &SocketAddr,
     msg: Message,
     broker: Arc<Mutex<BK>>,
     db_client: &mongodb::Client,
 ) -> Option<String>
 where
-    BK: handlers::stream::BrokerStream + Send + 'static,
+    BK: stream::BrokerStream + Send + 'static,
 {
     let data = match msg {
         Message::Ping(_bytes) => {
@@ -59,11 +65,11 @@ where
         }
         Message::Pong(_) => {
             log::info!("Pong received from {addr} ");
-
-            session::find(sessions, &addr, |session| {
-                session.update_ping();
-            })
-            .await;
+            let mut session = session;
+            //session::find(sessions, &addr, |session| {
+            session.update_ping();
+            //})
+            //.await;
             None
         }
         Message::Text(msg) => {
@@ -83,6 +89,28 @@ where
                     let time_frame = 5;
                     let max_bars = 200;
 
+                    let data = match &query.data {
+                        Some(arg) => {
+                            let seed = [
+                                arg.symbol,
+                                arg.strategy,
+                                arg.time_frame,
+                                &arg.strategy_type.to_string(),
+                            ];
+
+                            Some(Data2 {
+                                id: uuid::generate(seed),
+                                symbol: arg.symbol.to_owned(),
+                                strategy: arg.strategy.to_owned(),
+                                time_frame: arg.time_frame.to_owned(),
+                                strategy_type: arg.strategy_type.clone(),
+                            })
+                        }
+                        None => None,
+                    };
+
+                    session::update(session, db_client, &data.unwrap()).await;
+
                     let from = (Local::now()
                         - Dur::milliseconds(time_frame * 60000 * max_bars as i64))
                     .timestamp();
@@ -97,7 +125,7 @@ where
                     Some(serde_json::to_string(&res).unwrap())
                 }
                 CommandType::SubscribeStream => {
-                    handlers::stream::listen(broker, sessions, addr, symbol.to_owned());
+                    stream::listen(broker, session.clone(), addr, symbol.to_owned());
                     Some("".to_string())
                 }
                 _ => {

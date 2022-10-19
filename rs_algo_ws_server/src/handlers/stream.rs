@@ -1,7 +1,7 @@
 use crate::db;
 use crate::error::Result;
+use crate::handlers::session::{Session, Sessions};
 use crate::message;
-use crate::session::Sessions;
 
 use futures_util::{Future, SinkExt, StreamExt};
 pub use rs_algo_shared::broker::BrokerStream;
@@ -13,7 +13,8 @@ use tungstenite::Message;
 
 pub fn listen<BK>(
     broker: Arc<Mutex<BK>>,
-    sessions: &mut Sessions,
+    //sessions: &mut Sessions,
+    session: Session,
     addr: &SocketAddr,
     symbol: String,
     //mut callback: F,
@@ -28,13 +29,13 @@ where
     //     .unwrap();
 
     tokio::spawn({
-        let sessions = Arc::clone(&sessions);
+        //let sessions = Arc::clone(&sessions);
         let addr = addr.clone();
         async move {
             let mut guard = broker.lock().await;
             guard.subscribe_stream(&symbol, 5000, 2).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(200));
-            let mut sessions = Arc::clone(&sessions);
+            //let mut sessions = Arc::clone(&sessions);
             let read_stream = guard.get_stream().await;
             loop {
                 tokio::select! {
@@ -46,7 +47,8 @@ where
 
                                 if msg.is_text() || msg.is_binary() {
                                     let txt = BK::parse_stream_data(msg).await.unwrap();
-                                    message::send(&mut sessions, &addr, Message::Text(txt)).await;
+                                    message::send(&session, Message::Text(txt)).await;
+                                    //message::send(&mut sessions, &addr, Message::Text(txt)).await;
                                 } else if msg.is_close() {
                                     log::error!("MSG close!");
                                     break;
@@ -59,7 +61,6 @@ where
                         }
                     }
                     _ = interval.tick() => {
-                        //self::send(&mut sessions, &addr, Message::Ping(b"".to_vec())).await;
                     }
                 }
             }

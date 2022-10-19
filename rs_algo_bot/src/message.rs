@@ -12,12 +12,13 @@ pub fn parse(msg: &str) -> Response {
             Some(txt) => txt,
             None => "",
         };
+
         log::info!("Processing response {:?}...", response);
 
         match response {
             Some("Connected") => Response::Connected(ResponseBody {
                 response: ResponseType::Connected,
-                data: None,
+                data: Some(parsed["data"].as_str().unwrap().to_owned()),
             }),
             Some("GetSymbolData") => Response::DataResponse(ResponseBody {
                 response: ResponseType::GetSymbolData,

@@ -30,6 +30,11 @@ async fn main() {
         }),
     };
 
+    ws_client
+        .send(&serde_json::to_string(&get_symbol_data).unwrap())
+        .await
+        .unwrap();
+
     let subscribe_command = Command {
         command: CommandType::SubscribeStream,
         data: Some(Data {
@@ -39,11 +44,6 @@ async fn main() {
             time_frame: "W",
         }),
     };
-
-    ws_client
-        .send(&serde_json::to_string(&get_symbol_data).unwrap())
-        .await
-        .unwrap();
 
     ws_client
         .send(&serde_json::to_string(&subscribe_command).unwrap())
