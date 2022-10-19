@@ -20,7 +20,7 @@ use tungstenite::protocol::Message;
 
 pub async fn run(addr: String) {
     let addr = addr.parse::<SocketAddr>().unwrap();
-    let sessions = Sessions::new(Mutex::new(HashMap::new()));
+    let mut sessions = Sessions::new(Mutex::new(HashMap::new()));
     let socket = TcpListener::bind(&addr).await.unwrap();
 
     let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
@@ -33,11 +33,14 @@ pub async fn run(addr: String) {
         .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
         .unwrap();
 
+    heart_beat::init(&mut sessions, addr).await;
+
     let db_client = Arc::new(mongo_client);
 
     while let Ok((mut stream, addr)) = socket.accept().await {
         let sessions = sessions.clone();
         let db_client = Arc::clone(&db_client);
+
         tokio::spawn(async move {
             handle_session(sessions, &mut stream, addr, db_client).await;
         });
@@ -66,29 +69,21 @@ async fn handle_session(
         let (recipient, receiver) = unbounded();
         let new_session = session::create(&mut sessions, &addr, recipient).await;
 
-        heart_beat::init(&mut sessions, addr).await;
-
         let (outgoing, incoming) = ws_stream.split();
 
         let broadcast_incoming = incoming.try_for_each(|msg| {
             let broker = Arc::clone(&broker);
             let db_client = Arc::clone(&db_client);
-            //let mut sessions = Arc::clone(&sessions);
+            let mut sessions = Arc::clone(&sessions);
             let new_session = new_session.clone();
             async move {
-                match message::handle(&mut new_session.clone(), &addr, msg, broker, &db_client)
-                    .await
-                {
-                    //match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
+                match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
                     Some(msg) => message::send(&new_session, Message::Text(msg)).await,
-                    //Some(msg) => message::find_and_send(&mut sessions, &addr, Message::Text(msg)).await,
                     None => (),
                 }
                 Ok(())
             }
         });
-
-        heart_beat::check(&sessions, addr).await;
 
         let receive_from_others = receiver.map(Ok).forward(outgoing);
         pin_mut!(broadcast_incoming, receive_from_others);

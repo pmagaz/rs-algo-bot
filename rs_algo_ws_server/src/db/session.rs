@@ -38,12 +38,12 @@ pub async fn find_by_symbol(client: &Client, symbol: &str) -> Result<Option<Inst
     Ok(instrument)
 }
 
-pub async fn upsert(client: &Client, doc: &Data2) -> Result<Option<Data2>, Error> {
+pub async fn upsert(client: &Client, doc: &SessionData) -> Result<Option<SessionData>, Error> {
     let db_name = &env::var("MONGO_BOT_DB_NAME").unwrap();
     let collection_name = &env::var("DB_BOT_COLLECTION").unwrap();
     let collection = client
         .database(db_name)
-        .collection::<Data2>(collection_name);
+        .collection::<SessionData>(collection_name);
 
     let session = collection
         .find_one_and_replace(

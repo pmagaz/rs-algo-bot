@@ -1,5 +1,5 @@
-use crate::handlers;
 use crate::handlers::session::{Session, SessionStatus, Sessions};
+use crate::handlers::{self, *};
 use crate::message;
 
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
@@ -18,16 +18,17 @@ pub async fn init(sessions: &mut Sessions, addr: SocketAddr) {
         .unwrap();
     let mut interval = time::interval(Duration::from_millis(hb_interval));
 
+    check(&mut sessions).await;
+
     tokio::spawn(async move {
         loop {
             interval.tick().await;
-            message::find_and_send(&mut sessions, &addr, Message::Ping("".as_bytes().to_vec()))
-                .await;
+            message::broadcast(&mut sessions, &addr, Message::Ping("".as_bytes().to_vec())).await;
         }
     });
 }
 
-pub async fn check(sessions: &Sessions, addr: SocketAddr) {
+pub async fn check(sessions: &mut Sessions) {
     let mut sessions = sessions.clone();
 
     let hb_client_timeout = env::var("MSG_TIMEOUT").unwrap().parse::<u64>().unwrap();
@@ -36,20 +37,25 @@ pub async fn check(sessions: &Sessions, addr: SocketAddr) {
         let mut interval = time::interval(Duration::from_millis(hb_client_timeout));
 
         loop {
-            let hb_timeout: DateTime<Local> =
-                Local::now() - Dur::microseconds(hb_client_timeout as i64);
-
             interval.tick().await;
 
-            log::info!("Checking HB for {addr}");
-            handlers::session::find(&mut sessions, &addr, |session| {
+            let session_guard = sessions.lock().await.clone();
+            let hb_timeout: DateTime<Local> =
+                Local::now() - Dur::microseconds((hb_client_timeout * 1000) as i64);
+
+            for (addr, session) in session_guard.into_iter() {
                 let last_ping = session.last_ping;
+
                 if last_ping < hb_timeout {
-                    session.update_client_status(SessionStatus::Down);
-                    log::error!("Ping not received from {addr}");
+                    handlers::session::find(&mut sessions, &addr, |session| {
+                        *session = session.update_status(SessionStatus::Down).clone();
+                    })
+                    .await;
+                    log::error!("Client {addr} not responding",);
+                } else {
+                    log::info!("Client {addr} Ok");
                 }
-            })
-            .await;
+            }
         }
     });
 }

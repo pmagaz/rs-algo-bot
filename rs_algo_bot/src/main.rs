@@ -25,7 +25,7 @@ async fn main() {
         data: Some(Data {
             strategy: "EMA200-2",
             strategy_type: StrategyType::OnlyLong,
-            symbol: "ETHEREUM",
+            symbol: "BITCOIN",
             time_frame: "W",
         }),
     };
@@ -40,7 +40,7 @@ async fn main() {
         data: Some(Data {
             strategy: "EMA200-2",
             strategy_type: StrategyType::OnlyLong,
-            symbol: "ETHEREUM",
+            symbol: "BITCOIN",
             time_frame: "W",
         }),
     };

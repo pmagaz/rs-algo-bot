@@ -1,5 +1,6 @@
 use crate::db;
 use bson::Uuid;
+use futures::Future;
 use futures_channel::mpsc::UnboundedSender;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::strategy::*;
@@ -27,6 +28,7 @@ pub struct Session {
     pub strategy: String,
     pub time_frame: String,
     pub strategy_type: StrategyType,
+    pub started: DateTime<Local>,
     pub last_ping: DateTime<Local>,
     pub client_status: SessionStatus,
 }
@@ -42,6 +44,7 @@ impl Session {
             strategy: "init".to_string(),
             time_frame: "init".to_string(),
             strategy_type: StrategyType::OnlyLong,
+            started: Local::now(),
             last_ping: Local::now(),
             client_status: SessionStatus::Up,
         }
@@ -58,39 +61,43 @@ impl Session {
         self
     }
 
-    pub fn update_session(&mut self, data: Data2) -> &Self {
+    pub fn update_data(&mut self, data: SessionData) -> &Self {
         self.session_id = data.id;
         self.symbol = data.symbol;
         self.time_frame = data.time_frame;
         self.strategy = data.strategy;
         self.strategy_type = data.strategy_type;
         self.client_status = SessionStatus::Up;
-        self.last_ping = Local::now();
         self
     }
 
-    pub fn update_client_status(&mut self, status: SessionStatus) -> &Self {
+    pub fn update_status(&mut self, status: SessionStatus) -> &Self {
         self.client_status = status;
         self
     }
+}
 
-    pub async fn update(&mut self, db_client: &mongodb::Client, data: &Data2) -> &Session {
-        let db_session = db::session::upsert(&db_client, &data.clone())
-            .await
-            .unwrap();
-
-        let updated_session = self.update_session(data.clone());
-        updated_session
-    }
+pub async fn find_async<'a, C, F>(sessions: &Sessions, addr: &SocketAddr, callback: C)
+where
+    C: Fn(&mut Session) -> F,
+    F: Future<Output = ()>,
+{
+    let mut sessions = sessions.lock().await;
+    match sessions.get_mut(addr) {
+        Some(session) => callback(session),
+        None => panic!("Session not found!"),
+    };
 }
 
 pub async fn find<'a, F>(sessions: &'a mut Sessions, addr: &SocketAddr, mut callback: F)
 where
     F: Send + FnOnce(&mut Session),
+    // F: 'static + Send + FnMut(Message) -> T,
+    // T: Future<Output = Result<()>> + Send + 'static,
 {
     let mut sessions = sessions.lock().await;
     match sessions.get_mut(addr) {
-        Some(session) => callback(session),
+        Some(session) => callback(&mut *session),
         None => panic!("Session not found!"),
     };
 }
@@ -117,3 +124,19 @@ pub async fn create<'a>(
         .unwrap();
     session
 }
+
+pub async fn update_db_session(data: &SessionData, db_client: &mongodb::Client) {
+    let db_session = db::session::upsert(&db_client, data).await.unwrap();
+}
+
+// pub async fn update2(data: SessionData, db_client: &mongodb::Client) {
+//     let data = Session {
+//         session_id: data.id,
+//         symbol: data.symbol,
+//         strategy: data.strategy,
+//         time_frame: data.time_frame,
+//         strategy_type: data.strategy_type,
+//     };
+
+//     let db_session = db::session::upsert(&db_client, &data).await.unwrap();
+// }
