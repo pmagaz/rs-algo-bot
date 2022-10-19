@@ -65,7 +65,7 @@ where
         }
         Message::Pong(_) => {
             log::info!("Pong received from {addr} ");
-            let mut session = session;
+            let session = session;
             //session::find(sessions, &addr, |session| {
             session.update_ping();
             //})

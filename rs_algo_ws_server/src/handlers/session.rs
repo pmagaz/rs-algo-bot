@@ -103,7 +103,7 @@ pub async fn update(session: &Session, db_client: &mongodb::Client, data: &Data2
         .await
         .unwrap();
 
-    println!("33333333 {:?}", db_session);
+    println!("33333333 {:?}", session);
 
     // let session_id = "aaaaa".to_owned();
 
