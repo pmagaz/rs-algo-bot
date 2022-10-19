@@ -65,7 +65,6 @@ where
         }
         Message::Pong(_) => {
             log::info!("Pong received from {addr} ");
-            let session = session;
             //session::find(sessions, &addr, |session| {
             session.update_ping();
             //})
@@ -109,7 +108,7 @@ where
                         None => None,
                     };
 
-                    session::update(session, db_client, &data.unwrap()).await;
+                    session.update(db_client, &data.unwrap()).await;
 
                     let from = (Local::now()
                         - Dur::milliseconds(time_frame * 60000 * max_bars as i64))

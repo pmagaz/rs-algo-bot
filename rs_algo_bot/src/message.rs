@@ -18,7 +18,7 @@ pub fn parse(msg: &str) -> Response {
         match response {
             Some("Connected") => Response::Connected(ResponseBody {
                 response: ResponseType::Connected,
-                data: Some(parsed["data"].as_str().unwrap().to_owned()),
+                data: None,
             }),
             Some("GetSymbolData") => Response::DataResponse(ResponseBody {
                 response: ResponseType::GetSymbolData,

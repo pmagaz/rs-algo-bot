@@ -58,9 +58,29 @@ impl Session {
         self
     }
 
+    pub fn update_session(&mut self, data: Data2) -> &Self {
+        self.session_id = data.id;
+        self.symbol = data.symbol;
+        self.time_frame = data.time_frame;
+        self.strategy = data.strategy;
+        self.strategy_type = data.strategy_type;
+        self.client_status = SessionStatus::Up;
+        self.last_ping = Local::now();
+        self
+    }
+
     pub fn update_client_status(&mut self, status: SessionStatus) -> &Self {
         self.client_status = status;
         self
+    }
+
+    pub async fn update(&mut self, db_client: &mongodb::Client, data: &Data2) -> &Session {
+        let db_session = db::session::upsert(&db_client, &data.clone())
+            .await
+            .unwrap();
+
+        let updated_session = self.update_session(data.clone());
+        updated_session
     }
 }
 
@@ -86,7 +106,7 @@ pub async fn create<'a>(
 
     let msg: ResponseBody<String> = ResponseBody {
         response: ResponseType::Connected,
-        data: Some(session.session_id.to_string()),
+        data: None,
     };
 
     let msg: String = serde_json::to_string(&msg).unwrap();
@@ -96,29 +116,4 @@ pub async fn create<'a>(
         .unbounded_send(Message::Text(msg))
         .unwrap();
     session
-}
-
-pub async fn update(session: &Session, db_client: &mongodb::Client, data: &Data2) -> bool {
-    let db_session = db::session::upsert(&db_client, &data.clone())
-        .await
-        .unwrap();
-
-    println!("33333333 {:?}", session);
-
-    // let session_id = "aaaaa".to_owned();
-
-    // sessions.lock().await.insert(*addr, session.clone());
-
-    // let msg: ResponseBody<String> = ResponseBody {
-    //     response: ResponseType::Connected,
-    //     data: Option::None,
-    // };
-
-    // let msg: String = serde_json::to_string(&msg).unwrap();
-
-    // session
-    //     .recipient
-    //     .unbounded_send(Message::Text(msg))
-    //     .unwrap();
-    false
 }
