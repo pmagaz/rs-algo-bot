@@ -4,7 +4,7 @@ use mongodb::error::Error;
 use mongodb::options::{FindOneAndReplaceOptions, FindOneOptions, FindOptions};
 pub use mongodb::Client;
 use mongodb::Collection;
-use rs_algo_shared::models::instrument::*;
+use rs_algo_shared::scanner::instrument::*;
 use rs_algo_shared::ws::message::*;
 use std::env;
 

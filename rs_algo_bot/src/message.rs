@@ -1,10 +1,25 @@
-use rs_algo_shared::broker::{VEC_DOHLC, VEC_LECHES};
+use rs_algo_shared::broker::{LECHES, VEC_DOHLC};
 use rs_algo_shared::helpers::date::DateTime;
+use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::ws::message::*;
 use serde_json::Value;
 use std::str::FromStr;
 
-pub fn parse(msg: &str) -> Response {
+// pub fn handle(msg: &str) {
+//     let response = parse_response(&msg);
+//     let leches = match response {
+//         Response::Connected(res) => {
+//             println!("Connected {:?}", res);
+//         }
+//         Response::DataResponse(res) => {
+//             instrument.set_data(res.data).unwrap();
+//         }
+//         // Response::StreamResponse() => (),
+//         _ => (),
+//     };
+// }
+
+pub fn parse_response(msg: &str) -> Response {
     if msg.len() > 0 {
         let parsed: Value = serde_json::from_str(&msg).expect("Can't parse to JSON");
         let response = parsed["response"].as_str();
@@ -61,8 +76,8 @@ pub fn parse_dohlc(data: &Value) -> VEC_DOHLC {
     result
 }
 
-pub fn parse_stream(data: &Value) -> VEC_LECHES {
-    let mut result: VEC_LECHES = vec![];
+pub fn parse_stream(data: &Value) -> LECHES {
+    println!("111111 {:?}", data);
     let arr = data.as_array().unwrap();
     let ask = arr[0].as_f64().unwrap();
     let bid = arr[1].as_f64().unwrap();
@@ -70,7 +85,7 @@ pub fn parse_stream(data: &Value) -> VEC_LECHES {
     let low = arr[3].as_f64().unwrap();
     let volume = arr[4].as_f64().unwrap();
     let timestamp = arr[5].as_f64().unwrap();
+    let date = parse_time(timestamp as i64);
     let spread = arr[6].as_f64().unwrap();
-    result.push((ask, bid, high, low, volume, timestamp, spread));
-    result
+    (date, ask, bid, high, low, volume, spread)
 }

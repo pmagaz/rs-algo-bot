@@ -1,9 +1,12 @@
+mod bot;
+mod error;
 mod message;
+use bot::Bot;
 
 use dotenv::dotenv;
-use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
+use rs_algo_shared::models::market::*;
 use rs_algo_shared::models::strategy::*;
-use rs_algo_shared::ws::message::*;
+use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
 use std::env;
 
@@ -16,62 +19,51 @@ async fn main() {
     let port = env::var("WS_SERVER_PORT").expect("WS_SERVER_PORT not found");
     let url = [&server_url, ":", &port].concat();
 
-    log::info!("Connecting to {} !", &url);
+    let ws_client = WebSocket::connect(&url).await;
 
-    let mut ws_client = WebSocket::connect(&url).await;
+    log::info!("Connected to {} !", &url);
 
-    let get_symbol_data = Command {
-        command: CommandType::GetSymbolData,
-        data: Some(Data {
-            strategy: "EMA200-2",
-            strategy_type: StrategyType::OnlyLong,
-            symbol: "BITCOIN",
-            time_frame: "W",
-        }),
+    let symbol = env::var("SYMBOL").unwrap();
+    let strategy_name = env::var("STRATEGY_NAME").unwrap();
+    let time_frame = env::var("TIME_FRAME").unwrap();
+    let market = env::var("MARKET").unwrap();
+    let strategy_type = env::var("STRATEGY_TYPE").unwrap();
+
+    let market = match market.as_ref() {
+        "Forex" => Market::Forex,
+        "Crypto" => Market::Crypto,
+        _ => Market::Stock,
     };
 
-    ws_client
-        .send(&serde_json::to_string(&get_symbol_data).unwrap())
-        .await
-        .unwrap();
-
-    let subscribe_command = Command {
-        command: CommandType::SubscribeStream,
-        data: Some(Data {
-            strategy: "EMA200-2",
-            strategy_type: StrategyType::OnlyLong,
-            symbol: "BITCOIN",
-            time_frame: "W",
-        }),
+    let time_frame = match time_frame.as_ref() {
+        "W" => TimeFrameType::W,
+        "D" => TimeFrameType::D,
+        "H4" => TimeFrameType::H4,
+        "H1" => TimeFrameType::H1,
+        "M30" => TimeFrameType::M30,
+        "M15" => TimeFrameType::M15,
+        "M5" => TimeFrameType::M5,
+        _ => TimeFrameType::M1,
     };
 
-    ws_client
-        .send(&serde_json::to_string(&subscribe_command).unwrap())
-        .await
-        .unwrap();
+    let strategy_type = match strategy_type.as_ref() {
+        "OnlyLong" => StrategyType::OnlyLong,
+        "OnlyShort" => StrategyType::OnlyShort,
+        "LongShort" => StrategyType::LongShort,
+        "LongShortMultiTF" => StrategyType::LongShortMultiTF,
+        "OnlyLongMultiTF" => StrategyType::OnlyLongMultiTF,
+        _ => StrategyType::OnlyLongMultiTF,
+    };
 
-    let mut last_msg = Local::now();
-    let msg_timeout = env::var("MSG_TIMEOUT").unwrap().parse::<u64>().unwrap();
-
-    loop {
-        let msg = ws_client.read().await.unwrap();
-        match msg {
-            Message::Text(txt) => {
-                let msg = message::parse(&txt);
-                log::info!("MSG received {:?}", msg);
-
-                let timeout = Local::now() - Dur::milliseconds(msg_timeout as i64);
-                if last_msg < timeout {
-                    log::error!("No data received in last {} milliseconds", msg_timeout);
-                } else {
-                    last_msg = Local::now();
-                }
-            }
-            Message::Ping(_txt) => {
-                log::info!("Ping received");
-                ws_client.pong(b"").await;
-            }
-            _ => panic!("Unexpected message type!"),
-        };
-    }
+    Bot::new()
+        .symbol(symbol)
+        .market(market)
+        .time_frame(time_frame)
+        .strategy_name(strategy_name)
+        .strategy_type(strategy_type)
+        .websocket(ws_client)
+        .build()
+        .unwrap()
+        .run()
+        .await;
 }
