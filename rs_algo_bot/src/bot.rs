@@ -109,12 +109,30 @@ impl Bot {
                             println!("Connected {:?}", res);
                         }
                         Response::InstrumentData(res) => {
-                            let data = res.data.unwrap().data;
-                            self.instrument.set_data(data).unwrap();
-                            log::info!("Parsed Instrument data");
+                            let data = res.data.unwrap();
+                            let time_frame = data.time_frame;
+                            let data = data.data;
+                            if time_frame == self.time_frame {
+                                log::info!("Getting {} {} data", &self.symbol, &self.time_frame);
+
+                                self.instrument.set_data(data).unwrap();
+                            } else {
+                                log::info!(
+                                    "Getting {} {} data",
+                                    &self.symbol,
+                                    &self.higher_time_frame
+                                );
+                                match &mut self.higher_tm_instrument {
+                                    HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
+                                        htf_instrument.set_data(data).unwrap();
+                                    }
+                                    HigherTMInstrument::None => (),
+                                };
+                            }
                         }
                         Response::StreamResponse(res) => {
                             let data = res.data.unwrap().data;
+                            //let adapted = adapt_to_timeframe(data);
                             log::info!("Stream data received");
                             //self.instrument.next(data).unwrap();
                         }

@@ -44,7 +44,7 @@ pub fn parse_response(msg: &str) -> Response {
             }),
             Some("GetInstrumentData") => Response::InstrumentData(ResponseBody {
                 response: ResponseType::GetInstrumentData,
-                data: Some(SymbolData {
+                data: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame: time_frame,
                     data: parse_dohlc(&parsed["data"]),
@@ -52,7 +52,7 @@ pub fn parse_response(msg: &str) -> Response {
             }),
             Some("SubscribeStream") => Response::StreamResponse(ResponseBody {
                 response: ResponseType::SubscribeStream,
-                data: Some(SymbolData {
+                data: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame: time_frame,
                     data: parse_stream(&parsed["data"]),
