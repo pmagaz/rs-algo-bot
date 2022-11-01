@@ -40,7 +40,6 @@ where
 
             loop {
                 tokio::select! {
-
                     msg = read_stream.next() => {
                         match msg {
                             Some(msg) => {

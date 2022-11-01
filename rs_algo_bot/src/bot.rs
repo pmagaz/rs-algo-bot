@@ -1,6 +1,7 @@
 use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::message;
 
+use rs_algo_shared::broker::{LECHES, VEC_DOHLC};
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
 use rs_algo_shared::models::market::*;
 use rs_algo_shared::models::strategy::*;
@@ -16,6 +17,7 @@ pub struct Bot {
     pub symbol: String,
     pub market: Market,
     pub time_frame: TimeFrameType,
+    pub higher_time_frame: TimeFrameType,
     pub strategy_name: String,
     pub strategy_type: StrategyType,
 }
@@ -26,38 +28,73 @@ impl Bot {
     }
 
     pub async fn run(&mut self) {
-        let get_symbol_data = Command {
-            command: CommandType::GetSymbolData,
-            data: Some(Data {
-                strategy: "EMA200-2",
-                strategy_type: StrategyType::OnlyLong,
-                symbol: "BITCOIN",
-                time_frame: "W",
+        let get_instrument_data = Command {
+            command: CommandType::GetInstrumentData,
+            data: Some(Payload {
+                symbol: &self.symbol,
+                strategy: &self.strategy_name,
+                strategy_type: self.strategy_type.to_owned(),
+                time_frame: self.time_frame.to_owned(),
             }),
         };
 
+        log::info!("Requesting {} {} data", &self.symbol, &self.time_frame);
+
         self.websocket
-            .send(&serde_json::to_string(&get_symbol_data).unwrap())
+            .send(&serde_json::to_string(&get_instrument_data).unwrap())
             .await
             .unwrap();
 
+        let is_multi_timeframe_strategy = match self.strategy_type {
+            StrategyType::OnlyLongMultiTF => true,
+            StrategyType::LongShortMultiTF => true,
+            StrategyType::OnlyShortMultiTF => true,
+            _ => false,
+        };
+
+        if is_multi_timeframe_strategy {
+            let get_higher_instrument_data = Command {
+                command: CommandType::GetHigherTMInstrumentData,
+                data: Some(Payload {
+                    symbol: &self.symbol,
+                    strategy: &self.strategy_name,
+                    strategy_type: self.strategy_type.to_owned(),
+                    time_frame: self.higher_time_frame.to_owned(),
+                }),
+            };
+
+            log::info!(
+                "Requesting {} {} data",
+                &self.symbol,
+                &self.higher_time_frame
+            );
+
+            self.websocket
+                .send(&serde_json::to_string(&get_higher_instrument_data).unwrap())
+                .await
+                .unwrap();
+        }
+
         let subscribe_command = Command {
             command: CommandType::SubscribeStream,
-            data: Some(Data {
-                strategy: "EMA200-2",
-                strategy_type: StrategyType::OnlyLong,
-                symbol: "BITCOIN",
-                time_frame: "W",
+            data: Some(Payload {
+                symbol: &self.symbol,
+                strategy: &self.strategy_name,
+                strategy_type: self.strategy_type.to_owned(),
+                time_frame: self.time_frame.to_owned(),
             }),
         };
+
+        log::info!(
+            "Subscribing to {} {} stream",
+            &self.symbol,
+            &self.time_frame
+        );
 
         self.websocket
             .send(&serde_json::to_string(&subscribe_command).unwrap())
             .await
             .unwrap();
-
-        // let mut last_msg = Local::now();
-        // let msg_timeout = env::var("MSG_TIMEOUT").unwrap().parse::<u64>().unwrap();
 
         loop {
             let msg = self.websocket.read().await.unwrap();
@@ -70,10 +107,16 @@ impl Bot {
                         Response::Connected(res) => {
                             println!("Connected {:?}", res);
                         }
-                        Response::DataResponse(res) => {
+                        Response::InstrumentData(res) => {
                             let data = res.data.unwrap().data;
                             self.instrument.set_data(data).unwrap();
                             log::info!("Parsed Instrument data");
+                        }
+
+                        Response::HigherTMInstrumentData(res) => {
+                            let data = res.data.unwrap().data;
+                            self.instrument.set_data(data).unwrap();
+                            log::info!("Parsed Higher Instrument data");
                         }
                         Response::StreamResponse(res) => {
                             let data = res.data.unwrap().data;
@@ -98,12 +141,17 @@ impl Bot {
             };
         }
     }
+
+    pub fn adapt_to_timeframe(data: LECHES) -> LECHES {
+        data
+    }
 }
 
 pub struct BotBuilder {
     symbol: Option<String>,
     market: Option<Market>,
     time_frame: Option<TimeFrameType>,
+    higher_time_frame: Option<TimeFrameType>,
     strategy_name: Option<String>,
     strategy_type: Option<StrategyType>,
     websocket: Option<WebSocket>,
@@ -115,6 +163,7 @@ impl BotBuilder {
             symbol: None,
             market: None,
             time_frame: None,
+            higher_time_frame: None,
             strategy_name: None,
             strategy_type: None,
             websocket: None,
@@ -132,6 +181,11 @@ impl BotBuilder {
 
     pub fn time_frame(mut self, val: TimeFrameType) -> Self {
         self.time_frame = Some(val);
+        self
+    }
+
+    pub fn higher_time_frame(mut self, val: TimeFrameType) -> Self {
+        self.higher_time_frame = Some(val);
         self
     }
 
@@ -155,6 +209,7 @@ impl BotBuilder {
             Some(symbol),
             Some(market),
             Some(time_frame),
+            Some(higher_time_frame),
             Some(strategy_name),
             Some(strategy_type),
             Some(websocket),
@@ -162,6 +217,7 @@ impl BotBuilder {
             self.symbol,
             self.market,
             self.time_frame,
+            self.higher_time_frame,
             self.strategy_name,
             self.strategy_type,
             self.websocket,
@@ -177,6 +233,7 @@ impl BotBuilder {
                 symbol,
                 market,
                 time_frame,
+                higher_time_frame,
                 strategy_name,
                 strategy_type,
                 websocket,

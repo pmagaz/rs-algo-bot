@@ -86,7 +86,7 @@ where
             log::info!("Msg {:?} from {addr} received", command);
 
             let data = match command {
-                CommandType::GetSymbolData => {
+                CommandType::GetInstrumentData => {
                     let time_frame = 5;
                     let max_bars = 200;
 

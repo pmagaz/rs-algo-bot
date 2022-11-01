@@ -11,7 +11,7 @@ use std::str::FromStr;
 //         Response::Connected(res) => {
 //             println!("Connected {:?}", res);
 //         }
-//         Response::DataResponse(res) => {
+//         Response::InstrumentData(res) => {
 //             instrument.set_data(res.data).unwrap();
 //         }
 //         // Response::StreamResponse() => (),
@@ -35,8 +35,8 @@ pub fn parse_response(msg: &str) -> Response {
                 response: ResponseType::Connected,
                 data: None,
             }),
-            Some("GetSymbolData") => Response::DataResponse(ResponseBody {
-                response: ResponseType::GetSymbolData,
+            Some("GetInstrumentData") => Response::InstrumentData(ResponseBody {
+                response: ResponseType::GetInstrumentData,
                 data: Some(SymbolData {
                     symbol: symbol.to_owned(),
                     data: parse_dohlc(&parsed["data"]),
