@@ -4,6 +4,7 @@ use futures::Future;
 use futures_channel::mpsc::UnboundedSender;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::ws::message::*;
 use std::{
     collections::HashMap,
@@ -26,7 +27,7 @@ pub struct Session {
     pub recipient: UnboundedSender<Message>,
     pub symbol: String,
     pub strategy: String,
-    pub time_frame: String,
+    pub time_frame: TimeFrameType,
     pub strategy_type: StrategyType,
     pub started: DateTime<Local>,
     pub last_ping: DateTime<Local>,
@@ -42,7 +43,7 @@ impl Session {
             recipient,
             symbol: "init".to_string(),
             strategy: "init".to_string(),
-            time_frame: "init".to_string(),
+            time_frame: TimeFrameType::M1,
             strategy_type: StrategyType::OnlyLong,
             started: Local::now(),
             last_ping: Local::now(),

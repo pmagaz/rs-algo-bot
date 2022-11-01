@@ -54,7 +54,7 @@ impl Bot {
 
         if is_multi_timeframe_strategy {
             let get_higher_instrument_data = Command {
-                command: CommandType::GetHigherTMInstrumentData,
+                command: CommandType::GetInstrumentData,
                 data: Some(Payload {
                     symbol: &self.symbol,
                     strategy: &self.strategy_name,
@@ -103,6 +103,7 @@ impl Bot {
                     //let msg = message::handle(&txt);
 
                     let response = message::parse_response(&txt);
+
                     match response {
                         Response::Connected(res) => {
                             println!("Connected {:?}", res);
@@ -111,12 +112,6 @@ impl Bot {
                             let data = res.data.unwrap().data;
                             self.instrument.set_data(data).unwrap();
                             log::info!("Parsed Instrument data");
-                        }
-
-                        Response::HigherTMInstrumentData(res) => {
-                            let data = res.data.unwrap().data;
-                            self.instrument.set_data(data).unwrap();
-                            log::info!("Parsed Higher Instrument data");
                         }
                         Response::StreamResponse(res) => {
                             let data = res.data.unwrap().data;

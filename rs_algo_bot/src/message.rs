@@ -1,7 +1,9 @@
 use rs_algo_shared::broker::{LECHES, VEC_DOHLC};
 use rs_algo_shared::helpers::date::DateTime;
 use rs_algo_shared::helpers::date::*;
+use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::ws::message::*;
+
 use serde_json::Value;
 use std::str::FromStr;
 
@@ -28,6 +30,11 @@ pub fn parse_response(msg: &str) -> Response {
             None => "",
         };
 
+        let time_frame = match parsed["time_frame"].as_str() {
+            Some(txt) => TimeFrameType::from_str(txt),
+            None => TimeFrameType::M1,
+        };
+
         log::info!("Processing response {:?}...", response);
 
         match response {
@@ -39,6 +46,7 @@ pub fn parse_response(msg: &str) -> Response {
                 response: ResponseType::GetInstrumentData,
                 data: Some(SymbolData {
                     symbol: symbol.to_owned(),
+                    time_frame: time_frame,
                     data: parse_dohlc(&parsed["data"]),
                 }),
             }),
@@ -46,6 +54,7 @@ pub fn parse_response(msg: &str) -> Response {
                 response: ResponseType::SubscribeStream,
                 data: Some(SymbolData {
                     symbol: symbol.to_owned(),
+                    time_frame: time_frame,
                     data: parse_stream(&parsed["data"]),
                 }),
             }),
@@ -77,7 +86,6 @@ pub fn parse_dohlc(data: &Value) -> VEC_DOHLC {
 }
 
 pub fn parse_stream(data: &Value) -> LECHES {
-    println!("111111 {:?}", data);
     let arr = data.as_array().unwrap();
     let ask = arr[0].as_f64().unwrap();
     let bid = arr[1].as_f64().unwrap();

@@ -74,7 +74,8 @@ where
             None
         }
         Message::Text(msg) => {
-            let query: Command<Data> =
+            //BREAK HERE
+            let query: Command<Payload> =
                 serde_json::from_str(&msg).expect("ERROR parsing Command JSON");
 
             let command = query.command;
@@ -87,7 +88,6 @@ where
 
             let data = match command {
                 CommandType::GetInstrumentData => {
-                    let time_frame = 5;
                     let max_bars = 200;
 
                     let session_data = match &query.data {
@@ -95,7 +95,7 @@ where
                             let seed = [
                                 arg.symbol,
                                 arg.strategy,
-                                arg.time_frame,
+                                &arg.time_frame.to_string(),
                                 &arg.strategy_type.to_string(),
                             ];
 
@@ -118,14 +118,17 @@ where
 
                     session::update_db_session(&session_data, db_client).await;
 
+                    let time_frame = &query.data.unwrap().time_frame;
+                    let time_frame_number = time_frame.to_number();
+
                     let from = (Local::now()
-                        - Dur::milliseconds(time_frame * 60000 * max_bars as i64))
+                        - Dur::milliseconds(time_frame_number * 60000 * max_bars as i64))
                     .timestamp();
 
                     let res = broker
                         .lock()
                         .await
-                        .get_instrument_data(&symbol, 1440, 1656109158)
+                        .get_instrument_data(&symbol, time_frame_number as usize, from)
                         .await
                         .unwrap();
 
