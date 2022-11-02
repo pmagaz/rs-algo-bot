@@ -104,9 +104,9 @@ impl Bot {
             let msg = self.websocket.read().await.unwrap();
             match msg {
                 Message::Text(txt) => {
-                    let response = message::parse_response(&txt);
+                    let msg = message::parse(&txt);
 
-                    match response {
+                    match msg {
                         Response::Connected(res) => {
                             println!("Connected {:?}", res);
                         }
@@ -161,7 +161,7 @@ impl Bot {
                     log::info!("Ping received");
                     self.websocket.pong(b"").await;
                 }
-                _ => panic!("Unexpected message type!"),
+                _ => panic!("Unexpected response type!"),
             };
         }
     }
