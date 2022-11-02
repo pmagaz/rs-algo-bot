@@ -1,6 +1,9 @@
 use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::message;
 
+use crate::helpers::vars::*;
+use crate::strategies;
+use crate::strategies::strategy::*;
 use rs_algo_shared::broker::{LECHES, VEC_DOHLC};
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
 use rs_algo_shared::models::market::*;
@@ -18,6 +21,7 @@ pub struct Bot {
     pub market: Market,
     pub time_frame: TimeFrameType,
     pub higher_time_frame: TimeFrameType,
+    pub strategy: Box<dyn Strategy>,
     pub strategy_name: String,
     pub strategy_type: StrategyType,
 }
@@ -33,8 +37,8 @@ impl Bot {
             data: Some(Payload {
                 symbol: &self.symbol,
                 strategy: &self.strategy_name,
-                strategy_type: self.strategy_type.to_owned(),
                 time_frame: self.time_frame.to_owned(),
+                strategy_type: self.strategy_type.to_owned(),
             }),
         };
 
@@ -100,8 +104,6 @@ impl Bot {
             let msg = self.websocket.read().await.unwrap();
             match msg {
                 Message::Text(txt) => {
-                    //let msg = message::handle(&txt);
-
                     let response = message::parse_response(&txt);
 
                     match response {
@@ -109,10 +111,11 @@ impl Bot {
                             println!("Connected {:?}", res);
                         }
                         Response::InstrumentData(res) => {
-                            let data = res.data.unwrap();
-                            let time_frame = data.time_frame;
-                            let data = data.data;
-                            if time_frame == self.time_frame {
+                            let payload = res.payload.unwrap();
+                            let time_frame = payload.time_frame;
+                            let data = payload.data;
+
+                            if is_base_time_frame(&self.time_frame, &time_frame) {
                                 log::info!("Getting {} {} data", &self.symbol, &self.time_frame);
 
                                 self.instrument.set_data(data).unwrap();
@@ -122,6 +125,7 @@ impl Bot {
                                     &self.symbol,
                                     &self.higher_time_frame
                                 );
+
                                 match &mut self.higher_tm_instrument {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
                                         htf_instrument.set_data(data).unwrap();
@@ -131,9 +135,16 @@ impl Bot {
                             }
                         }
                         Response::StreamResponse(res) => {
-                            let data = res.data.unwrap().data;
+                            let payload = res.payload.unwrap();
+                            let time_frame = payload.time_frame;
+                            let data = payload.data;
+
+                            log::info!("Stream {} data received", &self.symbol);
+
+                            if is_base_time_frame(&self.time_frame, &time_frame) {
+                            } else {
+                            }
                             //let adapted = adapt_to_timeframe(data);
-                            log::info!("Stream data received");
                             //self.instrument.next(data).unwrap();
                         }
                         _ => (),
@@ -247,11 +258,12 @@ impl BotBuilder {
                 market,
                 time_frame,
                 higher_time_frame,
-                strategy_name,
+                strategy_name: strategy_name.clone(),
                 strategy_type,
                 websocket,
                 instrument,
                 higher_tm_instrument: HigherTMInstrument::None,
+                strategy: set_strategy(&strategy_name),
             })
         } else {
             Err(RsAlgoError {

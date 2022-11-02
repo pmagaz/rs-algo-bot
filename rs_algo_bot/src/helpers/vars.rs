@@ -33,3 +33,7 @@ pub fn get_strategy_type(strategy_type: String) -> StrategyType {
         _ => StrategyType::OnlyLongMultiTF,
     }
 }
+
+pub fn is_base_time_frame(a: &TimeFrameType, b: &TimeFrameType) -> bool {
+    a == b
+}

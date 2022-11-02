@@ -1,5 +1,6 @@
 use crate::trade::*;
 
+use crate::strategies;
 use async_trait::async_trait;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
@@ -229,6 +230,19 @@ pub trait Strategy: DynClone {
             false
         }
     }
+}
+
+pub fn set_strategy(strategy_name: &str) -> Box<dyn Strategy> {
+    let strategies = vec![strategies::stoch::Stoch::new().unwrap()];
+    let mut strategy = Box::new(strategies[0].clone());
+
+    for stra in strategies.iter() {
+        if strategy_name == stra.name() {
+            strategy = Box::new(stra.clone());
+        }
+    }
+
+    strategy
 }
 
 dyn_clone::clone_trait_object!(Strategy);

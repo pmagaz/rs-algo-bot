@@ -114,7 +114,7 @@ pub async fn create<'a>(
 
     let msg: ResponseBody<String> = ResponseBody {
         response: ResponseType::Connected,
-        data: None,
+        payload: None,
     };
 
     let msg: String = serde_json::to_string(&msg).unwrap();

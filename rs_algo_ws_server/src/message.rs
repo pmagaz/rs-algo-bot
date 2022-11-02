@@ -21,7 +21,7 @@ pub async fn find_and_send(sessions: &mut Sessions, addr: &SocketAddr, msg: Mess
 pub async fn send_connected(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
     let msg: ResponseBody<String> = ResponseBody {
         response: ResponseType::Connected,
-        data: Option::None,
+        payload: Option::None,
     };
 
     let msg: String = serde_json::to_string(&msg).unwrap();

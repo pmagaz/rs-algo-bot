@@ -25,55 +25,53 @@ pub fn parse_response(msg: &str) -> Response {
     if msg.len() > 0 {
         let parsed: Value = serde_json::from_str(&msg).expect("Can't parse to JSON");
         let response = parsed["response"].as_str();
-        let symbol = match parsed["symbol"].as_str() {
-            Some(txt) => txt,
+        let symbol = match parsed["payload"]["symbol"].as_str() {
+            Some(symbol) => symbol,
             None => "",
         };
 
-        let time_frame = match parsed["time_frame"].as_str() {
-            Some(txt) => TimeFrameType::from_str(txt),
-            None => TimeFrameType::M1,
+        let time_frame = match parsed["payload"]["time_frame"].as_str() {
+            Some(tm) => TimeFrameType::from_str(tm),
+            None => TimeFrameType::ERR,
         };
-
-        log::info!("Processing response {:?}...", response);
 
         match response {
             Some("Connected") => Response::Connected(ResponseBody {
                 response: ResponseType::Connected,
-                data: None,
+                payload: None,
             }),
             Some("GetInstrumentData") => Response::InstrumentData(ResponseBody {
                 response: ResponseType::GetInstrumentData,
-                data: Some(InstrumentData {
+                payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame: time_frame,
-                    data: parse_dohlc(&parsed["data"]),
+                    data: parse_dohlc(&parsed["payload"]["data"]),
                 }),
             }),
             Some("SubscribeStream") => Response::StreamResponse(ResponseBody {
                 response: ResponseType::SubscribeStream,
-                data: Some(InstrumentData {
+                payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame: time_frame,
-                    data: parse_stream(&parsed["data"]),
+                    data: parse_stream(&parsed["payload"]),
                 }),
             }),
             _ => Response::Error(ResponseBody {
                 response: ResponseType::Error,
-                data: None,
+                payload: None,
             }),
         }
     } else {
         Response::Error(ResponseBody {
             response: ResponseType::Error,
-            data: None,
+            payload: None,
         })
     }
 }
 
 pub fn parse_dohlc(data: &Value) -> VEC_DOHLC {
     let mut result: VEC_DOHLC = vec![];
-    for obj in data["data"].as_array().unwrap() {
+    for obj in data.as_array().unwrap() {
         let date = DateTime::from_str(obj[0].as_str().unwrap()).unwrap();
         let open = obj[1].as_f64().unwrap();
         let high = obj[2].as_f64().unwrap();
@@ -97,3 +95,17 @@ pub fn parse_stream(data: &Value) -> LECHES {
     let spread = arr[6].as_f64().unwrap();
     (date, ask, bid, high, low, volume, spread)
 }
+
+// pub fn get_response_data(
+//     res: ResponseBody<InstrumentData<Vec<(DateTime<Local>, f64, f64, f64, f64, f64)>>>,
+// ) -> (
+//     &str,
+//     TimeFrameType,
+//     Vec<(DateTime<Local>, f64, f64, f64, f64, f64)>,
+// ) {
+//     let payload = res.payload.unwrap();
+//     let symbol = payload.symbol;
+//     let time_frame = payload.time_frame;
+//     let data = payload.data;
+//     (&symbol, time_frame, data)
+// }
