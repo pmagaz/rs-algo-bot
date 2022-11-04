@@ -6,8 +6,10 @@ use async_trait::async_trait;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::backtest_instrument::*;
-use rs_algo_shared::models::backtest_strategy::*;
+use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
+use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::models::trade::*;
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
@@ -15,6 +17,8 @@ pub struct Stoch<'a> {
     name: &'a str,
     strategy_type: StrategyType,
     stop_loss: StopLoss,
+    // instrument: Option<&'a Instrument>,
+    // higher_tf_instrument: Option<&'a HigherTMInstrument>,
 }
 
 #[async_trait]
@@ -26,11 +30,17 @@ impl<'a> Strategy for Stoch<'a> {
             .unwrap();
 
         Ok(Self {
-            stop_loss: init_stop_loss(StopLossType::Atr, stop_loss),
             name: "Stoch",
+            stop_loss: init_stop_loss(StopLossType::Atr, stop_loss),
             strategy_type: StrategyType::OnlyLong,
+            // instrument: None,
+            // higher_tf_instrument: None,
         })
     }
+
+    // fn init(&mut self, instrument: &Instrument, higher_tf_instrument: &HigherTMInstrument) {
+    //     //self.instrument = Some(instrument);
+    // }
 
     fn name(&self) -> &str {
         self.name
@@ -117,22 +127,22 @@ impl<'a> Strategy for Stoch<'a> {
         }
     }
 
-    fn backtest_result(
-        &self,
-        instrument: &Instrument,
-        trades_in: Vec<TradeIn>,
-        trades_out: Vec<TradeOut>,
-        equity: f64,
-        commission: f64,
-    ) -> BackTestResult {
-        resolve_backtest(
-            instrument,
-            &self.strategy_type,
-            trades_in,
-            trades_out,
-            self.name,
-            equity,
-            commission,
-        )
-    }
+    // fn backtest_result(
+    //     &self,
+    //     instrument: &Instrument,
+    //     trades_in: &Vec<TradeIn>,
+    //     trades_out: &Vec<TradeOut>,
+    //     equity: f64,
+    //     commission: f64,
+    // ) -> BackTestResult {
+    //     resolve_backtest(
+    //         instrument,
+    //         &self.strategy_type,
+    //         trades_in,
+    //         trades_out,
+    //         self.name,
+    //         equity,
+    //         commission,
+    //     )
+    // }
 }

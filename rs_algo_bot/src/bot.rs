@@ -9,21 +9,24 @@ use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
 use rs_algo_shared::models::market::*;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
+use rs_algo_shared::models::trade::*;
 use rs_algo_shared::scanner::instrument::{self, HigherTMInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
 
 pub struct Bot {
-    pub websocket: WebSocket,
-    pub instrument: Instrument,
-    pub higher_tm_instrument: HigherTMInstrument,
-    pub symbol: String,
-    pub market: Market,
-    pub time_frame: TimeFrameType,
-    pub higher_time_frame: TimeFrameType,
-    pub strategy: Box<dyn Strategy>,
-    pub strategy_name: String,
-    pub strategy_type: StrategyType,
+    websocket: WebSocket,
+    symbol: String,
+    market: Market,
+    instrument: Instrument,
+    higher_tf_instrument: HigherTMInstrument,
+    time_frame: TimeFrameType,
+    higher_time_frame: TimeFrameType,
+    strategy: Box<dyn Strategy>,
+    strategy_name: String,
+    strategy_type: StrategyType,
+    trades_in: Vec<TradeIn>,
+    trades_out: Vec<TradeOut>,
 }
 
 impl Bot {
@@ -126,7 +129,7 @@ impl Bot {
                                     &self.higher_time_frame
                                 );
 
-                                match &mut self.higher_tm_instrument {
+                                match &mut self.higher_tf_instrument {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
                                         htf_instrument.set_data(data).unwrap();
                                     }
@@ -139,23 +142,33 @@ impl Bot {
                             let time_frame = payload.time_frame;
                             let data = payload.data;
 
-                            log::info!("Stream {} data received", &self.symbol);
-
                             if is_base_time_frame(&self.time_frame, &time_frame) {
+                                let adapted = parse_data_timeframe(data, time_frame);
+                                self.instrument.next(data).unwrap();
                             } else {
+                                let adapted =
+                                    parse_data_timeframe(data, self.higher_time_frame.clone());
+
+                                match &mut self.higher_tf_instrument {
+                                    HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
+                                        htf_instrument.next(data).unwrap();
+                                    }
+                                    HigherTMInstrument::None => (),
+                                };
                             }
-                            //let adapted = adapt_to_timeframe(data);
-                            //self.instrument.next(data).unwrap();
+
+                            let (trade_out, trade_in) = self
+                                .strategy
+                                .tick(
+                                    &self.instrument,
+                                    &self.higher_tf_instrument,
+                                    &self.trades_in,
+                                    &self.trades_out,
+                                )
+                                .await;
                         }
                         _ => (),
                     };
-
-                    // let timeout = Local::now() - Dur::milliseconds(msg_timeout as i64);
-                    // if last_msg < timeout {
-                    //     log::error!("No data received in last {} milliseconds", msg_timeout);
-                    // } else {
-                    //     last_msg = Local::now();
-                    // }
                 }
                 Message::Ping(_txt) => {
                     log::info!("Ping received");
@@ -164,10 +177,6 @@ impl Bot {
                 _ => panic!("Unexpected response type!"),
             };
         }
-    }
-
-    pub fn adapt_to_timeframe(data: LECHES) -> LECHES {
-        data
     }
 }
 
@@ -246,7 +255,7 @@ impl BotBuilder {
             self.strategy_type,
             self.websocket,
         ) {
-            let mut instrument = Instrument::new()
+            let instrument = Instrument::new()
                 .symbol(&symbol)
                 .market(market.to_owned())
                 .time_frame(time_frame.to_owned())
@@ -262,8 +271,10 @@ impl BotBuilder {
                 strategy_type,
                 websocket,
                 instrument,
-                higher_tm_instrument: HigherTMInstrument::None,
+                higher_tf_instrument: HigherTMInstrument::None,
                 strategy: set_strategy(&strategy_name),
+                trades_in: vec![],
+                trades_out: vec![],
             })
         } else {
             Err(RsAlgoError {

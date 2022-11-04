@@ -5,9 +5,11 @@ use async_trait::async_trait;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::models::backtest_instrument::*;
-use rs_algo_shared::models::backtest_strategy::*;
+use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::models::trade::*;
 use rs_algo_shared::scanner::instrument::*;
+use std::cmp::Ordering;
 use std::env;
 
 #[async_trait(?Send)]
@@ -44,108 +46,48 @@ pub trait Strategy: DynClone {
     fn backtest_result(
         &self,
         instrument: &Instrument,
-        trades_in: Vec<TradeIn>,
-        trades_out: Vec<TradeOut>,
+        trades_in: &Vec<TradeIn>,
+        trades_out: &Vec<TradeOut>,
         equity: f64,
         commision: f64,
-    ) -> BackTestResult;
-    async fn get_upper_tf_instrument(
-        &self,
-        symbol: &str,
-        uppertimeframe: &str,
-    ) -> HigherTMInstrument {
-        let uppertime_frame = match self.strategy_type() {
-            StrategyType::OnlyLongMultiTF => true,
-            StrategyType::LongShortMultiTF => true,
-            StrategyType::OnlyShortMultiTF => true,
+    ) -> bool {
+        true
+    }
+    async fn tick(
+        &mut self,
+        instrument: &Instrument,
+        higher_tf_instrument: &HigherTMInstrument,
+        trades_in: &Vec<TradeIn>,
+        trades_out: &Vec<TradeOut>,
+    ) -> (TradeResult, TradeResult) {
+        let data = &instrument.data;
+        let index = data.len();
+        let mut trade_in_result = TradeResult::None;
+        let mut trade_out_result = TradeResult::None;
+
+        let open_positions = match trades_in.len().cmp(&trades_out.len()) {
+            Ordering::Greater => true,
             _ => false,
         };
 
-        if uppertime_frame {
-            let endpoint = env::var("BACKEND_BACKTEST_INSTRUMENTS_ENDPOINT").unwrap();
+        let order_size = env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
-            let url = [&endpoint, "/", symbol, "/", uppertimeframe].concat();
-
-            log::info!(
-                "[BACKTEST UPPER TIMEFRAME] {} instrument for {}",
-                &uppertimeframe,
-                &symbol
-            );
-
-            // let instrument: Instrument = request(&url, &String::from("all"), HttpMethod::Get)
-            //     .await
-            //     .unwrap()
-            //     .json()
-            //     .await
-            //     .unwrap();
-
-            // HigherTMInstrument::HigherTMInstrument(instrument)
-            HigherTMInstrument::None
-        } else {
-            HigherTMInstrument::None
-        }
-    }
-    async fn test(
-        &mut self,
-        instrument: &Instrument,
-        order_size: f64,
-        equity: f64,
-        commission: f64,
-    ) -> BackTestResult {
-        let mut trades_in: Vec<TradeIn> = vec![];
-        let mut trades_out: Vec<TradeOut> = vec![];
-        let mut open_positions = false;
-        let data = &instrument.data;
-        let len = data.len();
         let start_date = match data.first().map(|x| x.date) {
             Some(date) => date.to_string(),
             None => "".to_string(),
         };
 
-        log::info!(
-            "[BACKTEST] Starting {} backtest for {} from {}",
-            self.name(),
-            &instrument.symbol,
-            start_date
-        );
-
-        let uppertimeframe = env::var("UPPER_TIME_FRAME").unwrap();
-
-        let upper_tf_instrument = &self
-            .get_upper_tf_instrument(&instrument.symbol, &uppertimeframe)
-            .await;
-
-        for (index, _candle) in data.iter().enumerate() {
-            if index < len - 1 && index >= 5 {
-                if open_positions {
-                    let trade_in = trades_in.last().unwrap().to_owned();
-                    let trade_out_result =
-                        self.market_out_fn(index, instrument, upper_tf_instrument, trade_in);
-                    match trade_out_result {
-                        TradeResult::TradeOut(trade_out) => {
-                            trades_out.push(trade_out);
-                            open_positions = false;
-                        }
-                        _ => (),
-                    };
-                }
-
-                if !open_positions && self.there_are_funds(&trades_out) {
-                    let trade_in_result =
-                        self.market_in_fn(index, instrument, upper_tf_instrument, order_size);
-
-                    match trade_in_result {
-                        TradeResult::TradeIn(trade_in) => {
-                            trades_in.push(trade_in);
-                            open_positions = true;
-                        }
-                        _ => (),
-                    };
-                }
-            }
+        if open_positions {
+            let trade_in = trades_in.last().unwrap().to_owned();
+            trade_out_result =
+                self.market_out_fn(index, instrument, higher_tf_instrument, trade_in);
         }
 
-        self.backtest_result(instrument, trades_in, trades_out, equity, commission)
+        if !open_positions && self.there_are_funds(&trades_out) {
+            trade_in_result =
+                self.market_in_fn(index, instrument, higher_tf_instrument, order_size);
+        }
+        (trade_out_result, trade_in_result)
     }
     fn market_in_fn(
         &mut self,
@@ -233,14 +175,22 @@ pub trait Strategy: DynClone {
 }
 
 pub fn set_strategy(strategy_name: &str) -> Box<dyn Strategy> {
-    let strategies = vec![strategies::stoch::Stoch::new().unwrap()];
-    let mut strategy = Box::new(strategies[0].clone());
+    let strategies: Vec<Box<dyn Strategy>> = vec![
+        Box::new(strategies::stoch::Stoch::new().unwrap()),
+        Box::new(
+            strategies::bollinger_bands_reversals2_mt_macd::MutiTimeFrameBollingerBands::new()
+                .unwrap(),
+        ),
+    ];
 
+    let mut strategy = strategies[0].clone();
     for stra in strategies.iter() {
         if strategy_name == stra.name() {
-            strategy = Box::new(stra.clone());
+            strategy = stra.clone();
         }
     }
+
+    log::info!("Using strategy {}", strategy.name());
 
     strategy
 }

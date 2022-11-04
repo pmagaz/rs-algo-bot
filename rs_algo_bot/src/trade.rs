@@ -3,9 +3,10 @@ use round::round;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::backtest_instrument::*;
-use rs_algo_shared::models::backtest_strategy::*;
 use rs_algo_shared::models::market::*;
+use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::models::trade::*;
 use rs_algo_shared::scanner::instrument::Instrument;
 
 pub fn resolve_trade_in(
@@ -102,8 +103,8 @@ pub fn resolve_trade_out(
 pub fn resolve_backtest(
     instrument: &Instrument,
     strategy_type: &StrategyType,
-    trades_in: Vec<TradeIn>,
-    trades_out: Vec<TradeOut>,
+    trades_in: &Vec<TradeIn>,
+    trades_out: &Vec<TradeOut>,
     name: &str,
     equity: f64,
     commission: f64,
@@ -166,8 +167,8 @@ pub fn resolve_backtest(
         BackTestResult::BackTestInstrumentResult(BackTestInstrumentResult {
             instrument: BackTestInstrument {
                 symbol: instrument.symbol.to_owned(),
-                trades_in,
-                trades_out,
+                trades_in: trades_in.clone(),
+                trades_out: trades_out.clone(),
             },
             strategy: name.to_owned(),
             strategy_type: strategy_type.to_owned(),
