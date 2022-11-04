@@ -84,7 +84,7 @@ where
                 None => "",
             };
 
-            log::info!("Msg {:?} from {addr} received", command);
+            log::info!("Client {:?} msg received from {addr}", command);
 
             let data = match command {
                 CommandType::GetInstrumentData => {

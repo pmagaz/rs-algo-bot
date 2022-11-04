@@ -119,12 +119,12 @@ impl Bot {
                             let data = payload.data;
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
-                                log::info!("Getting {} {} data", &self.symbol, &self.time_frame);
+                                log::info!("Retrieving {} {} data", &self.symbol, &self.time_frame);
 
                                 self.instrument.set_data(data).unwrap();
                             } else {
                                 log::info!(
-                                    "Getting {} {} data",
+                                    "Retrieving {} {} data",
                                     &self.symbol,
                                     &self.higher_time_frame
                                 );
@@ -141,6 +141,8 @@ impl Bot {
                             let payload = res.payload.unwrap();
                             let time_frame = payload.time_frame;
                             let data = payload.data;
+
+                            log::info!("{} stream data received", &self.symbol);
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
                                 let adapted = parse_data_timeframe(data, time_frame);

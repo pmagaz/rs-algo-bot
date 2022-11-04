@@ -57,7 +57,7 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
-        let first_weekly_entry = get_upper_timeframe_data(
+        let first_htf_entry = get_upper_timeframe_data(
             index,
             instrument,
             upper_tf_instrument,
@@ -118,7 +118,7 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             .get(prev_index)
             .unwrap();
 
-        first_weekly_entry
+        first_htf_entry
             || (upper_macd
                 && prev_close < prev_open
                 && prev_close < prev_low_band

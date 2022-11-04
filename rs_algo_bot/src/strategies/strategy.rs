@@ -61,7 +61,7 @@ pub trait Strategy: DynClone {
         trades_out: &Vec<TradeOut>,
     ) -> (TradeResult, TradeResult) {
         let data = &instrument.data;
-        let index = data.len();
+        let index = data.len() - 1;
         let mut trade_in_result = TradeResult::None;
         let mut trade_out_result = TradeResult::None;
 
@@ -145,19 +145,6 @@ pub trait Strategy: DynClone {
     }
     fn stop_loss(&self) -> &StopLoss;
     fn update_stop_loss(&mut self, stop_type: StopLossType, price: f64) -> &StopLoss;
-    // fn stop_loss_exit(&mut self, exit_condition: bool, price: f64) -> bool {
-    //     // match exit_condition {
-    //     //     true => {
-    //     //         self.update_stop_loss(price);
-    //     //         false
-    //     //     }
-    //     //     false => {
-    //     //         self.update_stop_loss(0.);
-    //     //         false
-    //     //     }
-    //     // }
-    //     false
-    // }
     fn stop_loss_exit(&mut self, stop_type: StopLossType, price: f64) -> bool {
         let stop_loss = self.stop_loss();
         update_stop_loss_values(stop_loss, stop_type, price);

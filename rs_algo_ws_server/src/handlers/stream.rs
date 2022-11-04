@@ -44,11 +44,13 @@ where
                         match msg {
                             Some(msg) => {
                                 let msg = msg.unwrap();
-                                log::info!("Msg from Broker received");
 
                                 if msg.is_text() || msg.is_binary() {
-                                    let txt = BK::parse_stream_data(msg).await.unwrap();
-                                    message::send(&session, Message::Text(txt)).await;
+                                    let txt = BK::parse_stream_data(msg).await;
+                                    match txt {
+                                        Some(txt) =>  message::send(&session, Message::Text(txt)).await,
+                                        None => ()
+                                    };
                                     //message::send(&mut sessions, &addr, Message::Text(txt)).await;
                                 } else if msg.is_close() {
                                     log::error!("MSG close!");
