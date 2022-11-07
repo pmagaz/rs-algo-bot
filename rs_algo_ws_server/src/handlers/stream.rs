@@ -44,7 +44,6 @@ where
                         match msg {
                             Some(msg) => {
                                 let msg = msg.unwrap();
-
                                 if msg.is_text() || msg.is_binary() {
                                     let txt = BK::parse_stream_data(msg).await;
                                     match txt {

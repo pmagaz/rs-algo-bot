@@ -1,10 +1,11 @@
 use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
-use crate::message;
-
 use crate::helpers::vars::*;
+use crate::message;
 use crate::strategies;
+use crate::strategies::stats::*;
 use crate::strategies::strategy::*;
 use rs_algo_shared::broker::{LECHES, VEC_DOHLC};
+use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
 use rs_algo_shared::models::market::*;
 use rs_algo_shared::models::strategy::*;
@@ -13,20 +14,27 @@ use rs_algo_shared::models::trade::*;
 use rs_algo_shared::scanner::instrument::{self, HigherTMInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize)]
 
 pub struct Bot {
+    #[serde(skip_serializing)]
     websocket: WebSocket,
     symbol: String,
     market: Market,
     instrument: Instrument,
+    date_start: DbDateTime,
     higher_tf_instrument: HigherTMInstrument,
     time_frame: TimeFrameType,
     higher_time_frame: TimeFrameType,
+    trades_in: Vec<TradeIn>,
+    trades_out: Vec<TradeOut>,
+    #[serde(skip_serializing)]
     strategy: Box<dyn Strategy>,
     strategy_name: String,
     strategy_type: StrategyType,
-    trades_in: Vec<TradeIn>,
-    trades_out: Vec<TradeOut>,
+    strategy_stats: StrategyStats,
 }
 
 impl Bot {
@@ -159,7 +167,7 @@ impl Bot {
                                 };
                             }
 
-                            let (trade_out, trade_in) = self
+                            let (trade_out_result, trade_in_result) = self
                                 .strategy
                                 .tick(
                                     &self.instrument,
@@ -168,6 +176,40 @@ impl Bot {
                                     &self.trades_out,
                                 )
                                 .await;
+
+                            match &trade_out_result {
+                                TradeResult::TradeOut(trade_out) => {
+                                    self.trades_out.push(trade_out.to_owned())
+                                }
+                                _ => (),
+                            };
+
+                            match &trade_in_result {
+                                TradeResult::TradeIn(trade_in) => {
+                                    self.trades_in.push(trade_in.to_owned())
+                                }
+                                _ => (),
+                            };
+
+                            //Update stats
+                            self.strategy_stats = self.strategy.update_stats(
+                                &self.instrument,
+                                &self.trades_in,
+                                &self.trades_out,
+                                0.,
+                                0.,
+                            );
+
+                            //Send bot data
+                            let update_bot_data_command = Command {
+                                command: CommandType::UpdateBotData,
+                                data: Some(&self),
+                            };
+
+                            self.websocket
+                                .send(&serde_json::to_string(&update_bot_data_command).unwrap())
+                                .await
+                                .unwrap();
                         }
                         _ => (),
                     };
@@ -268,15 +310,17 @@ impl BotBuilder {
                 symbol,
                 market,
                 time_frame,
+                date_start: to_dbtime(Local::now()),
                 higher_time_frame,
-                strategy_name: strategy_name.clone(),
-                strategy_type,
                 websocket,
                 instrument,
                 higher_tf_instrument: HigherTMInstrument::None,
-                strategy: set_strategy(&strategy_name),
                 trades_in: vec![],
                 trades_out: vec![],
+                strategy: set_strategy(&strategy_name),
+                strategy_name: strategy_name.clone(),
+                strategy_type,
+                strategy_stats: StrategyStats::new(),
             })
         } else {
             Err(RsAlgoError {

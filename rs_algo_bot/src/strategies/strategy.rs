@@ -1,3 +1,4 @@
+use super::stats::*;
 use crate::trade::*;
 
 use crate::strategies;
@@ -158,6 +159,17 @@ pub trait Strategy: DynClone {
         } else {
             false
         }
+    }
+
+    fn update_stats(
+        &self,
+        instrument: &Instrument,
+        trades_in: &Vec<TradeIn>,
+        trades_out: &Vec<TradeOut>,
+        equity: f64,
+        commission: f64,
+    ) -> StrategyStats {
+        calculate_stats(instrument, trades_in, trades_out, equity, commission)
     }
 }
 
