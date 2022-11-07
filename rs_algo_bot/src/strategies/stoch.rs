@@ -1,14 +1,14 @@
 use super::strategy::*;
 
-use crate::helpers::calc::*;
-use crate::trade::*;
 use async_trait::async_trait;
 use rs_algo_shared::error::Result;
+use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::backtest_instrument::*;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
 use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::models::trade::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::scanner::instrument::*;
 
@@ -126,23 +126,4 @@ impl<'a> Strategy for Stoch<'a> {
             _ => false,
         }
     }
-
-    // fn backtest_result(
-    //     &self,
-    //     instrument: &Instrument,
-    //     trades_in: &Vec<TradeIn>,
-    //     trades_out: &Vec<TradeOut>,
-    //     equity: f64,
-    //     commission: f64,
-    // ) -> BackTestResult {
-    //     resolve_backtest(
-    //         instrument,
-    //         &self.strategy_type,
-    //         trades_in,
-    //         trades_out,
-    //         self.name,
-    //         equity,
-    //         commission,
-    //     )
-    // }
 }

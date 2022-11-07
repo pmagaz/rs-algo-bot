@@ -3,7 +3,6 @@ mod error;
 mod helpers;
 mod message;
 mod strategies;
-mod trade;
 use bot::Bot;
 
 use dotenv::dotenv;

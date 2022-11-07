@@ -25,6 +25,7 @@ pub struct Bot {
     market: Market,
     instrument: Instrument,
     date_start: DbDateTime,
+    //date_last_data: DbDateTime,
     higher_tf_instrument: HigherTMInstrument,
     time_frame: TimeFrameType,
     higher_time_frame: TimeFrameType,
@@ -179,6 +180,7 @@ impl Bot {
 
                             match &trade_out_result {
                                 TradeResult::TradeOut(trade_out) => {
+                                    //Call server for sell
                                     self.trades_out.push(trade_out.to_owned())
                                 }
                                 _ => (),
@@ -186,6 +188,7 @@ impl Bot {
 
                             match &trade_in_result {
                                 TradeResult::TradeIn(trade_in) => {
+                                    //Call server for buy
                                     self.trades_in.push(trade_in.to_owned())
                                 }
                                 _ => (),

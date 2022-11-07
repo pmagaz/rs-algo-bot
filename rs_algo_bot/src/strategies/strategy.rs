@@ -1,5 +1,4 @@
 use super::stats::*;
-use crate::trade::*;
 
 use crate::strategies;
 use async_trait::async_trait;
@@ -44,16 +43,6 @@ pub trait Strategy: DynClone {
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool;
-    fn backtest_result(
-        &self,
-        instrument: &Instrument,
-        trades_in: &Vec<TradeIn>,
-        trades_out: &Vec<TradeOut>,
-        equity: f64,
-        commision: f64,
-    ) -> bool {
-        true
-    }
     async fn tick(
         &mut self,
         instrument: &Instrument,

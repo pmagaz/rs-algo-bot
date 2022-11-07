@@ -1,5 +1,5 @@
-use crate::helpers::calc::*;
 use round::round;
+use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::market::*;
 use rs_algo_shared::models::stop_loss::*;
@@ -107,12 +107,6 @@ pub fn calculate_stats(
         let buy_hold =
             calculate_buy_hold(strategy_start_price, initial_order_amount, current_price);
         let annual_return = 100.;
-
-        log::info!(
-            "[BA] {:} backtested for {:?} sessions",
-            instrument.symbol,
-            sessions
-        );
 
         StrategyStats {
             trades,
