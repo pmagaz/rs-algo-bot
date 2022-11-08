@@ -17,7 +17,6 @@ use rs_algo_shared::ws::ws_client::WebSocket;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
-
 pub struct Bot {
     #[serde(skip_serializing)]
     websocket: WebSocket,
@@ -31,10 +30,10 @@ pub struct Bot {
     higher_time_frame: TimeFrameType,
     trades_in: Vec<TradeIn>,
     trades_out: Vec<TradeOut>,
-    #[serde(skip_serializing)]
-    strategy: Box<dyn Strategy>,
     strategy_name: String,
     strategy_type: StrategyType,
+    #[serde(skip_serializing)]
+    strategy: Box<dyn Strategy>,
     strategy_stats: StrategyStats,
 }
 
@@ -181,15 +180,31 @@ impl Bot {
                             match &trade_out_result {
                                 TradeResult::TradeOut(trade_out) => {
                                     //Call server for sell
-                                    self.trades_out.push(trade_out.to_owned())
+
+                                    let execute_trade_out = Command {
+                                        command: CommandType::ExecuteTrade,
+                                        data: Some(trade_out),
+                                    };
+
+                                    self.websocket
+                                        .send(&serde_json::to_string(&execute_trade_out).unwrap())
+                                        .await
+                                        .unwrap();
                                 }
                                 _ => (),
                             };
 
                             match &trade_in_result {
                                 TradeResult::TradeIn(trade_in) => {
-                                    //Call server for buy
-                                    self.trades_in.push(trade_in.to_owned())
+                                    let execute_trade_in = Command {
+                                        command: CommandType::ExecuteTrade,
+                                        data: Some(trade_in),
+                                    };
+
+                                    self.websocket
+                                        .send(&serde_json::to_string(&execute_trade_in).unwrap())
+                                        .await
+                                        .unwrap();
                                 }
                                 _ => (),
                             };

@@ -1,9 +1,14 @@
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 use crate::helpers::uuid;
+
 use bson::Uuid;
 use rs_algo_shared::helpers::date::{Duration as Dur, Local, Utc};
+use rs_algo_shared::models::strategy;
+use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
+use rs_algo_shared::models::trade;
 use rs_algo_shared::ws::message::*;
+use serde_json::Value;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 
@@ -75,12 +80,12 @@ where
         }
         Message::Text(msg) => {
             //BREAK HERE
-            let query: Command<Payload> =
+            let query: Command<Value> =
                 serde_json::from_str(&msg).expect("ERROR parsing Command JSON");
 
             let command = query.command;
             let symbol = match &query.data {
-                Some(arg) => arg.symbol.clone(),
+                Some(data) => &data["symbol"].as_str().unwrap(),
                 None => "",
             };
 
@@ -89,22 +94,25 @@ where
             let data = match command {
                 CommandType::GetInstrumentData => {
                     let max_bars = 200;
+                    let mut time_frame: TimeFrameType = TimeFrameType::ERR;
 
                     let session_data = match &query.data {
-                        Some(arg) => {
+                        Some(data) => {
                             let seed = [
-                                arg.symbol,
-                                arg.strategy,
-                                &arg.time_frame.to_string(),
-                                &arg.strategy_type.to_string(),
+                                data["symbol"].as_str().unwrap(),
+                                data["strategy"].as_str().unwrap(),
+                                data["time_frame"].as_str().unwrap(),
+                                data["strategy_type"].as_str().unwrap(),
                             ];
+
+                            time_frame = TimeFrame::new(seed[2]);
 
                             Some(SessionData {
                                 id: uuid::generate(seed),
-                                symbol: arg.symbol.to_owned(),
-                                strategy: arg.strategy.to_owned(),
-                                time_frame: arg.time_frame.to_owned(),
-                                strategy_type: arg.strategy_type.clone(),
+                                symbol: seed[0].to_string(),
+                                strategy: seed[1].to_string(),
+                                time_frame: time_frame.clone(),
+                                strategy_type: strategy::from_str(seed[3]),
                             })
                         }
                         None => None,
@@ -118,7 +126,6 @@ where
 
                     session::update_db_session(&session_data, db_client).await;
 
-                    let time_frame = &query.data.unwrap().time_frame;
                     let time_frame_number = time_frame.to_number();
 
                     let from = (Local::now()
@@ -134,13 +141,33 @@ where
 
                     Some(serde_json::to_string(&res).unwrap())
                 }
+                CommandType::ExecuteTrade => {
+                    let trade = match &query.data {
+                        Some(trade) => {
+                            let pricing = broker
+                                .lock()
+                                .await
+                                .get_instrument_pricing(&symbol)
+                                .await
+                                .unwrap();
+
+                            let trade_type =
+                                trade::type_from_str(trade["trade_type"].as_str().unwrap());
+
+                            match trade_type {
+                                EntryLong => (),
+                                _ => (),
+                            };
+                        }
+                        None => (),
+                    };
+                    None
+                }
                 CommandType::SubscribeStream => {
                     session::find(sessions, &addr, |session| {
                         stream::listen(broker, session.clone(), addr, symbol.to_owned());
                     })
                     .await;
-
-                    //stream::listen(broker, session.clone(), addr, symbol.to_owned());
                     Some("".to_string())
                 }
                 _ => {
