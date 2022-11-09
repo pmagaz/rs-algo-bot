@@ -71,6 +71,7 @@ where
         }
         Message::Pong(_) => {
             log::info!("Pong received from {addr} ");
+
             session::find(sessions, &addr, |session| {
                 *session = session.update_ping().clone();
             })
@@ -79,7 +80,6 @@ where
             None
         }
         Message::Text(msg) => {
-            //BREAK HERE
             let query: Command<Value> =
                 serde_json::from_str(&msg).expect("ERROR parsing Command JSON");
 
@@ -150,6 +150,8 @@ where
                                 .get_instrument_pricing(&symbol)
                                 .await
                                 .unwrap();
+
+                            log::info!("Server {:?} pricing obtained {addr}", pricing.payload);
 
                             let trade_type =
                                 trade::type_from_str(trade["trade_type"].as_str().unwrap());

@@ -33,33 +33,33 @@ where
         let addr = addr.clone();
         async move {
             let mut guard = broker.lock().await;
-            guard.subscribe_stream(&symbol, 5000, 2).await.unwrap();
+            guard.subscribe_stream(&symbol).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(200));
             //let mut sessions = Arc::clone(&sessions);
             let read_stream = guard.get_stream().await;
 
             loop {
                 tokio::select! {
-                    msg = read_stream.next() => {
-                        match msg {
-                            Some(msg) => {
-                                let msg = msg.unwrap();
-                                if msg.is_text() || msg.is_binary() {
-                                    let txt = BK::parse_stream_data(msg).await;
-                                    match txt {
-                                        Some(txt) =>  message::send(&session, Message::Text(txt)).await,
-                                        None => ()
-                                    };
-                                    //message::send(&mut sessions, &addr, Message::Text(txt)).await;
+                    stream = read_stream.next() => {
+                        match stream {
+                            Some(data) => {
+                                 match data {
+                                    Ok(msg) => {
+                                       if msg.is_text() || msg.is_binary() {
+                                           let txt = BK::parse_stream_data(msg).await;
+                                           match txt {
+                                               Some(txt) =>  message::send(&session, Message::Text(txt)).await,
+                                               None => ()
+                                           };
                                 } else if msg.is_close() {
                                     log::error!("MSG close!");
                                     break;
                                 }
+                                    },
+                                    Err(err) => log::error!("{}", err)
+                                };
                             }
-                            None => {
-                                log::error!("MSG none!");
-                                break
-                            }
+                            None => ()
                         }
                     }
                     _ = interval.tick() => {

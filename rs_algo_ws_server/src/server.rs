@@ -76,6 +76,7 @@ async fn handle_session(
             let db_client = Arc::clone(&db_client);
             let mut sessions = Arc::clone(&sessions);
             let new_session = new_session.clone();
+
             async move {
                 match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
                     Some(msg) => message::send(&new_session, Message::Text(msg)).await,
