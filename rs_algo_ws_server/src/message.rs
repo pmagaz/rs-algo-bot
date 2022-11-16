@@ -65,11 +65,11 @@ where
 {
     let data = match msg {
         Message::Ping(_bytes) => {
-            log::info!("Ping received from {addr}");
+            log::info!("Client Ping received from {addr}");
             None
         }
         Message::Pong(_) => {
-            log::info!("Pong received from {addr} ");
+            log::info!("Client Pong received from {addr} ");
             session::find(sessions, addr, |session| {
                 *session = session.update_ping().clone();
             })
@@ -90,16 +90,6 @@ where
             log::info!("Client {:?} msg received from {addr}", command);
 
             let data = match command {
-                CommandType::Leches => {
-                    let lehes = match broker.try_lock() {
-                        Ok(a) => println!("111111"),
-                        Err(a) => println!("errr {:?}", a),
-                    };
-
-                    // let res = broker.lock().await.keepalive_ping().await.unwrap();
-                    // drop(res);
-                    None
-                }
                 CommandType::GetInstrumentData => {
                     let max_bars = 200;
                     let mut time_frame: TimeFrameType = TimeFrameType::ERR;
@@ -150,6 +140,8 @@ where
                     Some(serde_json::to_string(&res).unwrap())
                 }
                 CommandType::ExecuteTrade => {
+                    log::info!("Executing trade..");
+
                     match &query.data {
                         Some(trade) => {
                             let pricing = broker
@@ -159,7 +151,7 @@ where
                                 .await
                                 .unwrap();
 
-                            log::info!("Server {:?} pricing obtained {addr}", pricing.payload);
+                            log::info!("Pricing obtained for {:?}", pricing.payload);
 
                             let trade_type =
                                 trade::type_from_str(trade["trade_type"].as_str().unwrap());
@@ -171,6 +163,21 @@ where
                         }
                         None => (),
                     };
+                    None
+                }
+                CommandType::UpdateBotData => {
+                    match &query.data {
+                        Some(data) => {
+                            let instrument = [
+                                data["symbol"].as_str().unwrap(),
+                                "_",
+                                data["time_frame"].as_str().unwrap(),
+                            ]
+                            .concat();
+                            log::info!("Updating bot data for {:?}", instrument);
+                        }
+                        None => (),
+                    }
                     None
                 }
                 CommandType::SubscribeStream => {
