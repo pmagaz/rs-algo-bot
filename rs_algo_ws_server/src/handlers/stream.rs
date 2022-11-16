@@ -55,7 +55,8 @@ where
                     }
                     _ = interval.tick() => {
                         broker_stream.keepalive_ping().await.unwrap();
-                        broker.lock().await.keepalive_ping().await.unwrap();
+                        let mut guard = broker.lock().await;
+                        guard.keepalive_ping().await.unwrap();
                     }
                 }
             }

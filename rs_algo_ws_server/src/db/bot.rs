@@ -46,8 +46,7 @@ pub async fn upsert(client: &Client, doc: &Bot) -> Result<Option<Bot>, Error> {
 
     collection
         .find_one_and_replace(
-            doc! {"symbol": doc.symbol.clone()},
-            //doc! {"_id": doc.id},
+            doc! {"_id": doc._id.clone()},
             doc,
             FindOneAndReplaceOptions::builder()
                 .upsert(Some(true))

@@ -6,11 +6,7 @@ use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::ws::message::*;
-use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    sync::{Arc},
-};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 use tungstenite::protocol::Message;
 
@@ -118,7 +114,6 @@ pub async fn create<'a>(
     };
 
     let msg: String = serde_json::to_string(&msg).unwrap();
-
     session
         .recipient
         .unbounded_send(Message::Text(msg))

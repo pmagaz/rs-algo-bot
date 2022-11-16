@@ -1,19 +1,15 @@
 use crate::db;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
-use crate::helpers::uuid;
 
 use rs_algo_shared::helpers::date::{Duration as Dur, Local};
 use rs_algo_shared::models::bot::Bot;
-use rs_algo_shared::models::strategy;
-use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
+use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade;
 use rs_algo_shared::ws::message::*;
 use serde_json::Value;
-use std::time::Duration;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
-use tokio::time;
 
 pub async fn send(session: &Session, msg: Message) {
     session.recipient.unbounded_send(msg).unwrap();
@@ -92,28 +88,18 @@ where
             log::info!("Client {:?} msg received from {addr}", command);
 
             let data = match command {
-                CommandType::GetInstrumentData => {
-                    let max_bars = 200;
-                    let mut time_frame: TimeFrameType = TimeFrameType::ERR;
-
+                CommandType::InitSession => {
                     let session_data = match &query.data {
                         Some(data) => {
-                            let seed = [
-                                data["symbol"].as_str().unwrap(),
-                                data["strategy"].as_str().unwrap(),
-                                data["time_frame"].as_str().unwrap(),
-                                data["strategy_type"].as_str().unwrap(),
-                            ];
+                            log::info!(
+                                "Starting session data for {:?}_{:?}",
+                                data["symbol"],
+                                data["time_frame"]
+                            );
 
-                            time_frame = TimeFrame::new(seed[2]);
-
-                            Some(SessionData {
-                                id: uuid::generate(seed),
-                                symbol: seed[0].to_string(),
-                                strategy: seed[1].to_string(),
-                                time_frame: time_frame.clone(),
-                                strategy_type: strategy::from_str(seed[3]),
-                            })
+                            let session: SessionData =
+                                serde_json::from_value(data.clone()).unwrap();
+                            Some(session)
                         }
                         None => None,
                     }
@@ -123,8 +109,15 @@ where
                         *session = session.update_data(session_data.clone()).clone();
                     })
                     .await;
+                    None
+                }
+                CommandType::GetInstrumentData => {
+                    let max_bars = 200;
 
-                    //session::update_db_session(&session_data, db_client).await;
+                    let time_frame = match &query.data {
+                        Some(data) => TimeFrame::new(data["time_frame"].as_str().unwrap()),
+                        None => TimeFrameType::ERR,
+                    };
 
                     let time_frame_number = time_frame.to_number();
 

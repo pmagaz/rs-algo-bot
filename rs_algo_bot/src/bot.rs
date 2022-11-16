@@ -6,8 +6,9 @@ use crate::message;
 use crate::strategies::strategy::*;
 
 use rs_algo_shared::helpers::date::Local;
-use rs_algo_shared::helpers::date::*;
+use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::market::*;
+use rs_algo_shared::models::strategy;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
@@ -23,18 +24,20 @@ use tokio::time;
 pub struct Bot {
     #[serde(skip_serializing)]
     websocket: WebSocket,
+    #[serde(rename = "_id")]
+    uuid: uuid::Uuid,
     symbol: String,
     market: Market,
-    instrument: Instrument,
-    date_start: DbDateTime,
-    //date_last_data: DbDateTime,
-    higher_tf_instrument: HigherTMInstrument,
-    time_frame: TimeFrameType,
-    higher_time_frame: TimeFrameType,
-    trades_in: Vec<TradeIn>,
-    trades_out: Vec<TradeOut>,
     strategy_name: String,
     strategy_type: StrategyType,
+    time_frame: TimeFrameType,
+    higher_time_frame: TimeFrameType,
+    date_start: DbDateTime,
+    last_update: DbDateTime,
+    instrument: Instrument,
+    higher_tf_instrument: HigherTMInstrument,
+    trades_in: Vec<TradeIn>,
+    trades_out: Vec<TradeOut>,
     #[serde(skip_serializing)]
     strategy: Box<dyn Strategy>,
     strategy_stats: StrategyStats,
@@ -46,6 +49,42 @@ impl Bot {
     }
 
     pub async fn run(&mut self) {
+        log::info!(
+            "Starting session data for {} {}",
+            &self.symbol,
+            &self.time_frame
+        );
+
+        let seed = [
+            &self.symbol,
+            &self.strategy_name,
+            &self.time_frame.to_string(),
+            &self.strategy_type.to_string(),
+        ];
+
+        let time_frame = TimeFrame::new(seed[2]);
+        let uuid = uuid::generate(seed);
+
+        let start_session_data = Command {
+            command: CommandType::InitSession,
+            data: Some(SessionData {
+                id: uuid,
+                symbol: seed[0].to_string(),
+                strategy: seed[1].to_string(),
+                time_frame: time_frame.clone(),
+                strategy_type: strategy::from_str(seed[3]),
+            }),
+        };
+
+        self.uuid = uuid;
+
+        self.websocket
+            .send(&serde_json::to_string(&start_session_data).unwrap())
+            .await
+            .unwrap();
+
+        log::info!("Requesting {} {} data", &self.symbol, &self.time_frame);
+
         let get_instrument_data = Command {
             command: CommandType::GetInstrumentData,
             data: Some(Payload {
@@ -55,8 +94,6 @@ impl Bot {
                 strategy_type: self.strategy_type.to_owned(),
             }),
         };
-
-        log::info!("Requesting {} {} data", &self.symbol, &self.time_frame);
 
         self.websocket
             .send(&serde_json::to_string(&get_instrument_data).unwrap())
@@ -93,6 +130,12 @@ impl Bot {
                 .unwrap();
         }
 
+        log::info!(
+            "Subscribing to {} {} stream",
+            &self.symbol,
+            &self.time_frame
+        );
+
         let subscribe_command = Command {
             command: CommandType::SubscribeStream,
             data: Some(Payload {
@@ -102,12 +145,6 @@ impl Bot {
                 time_frame: self.time_frame.to_owned(),
             }),
         };
-
-        log::info!(
-            "Subscribing to {} {} stream",
-            &self.symbol,
-            &self.time_frame
-        );
 
         self.websocket
             .send(&serde_json::to_string(&subscribe_command).unwrap())
@@ -130,16 +167,8 @@ impl Bot {
                             let data = payload.data;
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
-                                log::info!("Retrieving {} {} data", &self.symbol, &self.time_frame);
-
                                 self.instrument.set_data(data).unwrap();
                             } else {
-                                log::info!(
-                                    "Retrieving {} {} data",
-                                    &self.symbol,
-                                    &self.higher_time_frame
-                                );
-
                                 match &mut self.higher_tf_instrument {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
                                         htf_instrument.set_data(data).unwrap();
@@ -220,6 +249,8 @@ impl Bot {
                                 0.,
                                 0.,
                             );
+
+                            self.last_update = to_dbtime(Local::now());
 
                             //Send bot data
                             let update_bot_data_command = Command {
@@ -337,10 +368,12 @@ impl BotBuilder {
                 .unwrap();
 
             Ok(Bot {
+                uuid: uuid::Uuid::new(),
                 symbol,
                 market,
                 time_frame,
                 date_start: to_dbtime(Local::now()),
+                last_update: to_dbtime(Local::now()),
                 higher_time_frame,
                 websocket,
                 instrument,
