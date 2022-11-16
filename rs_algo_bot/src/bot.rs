@@ -1,20 +1,22 @@
 use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::helpers::vars::*;
 use crate::message;
-use crate::strategies;
+
 use crate::strategies::stats::*;
 use crate::strategies::strategy::*;
-use rs_algo_shared::broker::{LECHES, VEC_DOHLC};
+
+use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::date::*;
-use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
 use rs_algo_shared::models::market::*;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
-use rs_algo_shared::scanner::instrument::{self, HigherTMInstrument, Instrument};
+use rs_algo_shared::scanner::instrument::{HigherTMInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use std::time::Duration;
+use tokio::time;
 
 #[derive(Serialize)]
 pub struct Bot {
@@ -153,10 +155,10 @@ impl Bot {
                             log::info!("{} stream data received", &self.symbol);
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
-                                let adapted = parse_data_timeframe(data, time_frame);
+                                let _adapted = parse_data_timeframe(data, time_frame);
                                 self.instrument.next(data).unwrap();
                             } else {
-                                let adapted =
+                                let _adapted =
                                     parse_data_timeframe(data, self.higher_time_frame.clone());
 
                                 match &mut self.higher_tf_instrument {
@@ -265,7 +267,7 @@ impl BotBuilder {
         }
     }
     pub fn symbol(mut self, val: String) -> Self {
-        self.symbol = Some(String::from(val));
+        self.symbol = Some(val);
         self
     }
 

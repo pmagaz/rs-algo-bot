@@ -4,7 +4,7 @@ use crate::strategies;
 use async_trait::async_trait;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
-use rs_algo_shared::models::backtest_instrument::*;
+
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::trade::*;
@@ -62,7 +62,7 @@ pub trait Strategy: DynClone {
 
         let order_size = env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
-        let start_date = match data.first().map(|x| x.date) {
+        let _start_date = match data.first().map(|x| x.date) {
             Some(date) => date.to_string(),
             None => "".to_string(),
         };
@@ -73,7 +73,7 @@ pub trait Strategy: DynClone {
                 self.market_out_fn(index, instrument, higher_tf_instrument, trade_in);
         }
 
-        if !open_positions && self.there_are_funds(&trades_out) {
+        if !open_positions && self.there_are_funds(trades_out) {
             trade_in_result =
                 self.market_in_fn(index, instrument, higher_tf_instrument, order_size);
         }
@@ -129,7 +129,7 @@ pub trait Strategy: DynClone {
         } else {
             exit_type = TradeType::None
         }
-        let stop_loss = true;
+        let _stop_loss = true;
 
         resolve_trade_out(index, instrument, trade_in, exit_type)
     }
@@ -143,11 +143,7 @@ pub trait Strategy: DynClone {
 
     fn there_are_funds(&mut self, trades_out: &Vec<TradeOut>) -> bool {
         let profit: f64 = trades_out.iter().map(|trade| trade.profit_per).sum();
-        if profit > -90. {
-            true
-        } else {
-            false
-        }
+        profit > -90.
     }
 
     fn update_stats(

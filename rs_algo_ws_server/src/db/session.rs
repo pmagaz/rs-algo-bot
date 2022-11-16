@@ -1,9 +1,9 @@
 use bson::doc;
-use futures::stream::StreamExt;
+
 use mongodb::error::Error;
-use mongodb::options::{FindOneAndReplaceOptions, FindOneOptions, FindOptions};
+use mongodb::options::{FindOneAndReplaceOptions, FindOneOptions};
 pub use mongodb::Client;
-use mongodb::Collection;
+
 use rs_algo_shared::scanner::instrument::*;
 use rs_algo_shared::ws::message::*;
 use std::env;
@@ -45,7 +45,7 @@ pub async fn upsert(client: &Client, doc: &SessionData) -> Result<Option<Session
         .database(db_name)
         .collection::<SessionData>(collection_name);
 
-    let session = collection
+    collection
         .find_one_and_replace(
             doc! {"_id": doc.id},
             doc,
@@ -53,7 +53,5 @@ pub async fn upsert(client: &Client, doc: &SessionData) -> Result<Option<Session
                 .upsert(Some(true))
                 .build(),
         )
-        .await;
-
-    session
+        .await
 }

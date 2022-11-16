@@ -1,13 +1,13 @@
-use round::round;
+
 use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::helpers::date::*;
-use rs_algo_shared::models::market::*;
-use rs_algo_shared::models::stop_loss::*;
-use rs_algo_shared::models::strategy::*;
+
+
+
 use rs_algo_shared::models::trade::*;
-use rs_algo_shared::models::trade::*;
+
 use rs_algo_shared::scanner::instrument::Instrument;
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 
 #[derive(Serialize)]
 pub struct StrategyStats {
@@ -62,9 +62,9 @@ pub fn calculate_stats(
     let _size = 1.;
     let data = &instrument.data;
     if !trades_out.is_empty() {
-        let date_start = trades_out[0].date_in;
-        let date_end = trades_out.last().unwrap().date_out;
-        let sessions: usize = trades_out.iter().fold(0, |mut acc, x| {
+        let _date_start = trades_out[0].date_in;
+        let _date_end = trades_out.last().unwrap().date_out;
+        let _sessions: usize = trades_out.iter().fold(0, |mut acc, x| {
             acc += x.index_out - x.index_in;
             acc
         });
@@ -92,12 +92,12 @@ pub fn calculate_stats(
         let initial_order_amount = (first.price_in * first.quantity).ceil();
         let profit_factor = total_profit_factor(gross_profits, gross_loses);
 
-        let net_profit_per = total_profit_per(equity, net_profit, &trades_in, &trades_out);
+        let net_profit_per = total_profit_per(equity, net_profit, trades_in, trades_out);
         //let net_profit_per = total_profit_per(equity, net_profit);
         let profitable_trades = total_profitable_trades(wining_trades, trades);
-        let max_drawdown = total_drawdown(&trades_out, equity);
+        let max_drawdown = total_drawdown(trades_out, equity);
 
-        let max_runup = total_runup(&trades_out, equity);
+        let max_runup = total_runup(trades_out, equity);
 
         let strategy_start_price = match instrument.data.first().map(|x| x.open) {
             Some(open) => open,
@@ -132,7 +132,7 @@ pub fn calculate_stats(
             instrument.symbol.to_owned()
         );
         //BackTestResult::None
-        let fake_date = to_dbtime(Local::now() - Duration::days(1000));
+        let _fake_date = to_dbtime(Local::now() - Duration::days(1000));
         StrategyStats::new()
     }
 }

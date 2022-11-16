@@ -4,17 +4,18 @@ use crate::handlers::*;
 use crate::heart_beat;
 use crate::message;
 
-use crate::handlers::session::{Session, Sessions};
+use crate::handlers::session::Sessions;
 use rs_algo_shared::broker::xtb_stream::*;
-use rs_algo_shared::broker::*;
 
 use futures_channel::mpsc::unbounded;
-use futures_util::{future, pin_mut, stream::TryStreamExt, SinkExt, StreamExt};
+use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
 
 use std::sync::Arc;
+use std::time::Duration;
 use std::{collections::HashMap, env, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
+use tokio::time;
 use tokio_tungstenite::accept_async;
 use tungstenite::protocol::Message;
 
@@ -59,6 +60,7 @@ async fn handle_session(
     let password = &env::var("BROKER_PASSWORD").unwrap();
     let mut broker = Xtb::new().await;
     broker.login(username, password).await.unwrap();
+
     let broker = Arc::new(Mutex::new(broker));
 
     loop {
@@ -70,13 +72,13 @@ async fn handle_session(
         let new_session = session::create(&mut sessions, &addr, recipient).await;
 
         let (outgoing, incoming) = ws_stream.split();
+        let broker = Arc::clone(&broker);
 
         let broadcast_incoming = incoming.try_for_each(|msg| {
             let broker = Arc::clone(&broker);
             let db_client = Arc::clone(&db_client);
             let mut sessions = Arc::clone(&sessions);
             let new_session = new_session.clone();
-
             async move {
                 match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
                     Some(msg) => message::send(&new_session, Message::Text(msg)).await,

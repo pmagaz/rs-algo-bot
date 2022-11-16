@@ -8,13 +8,10 @@ use serde_json::Value;
 use std::str::FromStr;
 
 pub fn parse(msg: &str) -> Response {
-    if msg.len() > 0 {
-        let parsed: Value = serde_json::from_str(&msg).expect("Can't parse to JSON");
+    if !msg.is_empty() {
+        let parsed: Value = serde_json::from_str(msg).expect("Can't parse to JSON");
         let response = parsed["response"].as_str();
-        let symbol = match parsed["payload"]["symbol"].as_str() {
-            Some(symbol) => symbol,
-            None => "",
-        };
+        let symbol = parsed["payload"]["symbol"].as_str().unwrap_or("");
 
         let time_frame = match parsed["payload"]["time_frame"].as_str() {
             Some(tm) => TimeFrameType::from_str(tm),
@@ -30,7 +27,7 @@ pub fn parse(msg: &str) -> Response {
                 response: ResponseType::GetInstrumentData,
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
-                    time_frame: time_frame,
+                    time_frame,
                     data: parse_dohlc(&parsed["payload"]["data"]),
                 }),
             }),
@@ -38,7 +35,7 @@ pub fn parse(msg: &str) -> Response {
                 response: ResponseType::SubscribeStream,
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
-                    time_frame: time_frame,
+                    time_frame,
                     data: parse_stream(&parsed["payload"]),
                 }),
             }),

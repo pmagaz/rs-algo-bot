@@ -9,7 +9,7 @@ use rs_algo_shared::ws::message::*;
 use std::{
     collections::HashMap,
     net::SocketAddr,
-    sync::{Arc, PoisonError},
+    sync::{Arc},
 };
 use tokio::sync::Mutex;
 use tungstenite::protocol::Message;
@@ -90,7 +90,7 @@ where
     };
 }
 
-pub async fn find<'a, F>(sessions: &'a mut Sessions, addr: &SocketAddr, mut callback: F)
+pub async fn find<'a, F>(sessions: &'a mut Sessions, addr: &SocketAddr, callback: F)
 where
     F: Send + FnOnce(&mut Session),
     // F: 'static + Send + FnMut(Message) -> T,
@@ -127,7 +127,7 @@ pub async fn create<'a>(
 }
 
 pub async fn update_db_session(data: &SessionData, db_client: &mongodb::Client) {
-    let db_session = db::session::upsert(&db_client, data).await.unwrap();
+    let _db_session = db::session::upsert(db_client, data).await.unwrap();
 }
 
 // pub async fn update2(data: SessionData, db_client: &mongodb::Client) {

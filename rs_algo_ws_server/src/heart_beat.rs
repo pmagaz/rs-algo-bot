@@ -1,8 +1,8 @@
-use crate::handlers::session::{Session, SessionStatus, Sessions};
-use crate::handlers::{self, *};
+use crate::handlers::session::{SessionStatus, Sessions};
+use crate::handlers::{self};
 use crate::message;
 
-use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local, Utc};
+use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local};
 
 use std::env;
 use std::net::SocketAddr;
@@ -17,7 +17,6 @@ pub async fn init(sessions: &mut Sessions, addr: SocketAddr) {
         .parse::<u64>()
         .unwrap();
     let mut interval = time::interval(Duration::from_millis(hb_interval));
-
     check(&mut sessions).await;
 
     tokio::spawn(async move {
@@ -32,7 +31,6 @@ pub async fn check(sessions: &mut Sessions) {
     let mut sessions = sessions.clone();
 
     let hb_client_timeout = env::var("MSG_TIMEOUT").unwrap().parse::<u64>().unwrap();
-
     tokio::spawn(async move {
         let mut interval = time::interval(Duration::from_millis(hb_client_timeout));
 
