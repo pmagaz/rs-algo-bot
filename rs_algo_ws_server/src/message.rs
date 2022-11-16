@@ -1,8 +1,10 @@
+use crate::db;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 use crate::helpers::uuid;
 
 use rs_algo_shared::helpers::date::{Duration as Dur, Local};
+use rs_algo_shared::models::bot::Bot;
 use rs_algo_shared::models::strategy;
 use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
 use rs_algo_shared::models::trade;
@@ -122,7 +124,7 @@ where
                     })
                     .await;
 
-                    session::update_db_session(&session_data, db_client).await;
+                    //session::update_db_session(&session_data, db_client).await;
 
                     let time_frame_number = time_frame.to_number();
 
@@ -175,32 +177,16 @@ where
                             ]
                             .concat();
                             log::info!("Updating bot data for {:?}", instrument);
+
+                            let bot: Bot = serde_json::from_value(data.clone()).unwrap();
+
+                            db::bot::upsert(db_client, &bot).await.unwrap();
                         }
                         None => (),
                     }
                     None
                 }
                 CommandType::SubscribeStream => {
-                    // let mut interval2 = time::interval(Duration::from_millis(1000));
-                    // let cloned = Arc::clone(&broker);
-
-                    // tokio::spawn({
-                    //     async move {
-                    //         loop {
-                    //             interval2.tick().await;
-                    //             println!("2222222");
-
-                    //             let cloned = Arc::clone(&cloned);
-                    //             let lehes = match cloned.try_lock() {
-                    //                 Ok(a) => println!("111111"),
-                    //                 Err(a) => println!("errr {:?}", a),
-                    //             };
-                    //             // let mut guard = cloned.try_lock().unwrap();
-                    //             // guard.keepalive_ping().await.unwrap();
-                    //         }
-                    //     }
-                    // });
-
                     session::find(sessions, addr, |session| {
                         stream::listen(broker.clone(), session.clone(), addr, symbol.to_owned());
                     })

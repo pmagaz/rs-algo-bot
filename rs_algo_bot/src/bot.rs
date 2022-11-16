@@ -2,12 +2,13 @@ use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::helpers::vars::*;
 use crate::message;
 
-use crate::strategies::stats::*;
+//use crate::strategies::stats::*;
 use crate::strategies::strategy::*;
 
 use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::market::*;
+use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;

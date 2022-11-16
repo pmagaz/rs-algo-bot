@@ -5,8 +5,11 @@ use async_trait::async_trait;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
+use rs_algo_shared::models::strategy::StrategyStats;
+//use crate::strategies::stats::StrategyStats;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::*;
+
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::scanner::instrument::*;
 use std::cmp::Ordering;
