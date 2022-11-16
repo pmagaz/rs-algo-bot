@@ -90,6 +90,16 @@ where
             log::info!("Client {:?} msg received from {addr}", command);
 
             let data = match command {
+                CommandType::Leches => {
+                    let lehes = match broker.try_lock() {
+                        Ok(a) => println!("111111"),
+                        Err(a) => println!("errr {:?}", a),
+                    };
+
+                    // let res = broker.lock().await.keepalive_ping().await.unwrap();
+                    // drop(res);
+                    None
+                }
                 CommandType::GetInstrumentData => {
                     let max_bars = 200;
                     let mut time_frame: TimeFrameType = TimeFrameType::ERR;
@@ -164,25 +174,25 @@ where
                     None
                 }
                 CommandType::SubscribeStream => {
-                    let mut interval2 = time::interval(Duration::from_millis(1000));
-                    let cloned = Arc::clone(&broker);
+                    // let mut interval2 = time::interval(Duration::from_millis(1000));
+                    // let cloned = Arc::clone(&broker);
 
-                    tokio::spawn({
-                        async move {
-                            loop {
-                                interval2.tick().await;
-                                println!("2222222");
+                    // tokio::spawn({
+                    //     async move {
+                    //         loop {
+                    //             interval2.tick().await;
+                    //             println!("2222222");
 
-                                let cloned = Arc::clone(&cloned);
-                                let lehes = match cloned.try_lock() {
-                                    Ok(a) => println!("111111"),
-                                    Err(a) => println!("errr {:?}", a),
-                                };
-                                // let mut guard = cloned.try_lock().unwrap();
-                                // guard.keepalive_ping().await.unwrap();
-                            }
-                        }
-                    });
+                    //             let cloned = Arc::clone(&cloned);
+                    //             let lehes = match cloned.try_lock() {
+                    //                 Ok(a) => println!("111111"),
+                    //                 Err(a) => println!("errr {:?}", a),
+                    //             };
+                    //             // let mut guard = cloned.try_lock().unwrap();
+                    //             // guard.keepalive_ping().await.unwrap();
+                    //         }
+                    //     }
+                    // });
 
                     session::find(sessions, addr, |session| {
                         stream::listen(broker.clone(), session.clone(), addr, symbol.to_owned());

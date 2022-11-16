@@ -237,6 +237,15 @@ impl Bot {
                 Message::Ping(_txt) => {
                     log::info!("Ping received");
                     self.websocket.pong(b"").await;
+
+                    // let ping_command: Command<bool> = Command {
+                    //     command: CommandType::Leches,
+                    //     data: None,
+                    // };
+                    // self.websocket
+                    //     .send(&serde_json::to_string(&ping_command).unwrap())
+                    //     .await
+                    //     .unwrap();
                 }
                 _ => panic!("Unexpected response type!"),
             };
