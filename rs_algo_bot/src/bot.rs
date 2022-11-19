@@ -49,9 +49,9 @@ impl Bot {
         BotBuilder::new()
     }
 
-    pub async fn run(&mut self) {
+    pub async fn create_session(&mut self) {
         log::info!(
-            "Starting session data for {} {}",
+            "Creating session data for {} {}",
             &self.symbol,
             &self.time_frame
         );
@@ -83,8 +83,14 @@ impl Bot {
             .send(&serde_json::to_string(&start_session_data).unwrap())
             .await
             .unwrap();
+    }
 
-        log::info!("Requesting {} {} data", &self.symbol, &self.time_frame);
+    pub async fn get_instrument_data(&mut self) {
+        log::info!(
+            "Requesting {} {} instrument data",
+            &self.symbol,
+            &self.time_frame
+        );
 
         let get_instrument_data = Command {
             command: CommandType::GetInstrumentData,
@@ -130,7 +136,9 @@ impl Bot {
                 .await
                 .unwrap();
         }
+    }
 
+    pub async fn subscribing_to_stream(&mut self) {
         log::info!(
             "Subscribing to {} {} stream",
             &self.symbol,
@@ -151,6 +159,11 @@ impl Bot {
             .send(&serde_json::to_string(&subscribe_command).unwrap())
             .await
             .unwrap();
+    }
+    pub async fn run(&mut self) {
+        self.create_session().await;
+        self.get_instrument_data().await;
+        self.subscribing_to_stream().await;
 
         loop {
             let msg = self.websocket.read().await.unwrap();
