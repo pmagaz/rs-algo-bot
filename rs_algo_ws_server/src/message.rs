@@ -3,7 +3,7 @@ use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 
 use rs_algo_shared::helpers::date::{Duration as Dur, Local};
-use rs_algo_shared::models::bot::Bot;
+use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade;
 use rs_algo_shared::ws::message::*;
@@ -97,24 +97,31 @@ where
                     let session_data = match &query.data {
                         Some(data) => {
                             log::info!(
-                                "Starting session data for {:?}_{:?}",
-                                data["symbol"],
-                                data["time_frame"]
+                                "Starting session data for {}_{} {}",
+                                data["symbol"].as_str().unwrap(),
+                                data["time_frame"].as_str().unwrap(),
+                                data["_id"].as_str().unwrap()
                             );
 
-                            let session: SessionData =
-                                serde_json::from_value(data.clone()).unwrap();
-                            Some(session)
+                            let bot: BotData = serde_json::from_value(data.clone()).unwrap();
+                            //CONTINUE HERE FIND PREVIOUS SESSION, IF NOT CREATE
+                            db::bot::upsert(db_client, &bot).await.unwrap();
+                            Some(bot)
                         }
                         None => None,
                     }
                     .unwrap();
 
-                    session::find(sessions, addr, |session| {
-                        *session = session.update_data(session_data.clone()).clone();
-                    })
-                    .await;
-                    None
+                    // session::find(sessions, addr, |session| {
+                    //     *session = session.update_data(session_data.clone()).clone();
+                    // })
+                    // .await;
+
+                    let response = ResponseBody {
+                        response: ResponseType::InitSession,
+                        payload: Some(session_data),
+                    };
+                    Some(serde_json::to_string(&response).unwrap())
                 }
                 CommandType::GetInstrumentData => {
                     let max_bars = 200;
@@ -140,7 +147,7 @@ where
                     Some(serde_json::to_string(&res).unwrap())
                 }
                 CommandType::ExecuteTrade => {
-                    log::info!("Executing trade..");
+                    log::info!("Executing trade...");
 
                     match &query.data {
                         Some(trade) => {
@@ -176,7 +183,7 @@ where
                             .concat();
                             log::info!("Updating bot data for {:?}", instrument);
 
-                            let bot: Bot = serde_json::from_value(data.clone()).unwrap();
+                            let bot: BotData = serde_json::from_value(data.clone()).unwrap();
 
                             db::bot::upsert(db_client, &bot).await.unwrap();
                         }

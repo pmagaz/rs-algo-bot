@@ -1,6 +1,7 @@
 use rs_algo_shared::broker::{LECHES, VEC_DOHLC};
 use rs_algo_shared::helpers::date::DateTime;
 use rs_algo_shared::helpers::date::*;
+use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::ws::message::*;
 
@@ -22,6 +23,10 @@ pub fn parse(msg: &str) -> Response {
             Some("Connected") => Response::Connected(ResponseBody {
                 response: ResponseType::Connected,
                 payload: None,
+            }),
+            Some("InitSession") => Response::InitSession(ResponseBody {
+                response: ResponseType::InitSession,
+                payload: Some(parse_bot_data(&parsed["payload"])),
             }),
             Some("GetInstrumentData") => Response::InstrumentData(ResponseBody {
                 response: ResponseType::GetInstrumentData,
@@ -50,6 +55,11 @@ pub fn parse(msg: &str) -> Response {
             payload: None,
         })
     }
+}
+
+pub fn parse_bot_data(data: &Value) -> BotData {
+    let bot_data: BotData = serde_json::from_value(data.clone()).unwrap();
+    bot_data
 }
 
 pub fn parse_dohlc(data: &Value) -> DOHLC {

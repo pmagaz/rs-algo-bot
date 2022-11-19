@@ -1,11 +1,10 @@
-use bson::doc;
+use crate::handlers::session::*;
+use rs_algo_shared::scanner::instrument::*;
 
+use bson::doc;
 use mongodb::error::Error;
 use mongodb::options::{FindOneAndReplaceOptions, FindOneOptions};
 pub use mongodb::Client;
-
-use rs_algo_shared::scanner::instrument::*;
-use rs_algo_shared::ws::message::*;
 use std::env;
 
 pub struct Db {

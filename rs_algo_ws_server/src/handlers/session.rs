@@ -1,11 +1,13 @@
 use crate::db;
-use bson::Uuid;
-use futures::Future;
-use futures_channel::mpsc::UnboundedSender;
 use rs_algo_shared::helpers::date::*;
+use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::ws::message::*;
+
+use futures::Future;
+use futures_channel::mpsc::UnboundedSender;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 use tungstenite::protocol::Message;
@@ -15,6 +17,16 @@ pub enum SessionStatus {
     Up,
     Down,
     Connecting,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionData {
+    #[serde(rename = "_id")]
+    pub id: Uuid,
+    pub strategy: String,
+    pub strategy_type: StrategyType,
+    pub symbol: String,
+    pub time_frame: TimeFrameType,
 }
 
 #[derive(Debug, Clone)]
@@ -122,7 +134,7 @@ pub async fn create<'a>(
 }
 
 pub async fn update_db_session(data: &SessionData, db_client: &mongodb::Client) {
-    let _db_session = db::session::upsert(db_client, data).await.unwrap();
+    db::session::upsert(db_client, data).await.unwrap();
 }
 
 pub async fn destroy<'a>(sessions: &'a mut Sessions, addr: &SocketAddr) {

@@ -4,7 +4,7 @@ use mongodb::error::Error;
 use mongodb::options::{FindOneAndReplaceOptions, FindOneOptions};
 pub use mongodb::Client;
 
-use rs_algo_shared::models::bot::Bot;
+use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::scanner::instrument::*;
 use rs_algo_shared::ws::message::*;
 use std::env;
@@ -24,25 +24,27 @@ pub struct Db {
 //     client.database(db).collection::<T>(collection)
 // }
 
-// pub async fn find_by_symbol(client: &Client, symbol: &str) -> Result<Option<Instrument>, Error> {
-//     let db_name = &env::var("MONGO_BOT_DB_NAME").unwrap();
-//     let collection_name = &env::var("DB_BOT_COLLECTION").unwrap();
-//     let collection = client
-//         .database(db_name)
-//         .collection::<Instrument>(collection_name);
-
-//     let instrument = collection
-//         .find_one(doc! { "symbol": symbol}, FindOneOptions::builder().build())
-//         .await
-//         .unwrap();
-
-//     Ok(instrument)
-// }
-
-pub async fn upsert(client: &Client, doc: &Bot) -> Result<Option<Bot>, Error> {
+pub async fn find_by_symbol(client: &Client, symbol: &str) -> Result<Option<Instrument>, Error> {
     let db_name = &env::var("MONGO_BOT_DB_NAME").unwrap();
     let collection_name = &env::var("DB_BOT_COLLECTION").unwrap();
-    let collection = client.database(db_name).collection::<Bot>(collection_name);
+    let collection = client
+        .database(db_name)
+        .collection::<Instrument>(collection_name);
+
+    let instrument = collection
+        .find_one(doc! { "symbol": symbol}, FindOneOptions::builder().build())
+        .await
+        .unwrap();
+
+    Ok(instrument)
+}
+
+pub async fn upsert(client: &Client, doc: &BotData) -> Result<Option<BotData>, Error> {
+    let db_name = &env::var("MONGO_BOT_DB_NAME").unwrap();
+    let collection_name = &env::var("DB_BOT_COLLECTION").unwrap();
+    let collection = client
+        .database(db_name)
+        .collection::<BotData>(collection_name);
 
     collection
         .find_one_and_replace(

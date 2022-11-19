@@ -5,11 +5,11 @@ use crate::message;
 //use crate::strategies::stats::*;
 use crate::strategies::strategy::*;
 
-use rs_algo_shared::broker::models::DOHLC;
 use rs_algo_shared::helpers::date::Local;
+use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
+use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::market::*;
-use rs_algo_shared::models::strategy;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
@@ -18,8 +18,6 @@ use rs_algo_shared::scanner::instrument::{HigherTMInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
 use serde::Serialize;
-use std::time::Duration;
-use tokio::time;
 
 #[derive(Serialize)]
 pub struct Bot {
@@ -49,13 +47,7 @@ impl Bot {
         BotBuilder::new()
     }
 
-    pub async fn create_session(&mut self) {
-        log::info!(
-            "Creating session data for {} {}",
-            &self.symbol,
-            &self.time_frame
-        );
-
+    pub fn generate_bot_uuid(&mut self) -> Uuid {
         let seed = [
             &self.symbol,
             &self.strategy_name,
@@ -63,34 +55,29 @@ impl Bot {
             &self.strategy_type.to_string(),
         ];
 
-        let time_frame = TimeFrame::new(seed[2]);
-        let uuid = uuid::generate(seed);
+        uuid::generate(seed)
+    }
 
-        let start_session_data = Command {
+    pub async fn init_session(&mut self) {
+        log::info!("Creating session for {}_{}", &self.symbol, &self.time_frame);
+
+        self.uuid = self.generate_bot_uuid();
+
+        self.instrument.init();
+
+        let update_bot_data_command = Command {
             command: CommandType::InitSession,
-            data: Some(SessionData {
-                id: uuid,
-                symbol: seed[0].to_string(),
-                strategy: seed[1].to_string(),
-                time_frame: time_frame.clone(),
-                strategy_type: strategy::from_str(seed[3]),
-            }),
+            data: Some(&self),
         };
 
-        self.uuid = uuid;
-
         self.websocket
-            .send(&serde_json::to_string(&start_session_data).unwrap())
+            .send(&serde_json::to_string(&update_bot_data_command).unwrap())
             .await
             .unwrap();
     }
 
     pub async fn get_instrument_data(&mut self) {
-        log::info!(
-            "Requesting {} {} instrument data",
-            &self.symbol,
-            &self.time_frame
-        );
+        log::info!("Requesting {}_{} data", &self.symbol, &self.time_frame);
 
         let get_instrument_data = Command {
             command: CommandType::GetInstrumentData,
@@ -139,11 +126,7 @@ impl Bot {
     }
 
     pub async fn subscribing_to_stream(&mut self) {
-        log::info!(
-            "Subscribing to {} {} stream",
-            &self.symbol,
-            &self.time_frame
-        );
+        log::info!("Subscribing to {}_{}", &self.symbol, &self.time_frame);
 
         let subscribe_command = Command {
             command: CommandType::SubscribeStream,
@@ -160,10 +143,30 @@ impl Bot {
             .await
             .unwrap();
     }
+
+    pub async fn restore_values(&mut self, data: BotData) {
+        self.date_start = data.date_start().clone();
+        self.trades_in = data.trades_in().clone();
+        self.trades_out = data.trades_out().clone();
+        self.strategy_stats = data.strategy_stats().clone();
+    }
+
+    pub async fn send_bot_status(&mut self) {
+        self.last_update = to_dbtime(Local::now());
+
+        let update_bot_data_command = Command {
+            command: CommandType::UpdateBotData,
+            data: Some(&self),
+        };
+
+        self.websocket
+            .send(&serde_json::to_string(&update_bot_data_command).unwrap())
+            .await
+            .unwrap();
+    }
+
     pub async fn run(&mut self) {
-        self.create_session().await;
-        self.get_instrument_data().await;
-        self.subscribing_to_stream().await;
+        self.init_session().await;
 
         loop {
             let msg = self.websocket.read().await.unwrap();
@@ -172,8 +175,14 @@ impl Bot {
                     let msg = message::parse(&txt);
 
                     match msg {
-                        Response::Connected(res) => {
-                            println!("Connected {:?}", res);
+                        Response::Connected(_res) => {
+                            log::info!("Connected to server");
+                        }
+                        Response::InitSession(res) => {
+                            log::info!("Getting session data");
+                            let bot_data = res.payload.unwrap();
+                            self.restore_values(bot_data).await;
+                            self.get_instrument_data().await;
                         }
                         Response::InstrumentData(res) => {
                             let payload = res.payload.unwrap();
@@ -182,6 +191,8 @@ impl Bot {
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
                                 self.instrument.set_data(data).unwrap();
+                                //MOVE IT!!!!!
+                                self.subscribing_to_stream().await;
                             } else {
                                 match &mut self.higher_tf_instrument {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
@@ -263,18 +274,8 @@ impl Bot {
                                 0.,
                             );
 
-                            self.last_update = to_dbtime(Local::now());
-
                             //Send bot data
-                            let update_bot_data_command = Command {
-                                command: CommandType::UpdateBotData,
-                                data: Some(&self),
-                            };
-
-                            self.websocket
-                                .send(&serde_json::to_string(&update_bot_data_command).unwrap())
-                                .await
-                                .unwrap();
+                            self.send_bot_status().await;
                         }
                         _ => (),
                     };
