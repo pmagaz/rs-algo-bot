@@ -4,13 +4,13 @@ use crate::message;
 use futures_util::StreamExt;
 use rs_algo_shared::broker::xtb_stream::*;
 pub use rs_algo_shared::broker::BrokerStream;
+use std::env;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{env, net::SocketAddr};
 use tokio::sync::Mutex;
 use tokio::time;
 use tungstenite::Message;
-pub fn listen<BK>(broker: Arc<Mutex<BK>>, session: Session, addr: &SocketAddr, symbol: String)
+pub fn listen<BK>(broker: Arc<Mutex<BK>>, session: Session, symbol: String)
 where
     BK: BrokerStream + Send + 'static,
 {

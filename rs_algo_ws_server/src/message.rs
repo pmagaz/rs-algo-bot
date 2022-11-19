@@ -85,6 +85,11 @@ where
                 None => "",
             };
 
+            let time_frame = match &query.data {
+                Some(data) => TimeFrame::new(data["time_frame"].as_str().unwrap()),
+                None => TimeFrameType::ERR,
+            };
+
             log::info!("Client {:?} msg received from {addr}", command);
 
             let data = match command {
@@ -181,7 +186,7 @@ where
                 }
                 CommandType::SubscribeStream => {
                     session::find(sessions, addr, |session| {
-                        stream::listen(broker.clone(), session.clone(), addr, symbol.to_owned());
+                        stream::listen(broker.clone(), session.clone(), symbol.to_owned());
                     })
                     .await;
                     Some("".to_string())

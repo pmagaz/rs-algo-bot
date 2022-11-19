@@ -28,7 +28,7 @@ pub fn parse(msg: &str) -> Response {
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame,
-                    data: parse_dohlc(&parsed["payload"]["data"]),
+                    data: parse_vec_dohlc(&parsed["payload"]["data"]),
                 }),
             }),
             Some("SubscribeStream") => Response::StreamResponse(ResponseBody {
@@ -36,7 +36,7 @@ pub fn parse(msg: &str) -> Response {
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame,
-                    data: parse_stream(&parsed["payload"]),
+                    data: parse_dohlc(&parsed["payload"]),
                 }),
             }),
             _ => Response::Error(ResponseBody {
@@ -52,16 +52,21 @@ pub fn parse(msg: &str) -> Response {
     }
 }
 
-pub fn parse_dohlc(data: &Value) -> VEC_DOHLC {
+pub fn parse_dohlc(data: &Value) -> DOHLC {
+    let obj = data.as_array().unwrap();
+    let date = DateTime::from_str(obj[0].as_str().unwrap()).unwrap();
+    let open = obj[1].as_f64().unwrap();
+    let high = obj[2].as_f64().unwrap();
+    let low = obj[3].as_f64().unwrap();
+    let close = obj[4].as_f64().unwrap();
+    let volume = obj[5].as_f64().unwrap();
+    (date, open, high, low, close, volume)
+}
+
+pub fn parse_vec_dohlc(data: &Value) -> VEC_DOHLC {
     let mut result: VEC_DOHLC = vec![];
     for obj in data.as_array().unwrap() {
-        let date = DateTime::from_str(obj[0].as_str().unwrap()).unwrap();
-        let open = obj[1].as_f64().unwrap();
-        let high = obj[2].as_f64().unwrap();
-        let low = obj[3].as_f64().unwrap();
-        let close = obj[4].as_f64().unwrap();
-        let volume = obj[5].as_f64().unwrap();
-        result.push((date, open, high, low, close, volume));
+        result.push(parse_dohlc(obj));
     }
     result
 }

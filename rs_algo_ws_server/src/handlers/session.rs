@@ -125,14 +125,7 @@ pub async fn update_db_session(data: &SessionData, db_client: &mongodb::Client) 
     let _db_session = db::session::upsert(db_client, data).await.unwrap();
 }
 
-// pub async fn update2(data: SessionData, db_client: &mongodb::Client) {
-//     let data = Session {
-//         session_id: data.id,
-//         symbol: data.symbol,
-//         strategy: data.strategy,
-//         time_frame: data.time_frame,
-//         strategy_type: data.strategy_type,
-//     };
-
-//     let db_session = db::session::upsert(&db_client, &data).await.unwrap();
-// }
+pub async fn destroy<'a>(sessions: &'a mut Sessions, addr: &SocketAddr) {
+    println!("{} session destroyed", &addr);
+    sessions.lock().await.remove(&addr);
+}

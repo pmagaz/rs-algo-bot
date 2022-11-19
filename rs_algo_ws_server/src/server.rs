@@ -90,9 +90,6 @@ async fn handle_session(
         pin_mut!(broadcast_incoming, receive_from_others);
         future::select(broadcast_incoming, receive_from_others).await;
 
-        //handle_disconnect(&mut sessions, &addr);
-
-        // println!("{} disconnected", &addr);
-        // sessions.lock().unwrap().remove(&addr);
+        session::destroy(&mut sessions, &addr).await;
     }
 }

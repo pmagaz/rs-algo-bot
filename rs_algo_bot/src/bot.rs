@@ -5,6 +5,7 @@ use crate::message;
 //use crate::strategies::stats::*;
 use crate::strategies::strategy::*;
 
+use rs_algo_shared::broker::models::DOHLC;
 use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::market::*;
@@ -182,14 +183,13 @@ impl Bot {
                             let time_frame = payload.time_frame;
                             let data = payload.data;
 
-                            log::info!("{} stream data received", &self.symbol);
+                            log::info!("{:?} stream data received", data.clone());
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
-                                let _adapted = parse_data_timeframe(data, time_frame);
+                                let data = adapt_to_time_frame(data, &time_frame);
                                 self.instrument.next(data).unwrap();
                             } else {
-                                let _adapted =
-                                    parse_data_timeframe(data, self.higher_time_frame.clone());
+                                let data = adapt_to_time_frame(data, &self.higher_time_frame);
 
                                 match &mut self.higher_tf_instrument {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
