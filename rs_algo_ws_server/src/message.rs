@@ -5,7 +5,7 @@ use crate::handlers::{session::Session, session::Sessions};
 use rs_algo_shared::helpers::date::{Duration as Dur, Local};
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::time_frame::*;
-use rs_algo_shared::models::trade;
+use rs_algo_shared::models::{trade, trade::*};
 use rs_algo_shared::ws::message::*;
 use serde_json::Value;
 use std::{net::SocketAddr, sync::Arc};
@@ -96,17 +96,31 @@ where
                 CommandType::InitSession => {
                     let session_data = match &query.data {
                         Some(data) => {
-                            log::info!(
-                                "Starting session data for {}_{} {}",
-                                data["symbol"].as_str().unwrap(),
-                                data["time_frame"].as_str().unwrap(),
-                                data["_id"].as_str().unwrap()
-                            );
-
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
-                            //CONTINUE HERE FIND PREVIOUS SESSION, IF NOT CREATE
-                            db::bot::upsert(db_client, &bot).await.unwrap();
-                            Some(bot)
+                            let uuid = bot.uuid();
+
+                            let bot_data = match db::bot::find_by_uuid(db_client, &uuid).await {
+                                Some(bot) => {
+                                    log::info!(
+                                        "Restoring session data for {}_{} {}",
+                                        data["symbol"].as_str().unwrap(),
+                                        data["time_frame"].as_str().unwrap(),
+                                        data["_id"].as_str().unwrap()
+                                    );
+                                    bot
+                                }
+                                None => {
+                                    db::bot::insert(db_client, &bot).await.unwrap();
+                                    log::info!(
+                                        "Creation session data for {}_{} {}",
+                                        data["symbol"].as_str().unwrap(),
+                                        data["time_frame"].as_str().unwrap(),
+                                        data["_id"].as_str().unwrap()
+                                    );
+                                    bot
+                                }
+                            };
+                            Some(bot_data)
                         }
                         None => None,
                     }
@@ -151,22 +165,39 @@ where
 
                     match &query.data {
                         Some(trade) => {
-                            let pricing = broker
-                                .lock()
-                                .await
-                                .get_instrument_pricing(symbol)
-                                .await
-                                .unwrap();
+                            let mut guard = broker.lock().await;
+                            let pricing = guard.get_instrument_pricing(symbol).await.unwrap();
 
                             log::info!("Pricing obtained for {:?}", pricing.payload);
 
                             let trade_type =
                                 trade::type_from_str(trade["trade_type"].as_str().unwrap());
 
+                            log::info!("Executing {:?} trade", trade_type);
+
                             match trade_type {
-                                _EntryLong => (),
-                                _ => (),
-                            };
+                                TradeType::EntryLong => {
+                                    let trade_in: TradeIn =
+                                        serde_json::from_value(trade.clone()).unwrap();
+                                    guard.open_trade(&trade_in).await.unwrap();
+                                }
+                                TradeType::EntryShort => {
+                                    let trade_in: TradeIn =
+                                        serde_json::from_value(trade.clone()).unwrap();
+                                    guard.open_trade(&trade_in).await.unwrap();
+                                }
+                                TradeType::ExitLong => {
+                                    let trade_out: TradeOut =
+                                        serde_json::from_value(trade.clone()).unwrap();
+                                    guard.close_trade(&trade_out).await.unwrap();
+                                }
+                                TradeType::ExitShort => {
+                                    let trade_out: TradeOut =
+                                        serde_json::from_value(trade.clone()).unwrap();
+                                    guard.close_trade(&trade_out).await.unwrap();
+                                }
+                                _ => log::error!("Uknow trade type!"),
+                            }
                         }
                         None => (),
                     };

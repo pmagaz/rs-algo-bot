@@ -8,7 +8,7 @@ use rs_algo_shared::ws::message::*;
 use serde_json::Value;
 use std::str::FromStr;
 
-pub fn parse(msg: &str) -> Response {
+pub fn get_type(msg: &str) -> MessageType {
     if !msg.is_empty() {
         let parsed: Value = serde_json::from_str(msg).expect("Can't parse to JSON");
         let response = parsed["response"].as_str();
@@ -20,15 +20,15 @@ pub fn parse(msg: &str) -> Response {
         };
 
         match response {
-            Some("Connected") => Response::Connected(ResponseBody {
+            Some("Connected") => MessageType::Connected(ResponseBody {
                 response: ResponseType::Connected,
                 payload: None,
             }),
-            Some("InitSession") => Response::InitSession(ResponseBody {
+            Some("InitSession") => MessageType::InitSession(ResponseBody {
                 response: ResponseType::InitSession,
                 payload: Some(parse_bot_data(&parsed["payload"])),
             }),
-            Some("GetInstrumentData") => Response::InstrumentData(ResponseBody {
+            Some("GetInstrumentData") => MessageType::InstrumentData(ResponseBody {
                 response: ResponseType::GetInstrumentData,
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
@@ -36,7 +36,7 @@ pub fn parse(msg: &str) -> Response {
                     data: parse_vec_dohlc(&parsed["payload"]["data"]),
                 }),
             }),
-            Some("SubscribeStream") => Response::StreamResponse(ResponseBody {
+            Some("SubscribeStream") => MessageType::StreamResponse(ResponseBody {
                 response: ResponseType::SubscribeStream,
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
@@ -44,13 +44,13 @@ pub fn parse(msg: &str) -> Response {
                     data: parse_dohlc(&parsed["payload"]),
                 }),
             }),
-            _ => Response::Error(ResponseBody {
+            _ => MessageType::Error(ResponseBody {
                 response: ResponseType::Error,
                 payload: None,
             }),
         }
     } else {
-        Response::Error(ResponseBody {
+        MessageType::Error(ResponseBody {
             response: ResponseType::Error,
             payload: None,
         })

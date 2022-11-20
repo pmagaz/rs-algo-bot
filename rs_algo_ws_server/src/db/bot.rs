@@ -1,13 +1,12 @@
-use bson::doc;
-
 use mongodb::error::Error;
 use mongodb::options::{FindOneAndReplaceOptions, FindOneOptions};
+use mongodb::results::InsertOneResult;
 pub use mongodb::Client;
-
+use rs_algo_shared::helpers::uuid::Uuid;
 use rs_algo_shared::models::bot::BotData;
-use rs_algo_shared::scanner::instrument::*;
-use rs_algo_shared::ws::message::*;
 use std::env;
+
+use bson::doc;
 
 pub struct Db {
     pub client: Client,
@@ -24,19 +23,29 @@ pub struct Db {
 //     client.database(db).collection::<T>(collection)
 // }
 
-pub async fn find_by_symbol(client: &Client, symbol: &str) -> Result<Option<Instrument>, Error> {
+pub async fn find_by_uuid(client: &Client, uuid: &Uuid) -> Option<BotData> {
     let db_name = &env::var("MONGO_BOT_DB_NAME").unwrap();
     let collection_name = &env::var("DB_BOT_COLLECTION").unwrap();
     let collection = client
         .database(db_name)
-        .collection::<Instrument>(collection_name);
+        .collection::<BotData>(collection_name);
 
-    let instrument = collection
-        .find_one(doc! { "symbol": symbol}, FindOneOptions::builder().build())
+    let bot_data = collection
+        .find_one(doc! { "_id": uuid}, FindOneOptions::builder().build())
         .await
         .unwrap();
 
-    Ok(instrument)
+    bot_data
+}
+
+pub async fn insert(client: &Client, bot_data: &BotData) -> Result<InsertOneResult, Error> {
+    let db_name = &env::var("MONGO_BOT_DB_NAME").unwrap();
+    let collection_name = &env::var("DB_BOT_COLLECTION").unwrap();
+    let collection = client
+        .database(db_name)
+        .collection::<BotData>(collection_name);
+
+    collection.insert_one(bot_data, None).await
 }
 
 pub async fn upsert(client: &Client, doc: &BotData) -> Result<Option<BotData>, Error> {
@@ -48,7 +57,7 @@ pub async fn upsert(client: &Client, doc: &BotData) -> Result<Option<BotData>, E
 
     collection
         .find_one_and_replace(
-            doc! {"_id": doc._id.clone()},
+            doc! {"_id": doc.uuid().clone()},
             doc,
             FindOneAndReplaceOptions::builder()
                 .upsert(Some(true))

@@ -17,7 +17,7 @@ use rs_algo_shared::models::trade::*;
 use rs_algo_shared::scanner::instrument::{HigherTMInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 pub struct Bot {
@@ -145,10 +145,25 @@ impl Bot {
     }
 
     pub async fn restore_values(&mut self, data: BotData) {
-        self.date_start = data.date_start().clone();
+        //self.date_start = data.date_start().clone();
         self.trades_in = data.trades_in().clone();
         self.trades_out = data.trades_out().clone();
         self.strategy_stats = data.strategy_stats().clone();
+    }
+
+    pub async fn send_trade<T>(&mut self, trade: &T)
+    where
+        for<'de> T: Serialize + Deserialize<'de>,
+    {
+        let execute_trade = Command {
+            command: CommandType::ExecuteTrade,
+            data: Some(trade),
+        };
+
+        self.websocket
+            .send(&serde_json::to_string(&execute_trade).unwrap())
+            .await
+            .unwrap();
     }
 
     pub async fn send_bot_status(&mut self) {
@@ -172,19 +187,20 @@ impl Bot {
             let msg = self.websocket.read().await.unwrap();
             match msg {
                 Message::Text(txt) => {
-                    let msg = message::parse(&txt);
+                    let msg_type = message::get_type(&txt);
 
-                    match msg {
-                        Response::Connected(_res) => {
+                    match msg_type {
+                        MessageType::Connected(_res) => {
                             log::info!("Connected to server");
                         }
-                        Response::InitSession(res) => {
-                            log::info!("Getting session data");
+                        MessageType::InitSession(res) => {
                             let bot_data = res.payload.unwrap();
+                            log::info!("Getting session data for {}", bot_data.uuid());
+
                             self.restore_values(bot_data).await;
                             self.get_instrument_data().await;
                         }
-                        Response::InstrumentData(res) => {
+                        MessageType::InstrumentData(res) => {
                             let payload = res.payload.unwrap();
                             let time_frame = payload.time_frame;
                             let data = payload.data;
@@ -202,7 +218,7 @@ impl Bot {
                                 };
                             }
                         }
-                        Response::StreamResponse(res) => {
+                        MessageType::StreamResponse(res) => {
                             let payload = res.payload.unwrap();
                             let time_frame = payload.time_frame;
                             let data = payload.data;
@@ -235,32 +251,14 @@ impl Bot {
 
                             match &trade_out_result {
                                 TradeResult::TradeOut(trade_out) => {
-                                    //Call server for sell
-
-                                    let execute_trade_out = Command {
-                                        command: CommandType::ExecuteTrade,
-                                        data: Some(trade_out),
-                                    };
-
-                                    self.websocket
-                                        .send(&serde_json::to_string(&execute_trade_out).unwrap())
-                                        .await
-                                        .unwrap();
+                                    self.send_trade::<TradeOut>(trade_out).await;
                                 }
                                 _ => (),
                             };
 
                             match &trade_in_result {
                                 TradeResult::TradeIn(trade_in) => {
-                                    let execute_trade_in = Command {
-                                        command: CommandType::ExecuteTrade,
-                                        data: Some(trade_in),
-                                    };
-
-                                    self.websocket
-                                        .send(&serde_json::to_string(&execute_trade_in).unwrap())
-                                        .await
-                                        .unwrap();
+                                    self.send_trade::<TradeIn>(trade_in).await;
                                 }
                                 _ => (),
                             };
@@ -283,15 +281,6 @@ impl Bot {
                 Message::Ping(_txt) => {
                     log::info!("Ping received");
                     self.websocket.pong(b"").await;
-
-                    // let ping_command: Command<bool> = Command {
-                    //     command: CommandType::Leches,
-                    //     data: None,
-                    // };
-                    // self.websocket
-                    //     .send(&serde_json::to_string(&ping_command).unwrap())
-                    //     .await
-                    //     .unwrap();
                 }
                 _ => panic!("Unexpected response type!"),
             };
