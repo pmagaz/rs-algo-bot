@@ -263,7 +263,6 @@ impl Bot {
                                 _ => (),
                             };
 
-                            //Update stats
                             self.strategy_stats = self.strategy.update_stats(
                                 &self.instrument,
                                 &self.trades_in,
@@ -272,7 +271,34 @@ impl Bot {
                                 0.,
                             );
 
-                            //Send bot data
+                            self.send_bot_status().await;
+                        }
+                        MessageType::ExecuteTradeIn(res) => {
+                            let trade_in = res.payload.unwrap();
+                            log::info!("TradeIn {} confirmation received", &trade_in.id);
+                            self.trades_in.push(trade_in);
+                            self.strategy_stats = self.strategy.update_stats(
+                                &self.instrument,
+                                &self.trades_in,
+                                &self.trades_out,
+                                0.,
+                                0.,
+                            );
+
+                            self.send_bot_status().await;
+                        }
+                        MessageType::ExecuteTradeOut(res) => {
+                            let trade_out = res.payload.unwrap();
+                            log::info!("TradeOut {} confirmation received", &trade_out.id);
+                            self.trades_out.push(trade_out);
+                            self.strategy_stats = self.strategy.update_stats(
+                                &self.instrument,
+                                &self.trades_in,
+                                &self.trades_out,
+                                0.,
+                                0.,
+                            );
+
                             self.send_bot_status().await;
                         }
                         _ => (),

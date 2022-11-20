@@ -3,6 +3,7 @@ use rs_algo_shared::helpers::date::DateTime;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::time_frame::*;
+use rs_algo_shared::models::trade::*;
 use rs_algo_shared::ws::message::*;
 
 use serde_json::Value;
@@ -44,6 +45,14 @@ pub fn get_type(msg: &str) -> MessageType {
                     data: parse_dohlc(&parsed["payload"]),
                 }),
             }),
+            Some("ExecuteTradeIn") => MessageType::ExecuteTradeIn(ResponseBody {
+                response: ResponseType::ExecuteTradeIn,
+                payload: Some(parse_trade_in(&parsed["payload"])),
+            }),
+            Some("ExecuteTradeOut") => MessageType::ExecuteTradeOut(ResponseBody {
+                response: ResponseType::ExecuteTradeOut,
+                payload: Some(parse_trade_out(&parsed["payload"])),
+            }),
             _ => MessageType::Error(ResponseBody {
                 response: ResponseType::Error,
                 payload: None,
@@ -55,6 +64,16 @@ pub fn get_type(msg: &str) -> MessageType {
             payload: None,
         })
     }
+}
+
+pub fn parse_trade_in(data: &Value) -> TradeIn {
+    let trade_in: TradeIn = serde_json::from_value(data.clone()).unwrap();
+    trade_in
+}
+
+pub fn parse_trade_out(data: &Value) -> TradeOut {
+    let trade_out: TradeOut = serde_json::from_value(data.clone()).unwrap();
+    trade_out
 }
 
 pub fn parse_bot_data(data: &Value) -> BotData {
