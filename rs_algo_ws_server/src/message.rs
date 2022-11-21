@@ -67,7 +67,7 @@ where
             None
         }
         Message::Pong(_) => {
-            log::info!("Client Pong received from {addr} ");
+            //log::info!("Client Pong received from {addr} ");
             session::find(sessions, addr, |session| {
                 *session = session.update_ping().clone();
             })

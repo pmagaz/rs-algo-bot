@@ -2,7 +2,6 @@ use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::helpers::vars::*;
 use crate::message;
 
-//use crate::strategies::stats::*;
 use crate::strategies::strategy::*;
 
 use rs_algo_shared::helpers::date::Local;
@@ -220,24 +219,31 @@ impl Bot {
                         }
                         MessageType::StreamResponse(res) => {
                             let payload = res.payload.unwrap();
-                            let time_frame = payload.time_frame;
                             let data = payload.data;
+                            let data = adapt_to_time_frame(data, &self.time_frame);
 
-                            log::info!("{:?} stream data received", data.clone());
+                            log::info!(
+                                "Processing {}_{} data: {:?}",
+                                &self.symbol,
+                                &self.time_frame,
+                                data
+                            );
 
-                            if is_base_time_frame(&self.time_frame, &time_frame) {
-                                let data = adapt_to_time_frame(data, &time_frame);
-                                self.instrument.next(data).unwrap();
-                            } else {
-                                let data = adapt_to_time_frame(data, &self.higher_time_frame);
+                            self.instrument.next(data).unwrap();
 
-                                match &mut self.higher_tf_instrument {
-                                    HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
-                                        htf_instrument.next(data).unwrap();
-                                    }
-                                    HigherTMInstrument::None => (),
-                                };
-                            }
+                            match &mut self.higher_tf_instrument {
+                                HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
+                                    let data = adapt_to_time_frame(data, &self.higher_time_frame);
+                                    log::info!(
+                                        "Processing {}_{} data: {:?}",
+                                        &self.symbol,
+                                        &self.time_frame,
+                                        data
+                                    );
+                                    htf_instrument.next(data).unwrap();
+                                }
+                                HigherTMInstrument::None => (),
+                            };
 
                             let (trade_out_result, trade_in_result) = self
                                 .strategy
@@ -277,6 +283,7 @@ impl Bot {
                             let trade_in = res.payload.unwrap();
                             log::info!("TradeIn {} confirmation received", &trade_in.id);
                             self.trades_in.push(trade_in);
+
                             self.strategy_stats = self.strategy.update_stats(
                                 &self.instrument,
                                 &self.trades_in,
@@ -291,6 +298,7 @@ impl Bot {
                             let trade_out = res.payload.unwrap();
                             log::info!("TradeOut {} confirmation received", &trade_out.id);
                             self.trades_out.push(trade_out);
+
                             self.strategy_stats = self.strategy.update_stats(
                                 &self.instrument,
                                 &self.trades_in,
@@ -305,7 +313,7 @@ impl Bot {
                     };
                 }
                 Message::Ping(_txt) => {
-                    log::info!("Ping received");
+                    log::info!("HeartBeat received");
                     self.websocket.pong(b"").await;
                 }
                 _ => panic!("Unexpected response type!"),

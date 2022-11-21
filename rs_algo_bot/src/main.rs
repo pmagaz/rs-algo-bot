@@ -7,6 +7,8 @@ use bot::Bot;
 
 use dotenv::dotenv;
 use helpers::vars::*;
+use rs_algo_shared::models::strategy;
+use rs_algo_shared::models::time_frame::TimeFrame;
 use rs_algo_shared::ws::ws_client::WebSocket;
 use std::env;
 
@@ -31,9 +33,9 @@ async fn main() {
     let strategy_type = env::var("STRATEGY_TYPE").unwrap();
 
     let market = get_market(market);
-    let time_frame = get_time_frame(time_frame);
-    let higher_time_frame = get_time_frame(higher_time_frame);
-    let strategy_type = get_strategy_type(strategy_type);
+    let time_frame = TimeFrame::new(&time_frame);
+    let higher_time_frame = TimeFrame::new(&higher_time_frame);
+    let strategy_type = strategy::from_str(&strategy_type);
 
     Bot::new()
         .symbol(symbol)

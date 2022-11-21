@@ -26,6 +26,10 @@ where
 
             let mut broker_stream = Xtb::new().await;
             broker_stream.login(username, password).await.unwrap();
+            broker_stream
+                .get_instrument_data(&symbol, 1, 1)
+                .await
+                .unwrap();
             broker_stream.subscribe_stream(&symbol).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
 
@@ -36,7 +40,7 @@ where
                             Some(data) => {
                                  match data {
                                     Ok(msg) => {
-                                      if msg.is_text() {
+                                    if msg.is_text() {
                                            let txt = BK::parse_stream_data(msg).await;
                                            match txt {
                                                Some(txt) =>  message::send(&session, Message::Text(txt)).await,
