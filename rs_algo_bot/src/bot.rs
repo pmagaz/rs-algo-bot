@@ -202,25 +202,30 @@ impl Bot {
                                     self.subscribing_to_stream().await;
                                 }
                             } else {
-                                match self.higher_tf_instrument.clone() {
-                                    HigherTMInstrument::HigherTMInstrument(mut htf_instrument) => {
-                                        log::info!(
-                                            "HTF Instrument {}_{} data recevied",
-                                            &self.symbol,
-                                            &self.higher_time_frame,
-                                        );
-                                        htf_instrument.set_data(data).unwrap();
-                                        self.subscribing_to_stream().await;
-                                    }
-                                    HigherTMInstrument::None => {}
-                                };
+                                if is_multi_timeframe_strategy(&self.strategy_type) {
+                                    match self.higher_tf_instrument.clone() {
+                                        HigherTMInstrument::HigherTMInstrument(
+                                            mut htf_instrument,
+                                        ) => {
+                                            log::info!(
+                                                "HTF Instrument {}_{} data recevied",
+                                                &self.symbol,
+                                                &self.higher_time_frame,
+                                            );
+                                            htf_instrument.set_data(data).unwrap();
+                                            self.subscribing_to_stream().await;
+                                        }
+                                        HigherTMInstrument::None => {}
+                                    };
+                                }
                             }
                         }
                         MessageType::StreamResponse(res) => {
                             let payload = res.payload.unwrap();
                             let data = payload.data;
-                            let data = adapt_to_time_frame(data, &self.time_frame);
-                            self.instrument.next(data).unwrap();
+                            let stream_data =
+                                adapt_to_time_frame(data, self.instrument.data(), &self.time_frame);
+                            self.instrument.next(stream_data).unwrap();
 
                             log::info!(
                                 "Processed {}_{} data: {:?}",
@@ -232,15 +237,18 @@ impl Bot {
                             if is_multi_timeframe_strategy(&self.strategy_type) {
                                 match &mut self.higher_tf_instrument {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
-                                        let data =
-                                            adapt_to_time_frame(data, &self.higher_time_frame);
+                                        let stream_data = adapt_to_time_frame(
+                                            stream_data,
+                                            self.instrument.data(),
+                                            &self.higher_time_frame,
+                                        );
                                         log::info!(
                                             "Processed {}_{} data: {:?}",
                                             &self.symbol,
                                             &self.higher_time_frame,
                                             data
                                         );
-                                        htf_instrument.next(data).unwrap();
+                                        htf_instrument.next(stream_data).unwrap();
                                     }
                                     HigherTMInstrument::None => {}
                                 };

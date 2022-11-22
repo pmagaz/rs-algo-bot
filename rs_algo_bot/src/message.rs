@@ -1,4 +1,4 @@
-use rs_algo_shared::broker::{LECHES, VEC_DOHLC};
+use rs_algo_shared::broker::{DOHLC, LECHES, VEC_DOHLC};
 use rs_algo_shared::helpers::date::DateTime;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::bot::BotData;
