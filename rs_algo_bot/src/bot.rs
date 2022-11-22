@@ -229,19 +229,22 @@ impl Bot {
                                 data
                             );
 
-                            match &mut self.higher_tf_instrument {
-                                HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
-                                    let data = adapt_to_time_frame(data, &self.higher_time_frame);
-                                    log::info!(
-                                        "Processed {}_{} data: {:?}",
-                                        &self.symbol,
-                                        &self.higher_time_frame,
-                                        data
-                                    );
-                                    htf_instrument.next(data).unwrap();
-                                }
-                                HigherTMInstrument::None => {}
-                            };
+                            if is_multi_timeframe_strategy(&self.strategy_type) {
+                                match &mut self.higher_tf_instrument {
+                                    HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
+                                        let data =
+                                            adapt_to_time_frame(data, &self.higher_time_frame);
+                                        log::info!(
+                                            "Processed {}_{} data: {:?}",
+                                            &self.symbol,
+                                            &self.higher_time_frame,
+                                            data
+                                        );
+                                        htf_instrument.next(data).unwrap();
+                                    }
+                                    HigherTMInstrument::None => {}
+                                };
+                            }
 
                             let (trade_out_result, trade_in_result) = self
                                 .strategy
