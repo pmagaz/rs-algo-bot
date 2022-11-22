@@ -62,8 +62,6 @@ impl Bot {
 
         self.uuid = self.generate_bot_uuid();
 
-        self.instrument.init();
-
         let update_bot_data_command = Command {
             command: CommandType::InitSession,
             data: Some(&self),
@@ -93,14 +91,7 @@ impl Bot {
             .await
             .unwrap();
 
-        let is_multi_timeframe_strategy = match self.strategy_type {
-            StrategyType::OnlyLongMultiTF => true,
-            StrategyType::LongShortMultiTF => true,
-            StrategyType::OnlyShortMultiTF => true,
-            _ => false,
-        };
-
-        if is_multi_timeframe_strategy {
+        if is_multi_timeframe_strategy(&self.strategy_type) {
             let get_higher_instrument_data = Command {
                 command: CommandType::GetInstrumentData,
                 data: Some(Payload {
@@ -206,14 +197,22 @@ impl Bot {
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
                                 self.instrument.set_data(data).unwrap();
-                                //MOVE IT!!!!!
-                                self.subscribing_to_stream().await;
+
+                                if !is_multi_timeframe_strategy(&self.strategy_type) {
+                                    self.subscribing_to_stream().await;
+                                }
                             } else {
-                                match &mut self.higher_tf_instrument {
-                                    HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
+                                match self.higher_tf_instrument.clone() {
+                                    HigherTMInstrument::HigherTMInstrument(mut htf_instrument) => {
+                                        log::info!(
+                                            "HTF Instrument {}_{} data recevied",
+                                            &self.symbol,
+                                            &self.higher_time_frame,
+                                        );
                                         htf_instrument.set_data(data).unwrap();
+                                        self.subscribing_to_stream().await;
                                     }
-                                    HigherTMInstrument::None => (),
+                                    HigherTMInstrument::None => {}
                                 };
                             }
                         }
@@ -221,28 +220,27 @@ impl Bot {
                             let payload = res.payload.unwrap();
                             let data = payload.data;
                             let data = adapt_to_time_frame(data, &self.time_frame);
+                            self.instrument.next(data).unwrap();
 
                             log::info!(
-                                "Processing {}_{} data: {:?}",
+                                "Processed {}_{} data: {:?}",
                                 &self.symbol,
                                 &self.time_frame,
                                 data
                             );
 
-                            self.instrument.next(data).unwrap();
-
                             match &mut self.higher_tf_instrument {
                                 HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
                                     let data = adapt_to_time_frame(data, &self.higher_time_frame);
                                     log::info!(
-                                        "Processing {}_{} data: {:?}",
+                                        "Processed {}_{} data: {:?}",
                                         &self.symbol,
-                                        &self.time_frame,
+                                        &self.higher_time_frame,
                                         data
                                     );
                                     htf_instrument.next(data).unwrap();
                                 }
-                                HigherTMInstrument::None => (),
+                                HigherTMInstrument::None => {}
                             };
 
                             let (trade_out_result, trade_in_result) = self
@@ -268,14 +266,6 @@ impl Bot {
                                 }
                                 _ => (),
                             };
-
-                            self.strategy_stats = self.strategy.update_stats(
-                                &self.instrument,
-                                &self.trades_in,
-                                &self.trades_out,
-                                0.,
-                                0.,
-                            );
 
                             self.send_bot_status().await;
                         }
@@ -394,7 +384,7 @@ impl BotBuilder {
             self.time_frame,
             self.higher_time_frame,
             self.strategy_name,
-            self.strategy_type,
+            self.strategy_type.clone(),
             self.websocket,
         ) {
             let instrument = Instrument::new()
@@ -402,7 +392,32 @@ impl BotBuilder {
                 .market(market.to_owned())
                 .time_frame(time_frame.to_owned())
                 .build()
-                .unwrap();
+                .unwrap()
+                .init();
+
+            let htf_instrument = Instrument::new()
+                .symbol(&symbol)
+                .market(market.to_owned())
+                .time_frame(higher_time_frame.to_owned())
+                .build()
+                .unwrap()
+                .init();
+
+            let higher_tf_instrument = match self.strategy_type {
+                Some(strategy) => match strategy {
+                    StrategyType::OnlyLongMultiTF => {
+                        HigherTMInstrument::HigherTMInstrument(htf_instrument)
+                    }
+                    StrategyType::OnlyShortMultiTF => {
+                        HigherTMInstrument::HigherTMInstrument(htf_instrument)
+                    }
+                    StrategyType::LongShortMultiTF => {
+                        HigherTMInstrument::HigherTMInstrument(htf_instrument)
+                    }
+                    _ => HigherTMInstrument::None,
+                },
+                None => HigherTMInstrument::None,
+            };
 
             Ok(Bot {
                 uuid: uuid::Uuid::new(),
@@ -414,7 +429,7 @@ impl BotBuilder {
                 higher_time_frame,
                 websocket,
                 instrument,
-                higher_tf_instrument: HigherTMInstrument::None,
+                higher_tf_instrument,
                 trades_in: vec![],
                 trades_out: vec![],
                 strategy: set_strategy(&strategy_name),

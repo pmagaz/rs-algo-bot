@@ -5,50 +5,6 @@ use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::trade::*;
 
 use rs_algo_shared::scanner::instrument::Instrument;
-use serde::Serialize;
-
-// #[derive(Serialize)]
-// pub struct StrategyStats {
-//     pub trades: usize,
-//     pub wining_trades: usize,
-//     pub losing_trades: usize,
-//     pub won_per_trade_per: f64,
-//     pub lost_per_trade_per: f64,
-//     pub stop_losses: usize,
-//     pub gross_profit: f64,
-//     pub commissions: f64,
-//     pub net_profit: f64,
-//     pub net_profit_per: f64,
-//     pub profitable_trades: f64,
-//     pub profit_factor: f64,
-//     pub max_runup: f64,
-//     pub max_drawdown: f64,
-//     pub buy_hold: f64,
-//     pub annual_return: f64,
-// }
-
-// impl StrategyStats {
-//     pub fn new() -> StrategyStats {
-//         StrategyStats {
-//             trades: 0,
-//             wining_trades: 0,
-//             losing_trades: 0,
-//             won_per_trade_per: 0.,
-//             lost_per_trade_per: 0.,
-//             stop_losses: 0,
-//             gross_profit: 0.,
-//             commissions: 0.,
-//             net_profit: 0.,
-//             net_profit_per: 0.,
-//             profitable_trades: 0.,
-//             profit_factor: 0.,
-//             max_runup: 0.,
-//             max_drawdown: 0.,
-//             buy_hold: 0.,
-//             annual_return: 0.,
-//         }
-//     }
-// }
 
 pub fn calculate_stats(
     instrument: &Instrument,
@@ -57,6 +13,7 @@ pub fn calculate_stats(
     equity: f64,
     commission: f64,
 ) -> StrategyStats {
+    log::info!("Calculating stats");
     let _size = 1.;
     let data = &instrument.data;
     if !trades_out.is_empty() {
@@ -125,12 +82,6 @@ pub fn calculate_stats(
             annual_return,
         }
     } else {
-        log::info!(
-            "[BACKTEST] Error! backtesing {}",
-            instrument.symbol.to_owned()
-        );
-        //BackTestResult::None
-        let _fake_date = to_dbtime(Local::now() - Duration::days(1000));
         StrategyStats::new()
     }
 }

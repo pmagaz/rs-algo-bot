@@ -1,15 +1,17 @@
 use crate::handlers::session::Session;
 use crate::message;
-
-use futures_util::StreamExt;
 use rs_algo_shared::broker::xtb_stream::*;
 pub use rs_algo_shared::broker::BrokerStream;
+use rs_algo_shared::helpers::date::Local;
+
+use futures_util::StreamExt;
 use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time;
 use tungstenite::Message;
+
 pub fn listen<BK>(broker: Arc<Mutex<BK>>, session: Session, symbol: String)
 where
     BK: BrokerStream + Send + 'static,
@@ -27,7 +29,7 @@ where
             let mut broker_stream = Xtb::new().await;
             broker_stream.login(username, password).await.unwrap();
             broker_stream
-                .get_instrument_data(&symbol, 1, 1)
+                .get_instrument_data(&symbol, 1, Local::now().timestamp())
                 .await
                 .unwrap();
             broker_stream.subscribe_stream(&symbol).await.unwrap();
