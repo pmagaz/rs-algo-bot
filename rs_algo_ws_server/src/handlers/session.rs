@@ -138,6 +138,6 @@ pub async fn update_db_session(data: &SessionData, db_client: &mongodb::Client) 
 }
 
 pub async fn destroy<'a>(sessions: &'a mut Sessions, addr: &SocketAddr) {
-    println!("{} session destroyed", &addr);
+    log::warn!("{} session destroyed", &addr);
     sessions.lock().await.remove(&addr);
 }

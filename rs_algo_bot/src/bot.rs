@@ -116,7 +116,11 @@ impl Bot {
     }
 
     pub async fn subscribing_to_stream(&mut self) {
-        log::info!("Subscribing to {}_{}", &self.symbol, &self.time_frame);
+        log::info!(
+            "Subscribing to {}_{} stream",
+            &self.symbol,
+            &self.time_frame
+        );
 
         let subscribe_command = Command {
             command: CommandType::SubscribeStream,
@@ -135,7 +139,6 @@ impl Bot {
     }
 
     pub async fn restore_values(&mut self, data: BotData) {
-        //self.date_start = data.date_start().clone();
         self.trades_in = data.trades_in().clone();
         self.trades_out = data.trades_out().clone();
         self.strategy_stats = data.strategy_stats().clone();
@@ -185,7 +188,7 @@ impl Bot {
                         }
                         MessageType::InitSession(res) => {
                             let bot_data = res.payload.unwrap();
-                            log::info!("Getting session data for {}", bot_data.uuid());
+                            log::info!("Getting previous session data...");
 
                             self.restore_values(bot_data).await;
                             self.get_instrument_data().await;
@@ -196,6 +199,11 @@ impl Bot {
                             let data = payload.data;
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
+                                log::info!(
+                                    "Instrument {}_{} data recevied",
+                                    &self.symbol,
+                                    &self.time_frame,
+                                );
                                 self.instrument.set_data(data).unwrap();
 
                                 if !is_multi_timeframe_strategy(&self.strategy_type) {
@@ -208,7 +216,7 @@ impl Bot {
                                             mut htf_instrument,
                                         ) => {
                                             log::info!(
-                                                "HTF Instrument {}_{} data recevied",
+                                                "Instrument {}_{} data recevied",
                                                 &self.symbol,
                                                 &self.higher_time_frame,
                                             );
@@ -223,35 +231,36 @@ impl Bot {
                         MessageType::StreamResponse(res) => {
                             let payload = res.payload.unwrap();
                             let data = payload.data;
-                            let stream_data =
-                                adapt_to_time_frame(data, self.instrument.data(), &self.time_frame);
-                            self.instrument.next(stream_data).unwrap();
 
-                            log::info!(
-                                "Processed {}_{} data: {:?}",
-                                &self.symbol,
-                                &self.time_frame,
-                                data
-                            );
+                            let last_candle = self.instrument.data().last().unwrap().clone();
+                            let adapted = adapt_to_time_frame(data, &self.time_frame);
+                            self.instrument.next(adapted, &last_candle).unwrap();
+
+                            log::info!("Candle {}_{} processed", &self.symbol, &self.time_frame,);
 
                             if is_multi_timeframe_strategy(&self.strategy_type) {
                                 match &mut self.higher_tf_instrument {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
-                                        let stream_data = adapt_to_time_frame(
-                                            stream_data,
-                                            self.instrument.data(),
-                                            &self.higher_time_frame,
-                                        );
+                                        let last_htf_candle =
+                                            htf_instrument.data().last().unwrap().clone();
+                                        let adapted =
+                                            adapt_to_time_frame(data, &self.higher_time_frame);
+                                        htf_instrument.next(adapted, &last_htf_candle).unwrap();
+
                                         log::info!(
-                                            "Processed {}_{} data: {:?}",
+                                            "Candle {}_{} processed",
                                             &self.symbol,
                                             &self.higher_time_frame,
-                                            data
                                         );
-                                        htf_instrument.next(stream_data).unwrap();
                                     }
-                                    HigherTMInstrument::None => {}
+                                    HigherTMInstrument::None => (),
                                 };
+
+                                log::info!(
+                                    "Processed {}_{} data",
+                                    &self.symbol,
+                                    &self.higher_time_frame,
+                                );
                             }
 
                             let (trade_out_result, trade_in_result) = self

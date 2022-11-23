@@ -29,7 +29,7 @@ where
             let mut broker_stream = Xtb::new().await;
             broker_stream.login(username, password).await.unwrap();
             broker_stream
-                .get_instrument_data(&symbol, 10080, Local::now().timestamp())
+                .get_instrument_data(&symbol, 1, Local::now().timestamp())
                 .await
                 .unwrap();
             broker_stream.subscribe_stream(&symbol).await.unwrap();
