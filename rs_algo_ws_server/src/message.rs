@@ -81,6 +81,8 @@ where
                 serde_json::from_str(&msg).expect("ERROR parsing Command JSON");
 
             let command = query.command;
+
+            println!("33333333 {:?}", command);
             let symbol = match &query.data {
                 Some(data) => data["symbol"].as_str().unwrap(),
                 None => "",
