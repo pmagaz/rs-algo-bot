@@ -53,6 +53,7 @@ pub trait Strategy: DynClone {
         trades_in: &Vec<TradeIn>,
         trades_out: &Vec<TradeOut>,
     ) -> (TradeResult, TradeResult) {
+        log::info!("Strategy tick");
         let data = &instrument.data;
         let index = data.len() - 1;
         let mut trade_in_result = TradeResult::None;
@@ -90,6 +91,7 @@ pub trait Strategy: DynClone {
         order_size: f64,
     ) -> TradeResult {
         let entry_type: TradeType;
+        log::info!("Market in");
 
         if self.entry_long(index, instrument, upper_tf_instrument) {
             entry_type = TradeType::EntryLong
@@ -101,7 +103,7 @@ pub trait Strategy: DynClone {
 
         let stop_loss = self.stop_loss();
 
-        resolve_trade_in(index, order_size, instrument, entry_type, stop_loss)
+        resolve_bot_trade_in(index, order_size, instrument, entry_type, stop_loss)
     }
 
     fn market_out_fn(
@@ -134,7 +136,7 @@ pub trait Strategy: DynClone {
         }
         let _stop_loss = true;
 
-        resolve_trade_out(index, instrument, trade_in, exit_type)
+        resolve_bot_trade_out(index, instrument, trade_in, exit_type)
     }
     fn stop_loss(&self) -> &StopLoss;
     fn update_stop_loss(&mut self, stop_type: StopLossType, price: f64) -> &StopLoss;

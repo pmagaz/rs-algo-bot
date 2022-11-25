@@ -8,6 +8,7 @@ use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::{trade, trade::*};
 use rs_algo_shared::ws::message::*;
 use serde_json::Value;
+use std::env;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 
@@ -138,7 +139,7 @@ where
                     Some(serde_json::to_string(&response).unwrap())
                 }
                 CommandType::GetInstrumentData => {
-                    let max_bars = 200;
+                    let max_bars = env::var("MAX_BARS").unwrap().parse::<i32>().unwrap();
 
                     let time_frame = match &query.data {
                         Some(data) => TimeFrame::new(data["time_frame"].as_str().unwrap()),

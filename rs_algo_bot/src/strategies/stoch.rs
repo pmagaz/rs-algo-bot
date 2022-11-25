@@ -8,8 +8,6 @@ use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
 
-
-
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
@@ -65,6 +63,8 @@ impl<'a> Strategy for Stoch<'a> {
         instrument: &Instrument,
         _upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
+        log::info!("Entry Long");
+
         let prev_index = get_prev_index(index);
         let stoch = &instrument.indicators.stoch;
         let current_stoch_a = stoch.get_data_a().get(index).unwrap();
@@ -72,8 +72,9 @@ impl<'a> Strategy for Stoch<'a> {
 
         let current_stoch_b = stoch.get_data_b().get(index).unwrap();
         let prev_stoch_b = stoch.get_data_b().get(prev_index).unwrap();
-
-        current_stoch_a <= &20. && current_stoch_a > current_stoch_b && prev_stoch_a <= prev_stoch_b
+        let is_closed = instrument.data().last().unwrap().is_closed();
+        true
+        //current_stoch_a <= &20. && current_stoch_a > current_stoch_b && prev_stoch_a <= prev_stoch_b
     }
 
     fn exit_long(

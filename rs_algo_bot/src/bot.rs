@@ -175,6 +175,7 @@ impl Bot {
 
     pub async fn run(&mut self) {
         self.init_session().await;
+        let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
 
         loop {
             let msg = self.websocket.read().await.unwrap();
@@ -184,11 +185,11 @@ impl Bot {
 
                     match msg_type {
                         MessageType::Connected(_res) => {
-                            log::info!("Connected to server");
+                            log::info!("{} connected to server", bot_str);
                         }
                         MessageType::InitSession(res) => {
                             let bot_data = res.payload.unwrap();
-                            log::info!("Getting previous session data...");
+                            log::info!("Getting {} previous session", bot_str);
 
                             self.restore_values(bot_data).await;
                             self.get_instrument_data().await;
@@ -199,11 +200,7 @@ impl Bot {
                             let data = payload.data;
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
-                                log::info!(
-                                    "Instrument {}_{} data recevied",
-                                    &self.symbol,
-                                    &self.time_frame,
-                                );
+                                log::info!("Instrument {} data received", bot_str);
                                 self.instrument.set_data(data).unwrap();
 
                                 if !is_multi_timeframe_strategy(&self.strategy_type) {
@@ -216,10 +213,11 @@ impl Bot {
                                             mut htf_instrument,
                                         ) => {
                                             log::info!(
-                                                "Instrument {}_{} data recevied",
+                                                "Instrument {}_{} data received",
                                                 &self.symbol,
-                                                &self.higher_time_frame,
+                                                &self.higher_time_frame
                                             );
+
                                             htf_instrument.set_data(data).unwrap();
                                             self.subscribing_to_stream().await;
                                         }
@@ -236,7 +234,7 @@ impl Bot {
                             let adapted = adapt_to_time_frame(data, &self.time_frame);
                             self.instrument.next(adapted, &last_candle).unwrap();
 
-                            log::info!("Candle {}_{} processed", &self.symbol, &self.time_frame,);
+                            log::info!("{} candle processed", bot_str);
 
                             if is_multi_timeframe_strategy(&self.strategy_type) {
                                 match &mut self.higher_tf_instrument {
@@ -248,19 +246,15 @@ impl Bot {
                                         htf_instrument.next(adapted, &last_htf_candle).unwrap();
 
                                         log::info!(
-                                            "Candle {}_{} processed",
+                                            "{}_{} candle processed",
                                             &self.symbol,
-                                            &self.higher_time_frame,
+                                            &self.higher_time_frame
                                         );
                                     }
                                     HigherTMInstrument::None => (),
                                 };
 
-                                log::info!(
-                                    "Processed {}_{} data",
-                                    &self.symbol,
-                                    &self.higher_time_frame,
-                                );
+                                log::info!("Processed {} data", bot_str);
                             }
 
                             let (trade_out_result, trade_in_result) = self
@@ -286,6 +280,8 @@ impl Bot {
                                 }
                                 _ => (),
                             };
+
+                            log::info!("Sending {} bot data", bot_str);
 
                             self.send_bot_status().await;
                         }
