@@ -91,8 +91,8 @@ impl<'a> Strategy for Stoch<'a> {
 
         let current_stoch_b = stoch.get_data_b().get(index).unwrap();
         let prev_stoch_b = stoch.get_data_b().get(prev_index).unwrap();
-
-        current_stoch_a >= &70. && current_stoch_a < current_stoch_b && prev_stoch_a >= prev_stoch_b
+        true
+        //current_stoch_a >= &70. && current_stoch_a < current_stoch_b && prev_stoch_a >= prev_stoch_b
     }
 
     fn entry_short(

@@ -82,7 +82,6 @@ where
 
             let command = query.command;
 
-            println!("33333333 {:?}", command);
             let symbol = match &query.data {
                 Some(data) => data["symbol"].as_str().unwrap(),
                 None => "",
@@ -164,71 +163,44 @@ where
                     Some(serde_json::to_string(&res).unwrap())
                 }
                 CommandType::ExecuteTrade => {
-                    match &query.data {
+                    let res = match &query.data {
                         Some(trade) => {
                             let mut guard = broker.lock().await;
-                            let pricing = guard.get_instrument_pricing(symbol).await.unwrap();
-
-                            log::info!("Pricing obtained for {:?}", pricing.payload);
 
                             let trade_type =
-                                trade::type_from_str(trade["trade_type"].as_str().unwrap());
+                                trade::type_from_str(trade["data"]["trade_type"].as_str().unwrap());
 
                             log::info!("Executing {:?} trade", trade_type);
 
-                            let txt_trade_result = match trade_type {
-                                TradeType::EntryLong => {
-                                    let trade_in: TradeIn =
+                            let symbol = &trade["symbol"];
+                            let time_frame = &trade["time_frame"];
+
+                            let txt_trade_result = match trade_type.is_entry() {
+                                true => {
+                                    let trade_in: TradeData<TradeIn> =
                                         serde_json::from_value(trade.clone()).unwrap();
-                                    let trade_result = guard.open_trade(&trade_in).await.unwrap();
-                                    let res = ResponseBody {
-                                        response: ResponseType::ExecuteTradeIn,
-                                        payload: Some(trade_result),
-                                    };
-                                    serde_json::to_string(&res).unwrap()
+
+                                    let trade_result = guard.open_trade(trade_in).await.unwrap();
+
+                                    serde_json::to_string(&trade_result).unwrap()
                                 }
-                                TradeType::EntryShort => {
-                                    let trade_in: TradeIn =
+                                false => {
+                                    let trade_out: TradeData<TradeOut> =
                                         serde_json::from_value(trade.clone()).unwrap();
-                                    let trade_result = guard.open_trade(&trade_in).await.unwrap();
-                                    let res = ResponseBody {
-                                        response: ResponseType::ExecuteTradeIn,
-                                        payload: Some(trade_result),
-                                    };
-                                    serde_json::to_string(&res).unwrap()
-                                }
-                                TradeType::ExitLong => {
-                                    let trade_out: TradeOut =
-                                        serde_json::from_value(trade.clone()).unwrap();
-                                    let trade_result = guard.close_trade(&trade_out).await.unwrap();
-                                    let res = ResponseBody {
-                                        response: ResponseType::ExecuteTradeOut,
-                                        payload: Some(trade_result),
-                                    };
-                                    serde_json::to_string(&res).unwrap()
-                                }
-                                TradeType::ExitShort => {
-                                    let trade_out: TradeOut =
-                                        serde_json::from_value(trade.clone()).unwrap();
-                                    let trade_result = guard.close_trade(&trade_out).await.unwrap();
-                                    let res = ResponseBody {
-                                        response: ResponseType::ExecuteTradeOut,
-                                        payload: Some(trade_result),
-                                    };
-                                    serde_json::to_string(&res).unwrap()
-                                }
-                                _ => {
-                                    let err = "Unknown trade type!";
-                                    log::error!("{}", err);
-                                    err.to_owned()
+
+                                    let trade_result = guard.close_trade(trade_out).await.unwrap();
+
+                                    serde_json::to_string(&trade_result).unwrap()
                                 }
                             };
+
+                            log::info!("{:?} {}_{} accepted", trade_type, symbol, time_frame);
 
                             Some(txt_trade_result)
                         }
                         None => None,
                     };
-                    None
+                    res
                 }
                 CommandType::UpdateBotData => {
                     match &query.data {

@@ -51,7 +51,7 @@ pub async fn check(sessions: &mut Sessions) {
                     .await;
                     log::error!("Client {addr} not responding",);
                 } else {
-                    log::info!("Client {addr} Ok");
+                    //log::info!("Client {addr} Ok");
                 }
             }
         }

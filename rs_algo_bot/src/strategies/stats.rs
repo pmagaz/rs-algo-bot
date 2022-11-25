@@ -4,7 +4,45 @@ use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::trade::*;
 
+use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::Instrument;
+
+pub fn calculate_trade_stats(
+    trade_in: &TradeIn,
+    trade_out: &TradeOut,
+    data: &Vec<Candle>,
+) -> TradeOut {
+    let price_in = trade_out.price_in;
+    let price_out = trade_out.price_out;
+    let index_in = trade_out.index_in;
+    //FIXME
+    let quantity = 1.;
+    let index = data.len() - 1;
+    let profit = calculate_profit(quantity, price_in, price_out);
+    let profit_per = calculate_profit_per(price_in, price_out);
+    let run_up = calculate_runup(data, price_in, index_in, index);
+    let run_up_per = calculate_runup_per(run_up, price_in);
+    let draw_down = calculate_drawdown(data, price_in, index_in, index);
+    let draw_down_per = calculate_drawdown_per(draw_down, price_in);
+
+    TradeOut {
+        id: 0,
+        index_in: trade_in.index_in,
+        price_in: trade_in.price_in,
+        trade_type: trade_in.trade_type.clone(),
+        date_in: trade_in.date_in,
+        index_out: trade_out.index_out,
+        price_out: trade_out.price_out,
+        date_out: trade_out.date_out,
+        profit,
+        profit_per,
+        run_up,
+        run_up_per,
+        draw_down,
+        draw_down_per,
+    }
+    //let stop_loss_activated = resolve_stop_loss(price_out, &trade_in);
+}
 
 pub fn calculate_stats(
     instrument: &Instrument,
@@ -77,7 +115,7 @@ pub fn calculate_stats(
             profitable_trades,
             profit_factor,
             max_runup,
-            max_drawdown,
+            max_drawdown: 0., //FIXME
             buy_hold,
             annual_return,
         }

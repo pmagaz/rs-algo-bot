@@ -47,11 +47,19 @@ pub fn get_type(msg: &str) -> MessageType {
             }),
             Some("ExecuteTradeIn") => MessageType::ExecuteTradeIn(ResponseBody {
                 response: ResponseType::ExecuteTradeIn,
-                payload: Some(parse_trade_in(&parsed["payload"])),
+                payload: Some(TradeData {
+                    symbol: symbol.to_owned(),
+                    time_frame,
+                    data: parse_trade_in(&parsed["payload"]["data"]),
+                }),
             }),
             Some("ExecuteTradeOut") => MessageType::ExecuteTradeOut(ResponseBody {
-                response: ResponseType::ExecuteTradeOut,
-                payload: Some(parse_trade_out(&parsed["payload"])),
+                response: ResponseType::ExecuteTradeIn,
+                payload: Some(TradeData {
+                    symbol: symbol.to_owned(),
+                    time_frame,
+                    data: parse_trade_out(&parsed["payload"]["data"]),
+                }),
             }),
             _ => MessageType::Error(ResponseBody {
                 response: ResponseType::Error,

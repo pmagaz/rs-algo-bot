@@ -11,6 +11,7 @@ use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::*;
 
 use rs_algo_shared::models::trade::*;
+use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::*;
 use std::cmp::Ordering;
 use std::env;
@@ -91,7 +92,7 @@ pub trait Strategy: DynClone {
         order_size: f64,
     ) -> TradeResult {
         let entry_type: TradeType;
-        log::info!("Market in");
+        log::info!("Market IN fn");
 
         if self.entry_long(index, instrument, upper_tf_instrument) {
             entry_type = TradeType::EntryLong
@@ -113,6 +114,7 @@ pub trait Strategy: DynClone {
         upper_tf_instrument: &HigherTMInstrument,
         mut trade_in: TradeIn,
     ) -> TradeResult {
+        log::info!("Market OUT fn");
         let exit_type: TradeType;
 
         let stop_loss = self.stop_loss();
@@ -160,6 +162,15 @@ pub trait Strategy: DynClone {
         commission: f64,
     ) -> StrategyStats {
         calculate_stats(instrument, trades_in, trades_out, equity, commission)
+    }
+
+    fn update_trade_stats(
+        &self,
+        trade_in: &TradeIn,
+        trade_out: &TradeOut,
+        data: &Vec<Candle>,
+    ) -> TradeOut {
+        calculate_trade_stats(trade_in, trade_out, data)
     }
 }
 

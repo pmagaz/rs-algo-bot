@@ -144,13 +144,17 @@ impl Bot {
         self.strategy_stats = data.strategy_stats().clone();
     }
 
-    pub async fn send_trade<T>(&mut self, trade: &T)
+    pub async fn send_trade<T>(&mut self, trade: &T, symbol: String, time_frame: TimeFrameType)
     where
         for<'de> T: Serialize + Deserialize<'de>,
     {
         let execute_trade = Command {
             command: CommandType::ExecuteTrade,
-            data: Some(trade),
+            data: Some(TradeData {
+                symbol,
+                time_frame,
+                data: trade,
+            }),
         };
 
         self.websocket
@@ -269,14 +273,24 @@ impl Bot {
 
                             match &trade_out_result {
                                 TradeResult::TradeOut(trade_out) => {
-                                    self.send_trade::<TradeOut>(trade_out).await;
+                                    self.send_trade::<TradeOut>(
+                                        trade_out,
+                                        self.symbol.clone(),
+                                        self.time_frame.clone(),
+                                    )
+                                    .await;
                                 }
                                 _ => (),
                             };
 
                             match &trade_in_result {
                                 TradeResult::TradeIn(trade_in) => {
-                                    self.send_trade::<TradeIn>(trade_in).await;
+                                    self.send_trade::<TradeIn>(
+                                        trade_in,
+                                        self.symbol.clone(),
+                                        self.time_frame.clone(),
+                                    )
+                                    .await;
                                 }
                                 _ => (),
                             };
@@ -287,8 +301,8 @@ impl Bot {
                         }
                         MessageType::ExecuteTradeIn(res) => {
                             let trade_in = res.payload.unwrap();
-                            log::info!("TradeIn {} confirmation received", &trade_in.id);
-                            self.trades_in.push(trade_in);
+                            log::info!("TradeIn {} accepted", &trade_in.data.id);
+                            self.trades_in.push(trade_in.data);
 
                             self.strategy_stats = self.strategy.update_stats(
                                 &self.instrument,
@@ -302,8 +316,15 @@ impl Bot {
                         }
                         MessageType::ExecuteTradeOut(res) => {
                             let trade_out = res.payload.unwrap();
-                            log::info!("TradeOut {} confirmation received", &trade_out.id);
-                            self.trades_out.push(trade_out);
+                            log::info!("TradeOut {} accepted", &trade_out.data.id);
+
+                            let updated_trade_out = self.strategy.update_trade_stats(
+                                &self.trades_in.last().unwrap(),
+                                &trade_out.data,
+                                &self.instrument.data,
+                            );
+
+                            self.trades_out.push(updated_trade_out);
 
                             self.strategy_stats = self.strategy.update_stats(
                                 &self.instrument,
@@ -319,7 +340,7 @@ impl Bot {
                     };
                 }
                 Message::Ping(_txt) => {
-                    log::info!("HeartBeat received");
+                    //log::info!("HeartBeat received");
                     self.websocket.pong(b"").await;
                 }
                 _ => panic!("Unexpected response type!"),
