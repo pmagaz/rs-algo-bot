@@ -1,3 +1,6 @@
+use std::cmp::Ordering;
+use std::env;
+
 use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::helpers::vars::*;
 use crate::message;
@@ -192,8 +195,22 @@ impl Bot {
                             log::info!("{} connected to server", bot_str);
                         }
                         MessageType::InitSession(res) => {
-                            let bot_data = res.payload.unwrap();
                             log::info!("Getting {} previous session", bot_str);
+
+                            let bot_data = res.payload.unwrap();
+                            let trades_in = bot_data.trades_in().len();
+                            let trades_out = bot_data.trades_out().len();
+                            let num_active_trades = trades_in - trades_out;
+                            match trades_in.cmp(&trades_out) {
+                                Ordering::Greater => {
+                                    log::info!("{} opened trades found", num_active_trades);
+                                    true
+                                }
+                                _ => {
+                                    log::info!("No opened trades found");
+                                    false
+                                }
+                            };
 
                             self.restore_values(bot_data).await;
                             self.get_instrument_data().await;
@@ -308,15 +325,13 @@ impl Bot {
                                 &self.instrument,
                                 &self.trades_in,
                                 &self.trades_out,
-                                0.,
-                                0.,
                             );
 
                             self.send_bot_status().await;
                         }
                         MessageType::ExecuteTradeOut(res) => {
                             let trade_out = res.payload.unwrap();
-                            log::info!("TradeOut {} accepted", &trade_out.data.id);
+                            log::info!("TradeOut {:?} accepted", &trade_out);
 
                             let updated_trade_out = self.strategy.update_trade_stats(
                                 &self.trades_in.last().unwrap(),
@@ -330,8 +345,6 @@ impl Bot {
                                 &self.instrument,
                                 &self.trades_in,
                                 &self.trades_out,
-                                0.,
-                                0.,
                             );
 
                             self.send_bot_status().await;

@@ -6,10 +6,7 @@ use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;
 
 use rs_algo_shared::models::stop_loss::*;
-use rs_algo_shared::models::strategy::StrategyType;
-
-
-
+use rs_algo_shared::models::{strategy, strategy::StrategyType};
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
@@ -27,10 +24,12 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             .parse::<f64>()
             .unwrap();
 
+        let strategy_type = std::env::var("STRATEGY_TYPE").unwrap();
+
         Ok(Self {
             stop_loss: init_stop_loss(StopLossType::Atr, stop_loss),
             name: "Bollinger_Bands_Reversals2_MT_Macd",
-            strategy_type: StrategyType::OnlyLongMultiTF,
+            strategy_type: strategy::from_str(&strategy_type),
         })
     }
 

@@ -25,25 +25,21 @@ pub trait Strategy: DynClone {
     fn strategy_type(&self) -> &StrategyType;
     fn entry_long(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool;
     fn exit_long(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool;
     fn entry_short(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool;
     fn exit_short(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool;
@@ -54,9 +50,7 @@ pub trait Strategy: DynClone {
         trades_in: &Vec<TradeIn>,
         trades_out: &Vec<TradeOut>,
     ) -> (TradeResult, TradeResult) {
-        log::info!("Strategy tick");
         let data = &instrument.data;
-        let index = data.len() - 1;
         let mut trade_in_result = TradeResult::None;
         let mut trade_out_result = TradeResult::None;
 
@@ -74,29 +68,25 @@ pub trait Strategy: DynClone {
 
         if open_positions {
             let trade_in = trades_in.last().unwrap().to_owned();
-            trade_out_result =
-                self.market_out_fn(index, instrument, higher_tf_instrument, trade_in);
+            trade_out_result = self.market_out_fn(instrument, higher_tf_instrument, trade_in);
         }
 
         if !open_positions && self.there_are_funds(trades_out) {
-            trade_in_result =
-                self.market_in_fn(index, instrument, higher_tf_instrument, order_size);
+            trade_in_result = self.market_in_fn(instrument, higher_tf_instrument, order_size);
         }
         (trade_out_result, trade_in_result)
     }
     fn market_in_fn(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
         order_size: f64,
     ) -> TradeResult {
+        let index = instrument.data().len() - 1;
         let entry_type: TradeType;
-        log::info!("Market IN fn");
-
-        if self.entry_long(index, instrument, upper_tf_instrument) {
+        if self.entry_long(instrument, upper_tf_instrument) {
             entry_type = TradeType::EntryLong
-        } else if self.entry_short(index, instrument, upper_tf_instrument) {
+        } else if self.entry_short(instrument, upper_tf_instrument) {
             entry_type = TradeType::EntryShort
         } else {
             entry_type = TradeType::None
@@ -109,29 +99,27 @@ pub trait Strategy: DynClone {
 
     fn market_out_fn(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
-        mut trade_in: TradeIn,
+        trade_in: TradeIn,
     ) -> TradeResult {
-        log::info!("Market OUT fn");
         let exit_type: TradeType;
+        let index = instrument.data().len() - 1;
+        //let stop_loss = self.stop_loss();
 
-        let stop_loss = self.stop_loss();
+        // if stop_loss.stop_type != StopLossType::Atr
+        //     && stop_loss.stop_type != StopLossType::Percentage
+        // {
+        //     trade_in.stop_loss = update_stop_loss_values(
+        //         &trade_in.stop_loss,
+        //         stop_loss.stop_type.to_owned(),
+        //         stop_loss.price,
+        //     );
+        // }
 
-        if stop_loss.stop_type != StopLossType::Atr
-            && stop_loss.stop_type != StopLossType::Percentage
-        {
-            trade_in.stop_loss = update_stop_loss_values(
-                &trade_in.stop_loss,
-                stop_loss.stop_type.to_owned(),
-                stop_loss.price,
-            );
-        }
-
-        if self.exit_long(index, instrument, upper_tf_instrument) {
+        if self.exit_long(instrument, upper_tf_instrument) {
             exit_type = TradeType::ExitLong
-        } else if self.exit_short(index, instrument, upper_tf_instrument) {
+        } else if self.exit_short(instrument, upper_tf_instrument) {
             exit_type = TradeType::ExitShort
         } else {
             exit_type = TradeType::None
@@ -158,9 +146,9 @@ pub trait Strategy: DynClone {
         instrument: &Instrument,
         trades_in: &Vec<TradeIn>,
         trades_out: &Vec<TradeOut>,
-        equity: f64,
-        commission: f64,
     ) -> StrategyStats {
+        let equity = env::var("EQUITY").unwrap().parse::<f64>().unwrap();
+        let commission = env::var("COMMISSION").unwrap().parse::<f64>().unwrap();
         calculate_stats(instrument, trades_in, trades_out, equity, commission)
     }
 
@@ -177,10 +165,10 @@ pub trait Strategy: DynClone {
 pub fn set_strategy(strategy_name: &str) -> Box<dyn Strategy> {
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(strategies::stoch::Stoch::new().unwrap()),
-        Box::new(
-            strategies::bollinger_bands_reversals2_mt_macd::MutiTimeFrameBollingerBands::new()
-                .unwrap(),
-        ),
+        // Box::new(
+        //     strategies::bollinger_bands_reversals2_mt_macd::MutiTimeFrameBollingerBands::new()
+        //         .unwrap(),
+        // ),
     ];
 
     let mut strategy = strategies[0].clone();

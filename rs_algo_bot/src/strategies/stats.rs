@@ -29,7 +29,7 @@ pub fn calculate_trade_stats(
         id: 0,
         index_in: trade_in.index_in,
         price_in: trade_in.price_in,
-        trade_type: trade_in.trade_type.clone(),
+        trade_type: trade_out.trade_type.clone(),
         date_in: trade_in.date_in,
         index_out: trade_out.index_out,
         price_out: trade_out.price_out,
@@ -86,7 +86,6 @@ pub fn calculate_stats(
         let profit_factor = total_profit_factor(gross_profits, gross_loses);
 
         let net_profit_per = total_profit_per(equity, net_profit, trades_in, trades_out);
-        //let net_profit_per = total_profit_per(equity, net_profit);
         let profitable_trades = total_profitable_trades(wining_trades, trades);
         let max_drawdown = total_drawdown(trades_out, equity);
 
@@ -115,7 +114,7 @@ pub fn calculate_stats(
             profitable_trades,
             profit_factor,
             max_runup,
-            max_drawdown: 0., //FIXME
+            max_drawdown,
             buy_hold,
             annual_return,
         }

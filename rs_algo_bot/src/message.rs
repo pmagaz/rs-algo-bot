@@ -54,7 +54,7 @@ pub fn get_type(msg: &str) -> MessageType {
                 }),
             }),
             Some("ExecuteTradeOut") => MessageType::ExecuteTradeOut(ResponseBody {
-                response: ResponseType::ExecuteTradeIn,
+                response: ResponseType::ExecuteTradeOut,
                 payload: Some(TradeData {
                     symbol: symbol.to_owned(),
                     time_frame,
