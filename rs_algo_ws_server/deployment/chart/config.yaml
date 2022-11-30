@@ -10,5 +10,5 @@ BROKER_URL: "wss://ws.xtb.com/real"
 BROKER_STREAM_URL: "wss://ws.xtb.com/realStream"
 
 MONGO_BOT_DB_NAME: "bot-db"
-MONGO_BOT_DB_URI: "@mongodb-bot:27017/bot-db?authSource:admin&readPreference:primary&retryWrites:true&directConnection:true&ssl:false"
+MONGO_MEM_DB_URI: "@mongodb-bot:27017/bot-db?authSource=admin&readPreference=primary&retryWrites=true&directConnection=true&ssl=false"
 DB_BOT_COLLECTION: "bots"
