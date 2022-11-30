@@ -37,7 +37,7 @@ resources:
   requests:
      cpu: 100m
   limits:
-    cpu: 1000m
+    cpu: 600m
     ephemeral-storage: 512M
     memory: 512M
 

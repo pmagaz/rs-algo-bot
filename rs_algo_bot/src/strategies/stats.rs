@@ -1,6 +1,4 @@
 use rs_algo_shared::helpers::calc::*;
-use rs_algo_shared::helpers::date::*;
-
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::trade::*;
 
@@ -14,16 +12,13 @@ pub fn calculate_trade_stats(
 ) -> TradeOut {
     let price_in = trade_out.price_in;
     let price_out = trade_out.price_out;
-    let index_in = trade_out.index_in;
-    //FIXME
-    let quantity = 1.;
-    let index = data.len() - 1;
-    let profit = calculate_profit(quantity, price_in, price_out);
-    let profit_per = calculate_profit_per(price_in, price_out);
-    let run_up = calculate_runup(data, price_in, index_in, index);
-    let run_up_per = calculate_runup_per(run_up, price_in);
-    let draw_down = calculate_drawdown(data, price_in, index_in, index);
-    let draw_down_per = calculate_drawdown_per(draw_down, price_in);
+    let quantity = trade_in.quantity;
+    let profit = calculate_trade_profit(quantity, price_in, price_out);
+    let profit_per = calculate_trade_profit_per(price_in, price_out);
+    let run_up = calculate_trade_runup(data, price_in);
+    let run_up_per = calculate_trade_runup_per(run_up, price_in);
+    let draw_down = calculate_trade_drawdown(data, price_in);
+    let draw_down_per = calculate_trade_drawdown_per(draw_down, price_in);
 
     TradeOut {
         id: 0,
@@ -55,12 +50,12 @@ pub fn calculate_stats(
     let _size = 1.;
     let data = &instrument.data;
     if !trades_out.is_empty() {
-        let _date_start = trades_out[0].date_in;
-        let _date_end = trades_out.last().unwrap().date_out;
-        let _sessions: usize = trades_out.iter().fold(0, |mut acc, x| {
-            acc += x.index_out - x.index_in;
-            acc
-        });
+        // let _date_start = trades_out[0].date_in;
+        // let _date_end = trades_out.last().unwrap().date_out;
+        // let _sessions: usize = trades_out.iter().fold(0, |mut acc, x| {
+        //     acc += x.index_out - x.index_in;
+        //     acc
+        // });
         let current_candle = data.last().unwrap();
         let current_price = current_candle.close;
 

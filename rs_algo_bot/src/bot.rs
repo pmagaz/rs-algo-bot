@@ -331,7 +331,7 @@ impl Bot {
                         }
                         MessageType::ExecuteTradeOut(res) => {
                             let trade_out = res.payload.unwrap();
-                            log::info!("TradeOut {:?} accepted", &trade_out);
+                            log::info!("TradeOut {} accepted", &trade_out.data.id);
 
                             let updated_trade_out = self.strategy.update_trade_stats(
                                 &self.trades_in.last().unwrap(),

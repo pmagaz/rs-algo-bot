@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;
-
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::{strategy, strategy::StrategyType};
 use rs_algo_shared::scanner::instrument::*;
@@ -27,9 +26,9 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         let strategy_type = std::env::var("STRATEGY_TYPE").unwrap();
 
         Ok(Self {
-            stop_loss: init_stop_loss(StopLossType::Atr, stop_loss),
-            name: "Bollinger_Bands_Reversals2_MT_Macd",
+            name: "Bollinger_Bands_Reversals_MT_Macd",
             strategy_type: strategy::from_str(&strategy_type),
+            stop_loss: init_stop_loss(StopLossType::Atr, stop_loss),
         })
     }
 
@@ -52,12 +51,10 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
 
     fn entry_long(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
-        let first_htf_entry = get_upper_timeframe_data(
-            index,
+        let first_htf_entry = get_bot_upper_timeframe(
             instrument,
             upper_tf_instrument,
             |(idx, prev_idx, upper_inst)| {
@@ -76,12 +73,12 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
                     .get_data_b()
                     .get(prev_idx)
                     .unwrap();
+
                 curr_upper_macd_a > curr_upper_macd_b && prev_upper_macd_b >= prev_upper_macd_a
             },
         );
 
-        let upper_macd = get_upper_timeframe_data(
-            index,
+        let upper_macd = get_bot_upper_timeframe(
             instrument,
             upper_tf_instrument,
             |(idx, _prev_idx, upper_inst)| {
@@ -91,48 +88,33 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             },
         );
 
+        let index = instrument.data().len() - 1;
+        let last_candle = instrument.data().last().unwrap();
         let prev_index = get_prev_index(index);
-
-        let patterns = &instrument.patterns.local_patterns;
-        let _current_pattern = get_current_pattern(index, patterns);
-
-        let open_price = &instrument.data.get(index).unwrap().open;
         let close_price = &instrument.data.get(index).unwrap().close;
-        let prev_open = &instrument.data.get(prev_index).unwrap().open;
         let prev_close = &instrument.data.get(prev_index).unwrap().close;
-        let _prev_high = &instrument.data.get(prev_index).unwrap().close;
+        let date = &instrument.data.get(index).unwrap().date;
 
-        let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
-        let _mid_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
-        let _prev_mid_band = instrument
+        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
+        let prev_top_band = instrument
             .indicators
             .bb
-            .get_data_c()
-            .get(prev_index)
-            .unwrap();
-        let prev_low_band = instrument
-            .indicators
-            .bb
-            .get_data_b()
+            .get_data_a()
             .get(prev_index)
             .unwrap();
 
-        first_htf_entry
-            || (upper_macd
-                && prev_close < prev_open
-                && prev_close < prev_low_band
-                && close_price >= low_band
-                && close_price >= open_price)
+        let entry_condition = first_htf_entry
+            || (upper_macd && close_price > top_band && prev_close <= prev_top_band);
+
+        entry_condition
     }
 
     fn exit_long(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
-        let _upper_macd = get_upper_timeframe_data(
-            index,
+        let _upper_macd = get_bot_upper_timeframe(
             instrument,
             upper_tf_instrument,
             |(idx, prev_idx, upper_inst)| {
@@ -155,14 +137,14 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             },
         );
 
+        let index = instrument.data().len() - 1;
+        let last_candle = instrument.data().last().unwrap();
         let prev_index = get_prev_index(index);
         let low_price = &instrument.data.get(index).unwrap().low;
+        let date = &instrument.data.get(index).unwrap().date;
 
-        let open_price = &instrument.data.get(index).unwrap().open;
         let close_price = &instrument.data.get(index).unwrap().close;
-        let prev_open = &instrument.data.get(prev_index).unwrap().open;
         let prev_close = &instrument.data.get(prev_index).unwrap().close;
-        let _prev_high = &instrument.data.get(prev_index).unwrap().close;
 
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
         let prev_top_band = instrument
@@ -172,46 +154,37 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = prev_close > prev_open
-            && prev_close > prev_top_band
-            && close_price <= top_band
-            && close_price <= open_price;
+        let exit_condition = close_price > top_band && prev_close <= prev_top_band;
 
-        if exit_condition {
-            self.update_stop_loss(StopLossType::Trailing, *low_price);
-        }
+        // if exit_condition {
+        //     self.update_stop_loss(StopLossType::Trailing, *low_price);
+        // }
 
-        false
+        exit_condition
     }
 
     fn entry_short(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
         match self.strategy_type {
-            StrategyType::LongShort => self.exit_long(index, instrument, upper_tf_instrument),
-            StrategyType::LongShortMultiTF => {
-                self.exit_long(index, instrument, upper_tf_instrument)
-            }
-            StrategyType::OnlyShort => self.exit_long(index, instrument, upper_tf_instrument),
+            StrategyType::LongShort => self.exit_long(instrument, upper_tf_instrument),
+            StrategyType::LongShortMultiTF => self.exit_long(instrument, upper_tf_instrument),
+            StrategyType::OnlyShort => self.exit_long(instrument, upper_tf_instrument),
             _ => false,
         }
     }
 
     fn exit_short(
         &mut self,
-        index: usize,
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
         match self.strategy_type {
-            StrategyType::LongShort => self.entry_long(index, instrument, upper_tf_instrument),
-            StrategyType::LongShortMultiTF => {
-                self.entry_long(index, instrument, upper_tf_instrument)
-            }
-            StrategyType::OnlyShort => self.entry_long(index, instrument, upper_tf_instrument),
+            StrategyType::LongShort => self.entry_long(instrument, upper_tf_instrument),
+            StrategyType::LongShortMultiTF => self.entry_long(instrument, upper_tf_instrument),
+            StrategyType::OnlyShort => self.entry_long(instrument, upper_tf_instrument),
             _ => false,
         }
     }

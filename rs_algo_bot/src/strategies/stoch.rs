@@ -4,10 +4,8 @@ use async_trait::async_trait;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;
-
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::{strategy, strategy::StrategyType};
-
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
@@ -29,8 +27,8 @@ impl<'a> Strategy for Stoch<'a> {
 
         Ok(Self {
             name: "Stoch",
-            stop_loss: init_stop_loss(StopLossType::Atr, stop_loss),
             strategy_type: strategy::from_str(&strategy_type),
+            stop_loss: init_stop_loss(StopLossType::Atr, stop_loss),
         })
     }
 
@@ -66,19 +64,18 @@ impl<'a> Strategy for Stoch<'a> {
         let prev_stoch_b = stoch.get_data_b().get(prev_index).unwrap();
         let is_closed = last_candle.is_closed();
 
-        log::info!(
-            "1111111 {} {:?} {:?} {:?}",
-            is_closed,
-            (current_stoch_a, current_stoch_a <= &30.),
-            (
-                current_stoch_a,
-                current_stoch_b,
-                current_stoch_a > current_stoch_b
-            ),
-            (prev_stoch_a, prev_stoch_b, prev_stoch_a <= prev_stoch_b)
-        );
-        true
-        //current_stoch_a <= &30. && current_stoch_a > current_stoch_b && prev_stoch_a <= prev_stoch_b
+        // log::info!(
+        //     "1111111 {} {:?} {:?} {:?}",
+        //     is_closed,
+        //     (current_stoch_a, current_stoch_a <= &30.),
+        //     (
+        //         current_stoch_a,
+        //         current_stoch_b,
+        //         current_stoch_a > current_stoch_b
+        //     ),
+        //     (prev_stoch_a, prev_stoch_b, prev_stoch_a <= prev_stoch_b)
+        // );
+        current_stoch_a <= &30. && current_stoch_a > current_stoch_b && prev_stoch_a <= prev_stoch_b
     }
 
     fn exit_long(
@@ -96,19 +93,18 @@ impl<'a> Strategy for Stoch<'a> {
         let prev_stoch_b = stoch.get_data_b().get(prev_index).unwrap();
         let is_closed = last_candle.is_closed();
 
-        log::info!(
-            "22222 {} {:?} {:?} {:?}",
-            is_closed,
-            (current_stoch_a, current_stoch_a >= &70.),
-            (
-                current_stoch_a,
-                current_stoch_b,
-                current_stoch_a < current_stoch_b
-            ),
-            (prev_stoch_a, prev_stoch_b, prev_stoch_a >= prev_stoch_b)
-        );
-        true
-        //current_stoch_a >= &70. && current_stoch_a < current_stoch_b && prev_stoch_a >= prev_stoch_b
+        // log::info!(
+        //     "22222 {} {:?} {:?} {:?}",
+        //     is_closed,
+        //     (current_stoch_a, current_stoch_a >= &70.),
+        //     (
+        //         current_stoch_a,
+        //         current_stoch_b,
+        //         current_stoch_a < current_stoch_b
+        //     ),
+        //     (prev_stoch_a, prev_stoch_b, prev_stoch_a >= prev_stoch_b)
+        // );
+        current_stoch_a >= &70. && current_stoch_a < current_stoch_b && prev_stoch_a >= prev_stoch_b
     }
 
     fn entry_short(

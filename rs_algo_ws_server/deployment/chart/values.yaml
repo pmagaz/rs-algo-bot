@@ -1,0 +1,64 @@
+replicaCount: 1
+
+image:
+  repository: cluster.loc:5000/rs-algo-backend 
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets:
+ - name: docker-credentials 
+
+envSecretName: rs-algo-screener-secrets
+
+podAnnotations: {}
+
+service:
+  type: ClusterIP
+  port: 9000
+  targetPort: 9000
+  metadata:
+    name: rs-algo-ws-server
+    labels:
+      app: rs-algo-ws-server
+
+serviceAccount: {}
+
+ingress:
+  enabled: false
+  annotations:
+    kubernetes.io/ingress.class: traefik
+  hosts: []
+  
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+  limits:
+    cpu: 800m
+    ephemeral-storage: 256Mi 
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 40
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+  nodeType: storage
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: nodeType
+          operator: In
+          values:
+          - storage
+
+tolerations: []
+
+podSecurityContext: {}
