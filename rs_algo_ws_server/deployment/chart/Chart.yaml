@@ -1,5 +1,5 @@
 apiVersion: v2
-name: rs-algo-backend
+name: rs-algo-ws-server
 description: Rust Side Backend
 type: application
 version: 0.1.3

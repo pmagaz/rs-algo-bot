@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "rs-algo-backend.name" -}}
+{{- define "rs-algo-ws-server.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "rs-algo-backend.fullname" -}}
+{{- define "rs-algo-ws-server.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "rs-algo-backend.chart" -}}
+{{- define "rs-algo-ws-server.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "rs-algo-backend.labels" -}}
-helm.sh/chart: {{ include "rs-algo-backend.chart" . }}
-{{ include "rs-algo-backend.selectorLabels" . }}
+{{- define "rs-algo-ws-server.labels" -}}
+helm.sh/chart: {{ include "rs-algo-ws-server.chart" . }}
+{{ include "rs-algo-ws-server.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "rs-algo-backend.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "rs-algo-backend.name" . }}
+{{- define "rs-algo-ws-server.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "rs-algo-ws-server.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "rs-algo-backend.serviceAccountName" -}}
+{{- define "rs-algo-ws-server.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "rs-algo-backend.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "rs-algo-ws-server.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
