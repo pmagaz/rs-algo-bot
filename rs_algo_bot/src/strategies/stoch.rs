@@ -64,18 +64,10 @@ impl<'a> Strategy for Stoch<'a> {
         let prev_stoch_b = stoch.get_data_b().get(prev_index).unwrap();
         let is_closed = last_candle.is_closed();
 
-        // log::info!(
-        //     "1111111 {} {:?} {:?} {:?}",
-        //     is_closed,
-        //     (current_stoch_a, current_stoch_a <= &30.),
-        //     (
-        //         current_stoch_a,
-        //         current_stoch_b,
-        //         current_stoch_a > current_stoch_b
-        //     ),
-        //     (prev_stoch_a, prev_stoch_b, prev_stoch_a <= prev_stoch_b)
-        // );
-        current_stoch_a <= &30. && current_stoch_a > current_stoch_b && prev_stoch_a <= prev_stoch_b
+        is_closed
+            && current_stoch_a <= &30.
+            && current_stoch_a > current_stoch_b
+            && prev_stoch_a <= prev_stoch_b
     }
 
     fn exit_long(
@@ -93,18 +85,10 @@ impl<'a> Strategy for Stoch<'a> {
         let prev_stoch_b = stoch.get_data_b().get(prev_index).unwrap();
         let is_closed = last_candle.is_closed();
 
-        // log::info!(
-        //     "22222 {} {:?} {:?} {:?}",
-        //     is_closed,
-        //     (current_stoch_a, current_stoch_a >= &70.),
-        //     (
-        //         current_stoch_a,
-        //         current_stoch_b,
-        //         current_stoch_a < current_stoch_b
-        //     ),
-        //     (prev_stoch_a, prev_stoch_b, prev_stoch_a >= prev_stoch_b)
-        // );
-        current_stoch_a >= &70. && current_stoch_a < current_stoch_b && prev_stoch_a >= prev_stoch_b
+        is_closed
+            && current_stoch_a >= &70.
+            && current_stoch_a < current_stoch_b
+            && prev_stoch_a >= prev_stoch_b
     }
 
     fn entry_short(

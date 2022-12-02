@@ -98,6 +98,7 @@ where
                 CommandType::InitSession => {
                     let session_data = match &query.data {
                         Some(data) => {
+                            log::info!("{:?}", &data);
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
                             let uuid = bot.uuid();
 
