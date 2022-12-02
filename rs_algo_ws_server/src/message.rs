@@ -207,10 +207,10 @@ where
                         Some(data) => {
                             let instrument = [
                                 data["strategy_name"].as_str().unwrap(),
+                                "-",
                                 data["strategy_type"].as_str().unwrap(),
                                 "_",
                                 data["symbol"].as_str().unwrap(),
-                                "_",
                                 data["time_frame"].as_str().unwrap(),
                             ]
                             .concat();
