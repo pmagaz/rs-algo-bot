@@ -1,4 +1,4 @@
 package_name: rs_algo_bot
-release_name: rs-algo-bot
+release_name: rs-algo-bot-stoch
 local_path: /home/dev/rs-algo-bot
 chart_path: deployment/chart
