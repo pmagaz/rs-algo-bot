@@ -42,7 +42,7 @@ spec:
               name: {{ .Values.envSecretName }} 
           ports:
             - name: http
-              containerPort: {{ .Values.service.targetPort }}
+              containerPort: 9600
               protocol: TCP
           livenessProbe:
             exec:
