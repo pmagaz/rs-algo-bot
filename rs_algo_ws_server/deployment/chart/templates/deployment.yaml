@@ -45,9 +45,11 @@ spec:
               containerPort: {{ .Values.service.targetPort }} 
               protocol: TCP
           livenessProbe:
+            enabled: false
             tcpSocket:
               port: {{ .Values.service.targetPort }}
           readinessProbe:
+            enabled: false
             tcpSocket:
               port: {{ .Values.service.targetPort }}
           resources:

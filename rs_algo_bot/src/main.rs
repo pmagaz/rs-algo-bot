@@ -19,7 +19,8 @@ async fn main() {
 
     let server_url = env::var("WS_SERVER_URL").expect("WS_SERVER_URL not found");
     let port = env::var("WS_SERVER_PORT").expect("WS_SERVER_PORT not found");
-    let url = [&server_url, ":", &port].concat();
+    let concection_str = env::var("WS_SERVER_STR").expect("WS_SERVER_PORT not found");
+    let url = [&server_url, ":", &port, "?", &concection_str].concat();
 
     let ws_client = WebSocket::connect(&url).await;
 
