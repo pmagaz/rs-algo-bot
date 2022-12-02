@@ -1,22 +1,20 @@
 use crate::db;
 use crate::error::RsAlgoErrorKind;
-use crate::handlers::session::Sessions;
 use crate::handlers::*;
 use crate::heart_beat;
 use crate::message;
+
+use crate::handlers::session::Sessions;
 use rs_algo_shared::broker::xtb_stream::*;
 
 use futures_channel::mpsc::unbounded;
 use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
+
 use std::sync::Arc;
 use std::{collections::HashMap, env, net::SocketAddr};
-use tokio::io::AsyncBufReadExt;
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
-use tokio::io::BufReader;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
-use tokio_tungstenite::accept_async;
+use tokio_tungstenite::{accept_async, accept_hdr_async};
 use tungstenite::protocol::Message;
 
 pub async fn run(addr: String) {
@@ -39,21 +37,12 @@ pub async fn run(addr: String) {
     let db_client = Arc::new(mongo_client);
 
     while let Ok((mut stream, addr)) = socket.accept().await {
-        let (is_bot_connection, ws_key) = is_bot_connection(&mut stream).await;
-        let is_bot_connection = true;
-        println!("111111 {} {}", is_bot_connection, ws_key);
+        let sessions = sessions.clone();
+        let db_client = Arc::clone(&db_client);
 
-        if is_bot_connection {
-            let sessions = sessions.clone();
-            let db_client = Arc::clone(&db_client);
-            tokio::spawn(async move {
-                handle_connection(sessions, &mut stream, addr, db_client).await;
-            });
-        } else {
-            tokio::spawn(async move {
-                handle_health(&mut stream, &ws_key).await;
-            });
-        }
+        tokio::spawn(async move {
+            handle_connection(sessions, &mut stream, addr, db_client).await;
+        });
     }
 }
 
@@ -103,48 +92,4 @@ async fn handle_connection(
 
         session::destroy(&mut sessions, &addr).await;
     }
-}
-
-async fn handle_health(writer: &mut TcpStream, ws_key: &str) {
-    // let writer = &mut stream;
-    println!("2222222");
-    let response = [
-        "HTTP/1.1 101 Switching Protocols\r\n",
-        "Upgrade: websocket\r\n",
-        "Connection: Upgrade\r\n",
-        "Sec-WebSocket-Accept: ",
-        ws_key,
-        "\r\n\r\n",
-    ]
-    .concat();
-    writer.write_all(response.as_bytes()).await.unwrap();
-}
-
-async fn is_bot_connection(mut stream: &mut TcpStream) -> (bool, String) {
-    let mut result = false;
-    let mut ws_key: String = "".to_owned();
-    let reader = BufReader::new(&mut stream);
-    let mut leches = reader.lines();
-    for line in leches.next_line().await.unwrap() {
-        match line.contains("ws_bots") {
-            true => result = true,
-            false => result = false,
-        };
-
-        match line.contains("Sec-WebSocket-Key") {
-            true => {
-                let arr: Vec<String> = line.split(": ").map(|s| s.to_string()).collect();
-                ws_key = arr.last().unwrap().to_owned();
-            }
-            false => ws_key = "".to_string(),
-        };
-
-        println!("6666666666 {:?}", line);
-    }
-    // if ws_key != "".to_owned() {
-    //     break;
-    // }
-
-    println!("7777777777");
-    (result, ws_key)
 }
