@@ -45,15 +45,13 @@ spec:
               containerPort: {{ .Values.service.targetPort }} 
               protocol: TCP
           livenessProbe:
-            enabled: false
-            httpGet:
-              path: /
-              port: http
+            exec:
+              command:
+              - ls
           readinessProbe:
-            enabled: false
-            httpGet:
-              path: /
-              port: http
+            exec:
+              command:
+              - ls
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.volumes}}
