@@ -27,7 +27,7 @@ do
             ;;
         "build & deploy rs-algo-bot")
             echo "Deploying: $opt";
-            docker build -t cluster.loc:5000/rs-algo-bot:latest rs_algo_bot ; docker push cluster.loc:5000/rs-algo-bot:latest
+            docker build -t cluster.loc:5000/rs-algo-bot:latest rs_algo_bot ; docker push cluster.loc:5000/rs-algo-bot:latest ; ansible-playbook playbook.yml
             break
             ;;
         "Quit")
