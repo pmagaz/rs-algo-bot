@@ -49,5 +49,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "rs-algo-bot.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{- end }}
