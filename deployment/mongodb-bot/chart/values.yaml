@@ -37,9 +37,9 @@ resources:
   requests:
      cpu: 100m
   limits:
-    cpu: 600m
-    ephemeral-storage: 512M
-    memory: 512M
+    cpu: 500m
+    ephemeral-storage: 1G
+    memory: 1G
 
 ingress: {}
 
