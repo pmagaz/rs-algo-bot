@@ -165,6 +165,8 @@ pub trait Strategy: DynClone {
 pub fn set_strategy(strategy_name: &str) -> Box<dyn Strategy> {
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(strategies::stoch::Stoch::new().unwrap()),
+        Box::new(strategies::macd_dual::MacdDual::new().unwrap()),
+        Box::new(strategies::ema_50200::Ema::new().unwrap()),
         Box::new(
             strategies::bollinger_bands_reversals_mt_macd::MutiTimeFrameBollingerBands::new()
                 .unwrap(),
