@@ -92,6 +92,8 @@ impl<'a> Strategy for MacdDual<'a> {
         );
 
         let prev_index = get_prev_index(index);
+        let last_candle = instrument.data().last().unwrap();
+        let is_closed = last_candle.is_closed();
 
         let current_macd_a = instrument.indicators.macd.get_data_a().last().unwrap();
         let current_macd_b = instrument.indicators.macd.get_data_b().last().unwrap();
@@ -109,8 +111,20 @@ impl<'a> Strategy for MacdDual<'a> {
             .get(prev_index)
             .unwrap();
 
+        println!(
+            "11111 {} {}",
+            is_closed,
+            first_htf_entry
+                || (is_closed
+                    && upper_macd
+                    && current_macd_a > current_macd_b
+                    && prev_macd_b >= prev_macd_a)
+        );
         first_htf_entry
-            || (upper_macd && current_macd_a > current_macd_b && prev_macd_b >= prev_macd_a)
+            || (is_closed
+                && upper_macd
+                && current_macd_a > current_macd_b
+                && prev_macd_b >= prev_macd_a)
     }
 
     fn exit_long(
@@ -145,6 +159,9 @@ impl<'a> Strategy for MacdDual<'a> {
             },
         );
 
+        let last_candle = instrument.data().last().unwrap();
+        let is_closed = last_candle.is_closed();
+
         let current_macd_a = instrument.indicators.macd.get_data_a().last().unwrap();
         let current_macd_b = instrument.indicators.macd.get_data_b().last().unwrap();
         let low_price = &instrument.data.get(index).unwrap().low;
@@ -161,8 +178,8 @@ impl<'a> Strategy for MacdDual<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition =
-            first_htf_exit || current_macd_a < current_macd_b && prev_macd_b <= prev_macd_a;
+        let exit_condition = first_htf_exit
+            || (is_closed && current_macd_a < current_macd_b && prev_macd_b <= prev_macd_a);
 
         // if exit_condition {
         //     self.update_stop_loss(StopLossType::Trailing, *low_price);

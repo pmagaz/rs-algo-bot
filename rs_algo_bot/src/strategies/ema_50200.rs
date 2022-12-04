@@ -57,6 +57,7 @@ impl<'a> Strategy for Ema<'a> {
         let index = instrument.data().len() - 1;
         let prev_index = get_prev_index(index);
         let last_candle = instrument.data().last().unwrap();
+        let is_closed = last_candle.is_closed();
 
         let current_ema_50 = instrument.indicators.ema_b.get_data_a().last().unwrap();
         let current_ema_200 = instrument.indicators.ema_c.get_data_a().last().unwrap();
@@ -74,7 +75,13 @@ impl<'a> Strategy for Ema<'a> {
             .get(prev_index)
             .unwrap();
 
-        current_ema_50 > current_ema_200 && prev_ema_50 <= prev_ema_200
+        println!(
+            "11111 {} {}",
+            is_closed,
+            current_ema_50 > current_ema_200 && prev_ema_50 <= prev_ema_200
+        );
+
+        is_closed && current_ema_50 > current_ema_200 && prev_ema_50 <= prev_ema_200
     }
 
     fn exit_long(
@@ -85,6 +92,7 @@ impl<'a> Strategy for Ema<'a> {
         let index = instrument.data().len() - 1;
         let prev_index = get_prev_index(index);
         let last_candle = instrument.data().last().unwrap();
+        let is_closed = last_candle.is_closed();
 
         let current_ema_50 = instrument.indicators.ema_b.get_data_a().last().unwrap();
         let current_ema_200 = instrument.indicators.ema_c.get_data_a().last().unwrap();
@@ -102,7 +110,7 @@ impl<'a> Strategy for Ema<'a> {
             .get(prev_index)
             .unwrap();
 
-        current_ema_50 < current_ema_200 && prev_ema_50 >= prev_ema_200
+        is_closed && current_ema_50 < current_ema_200 && prev_ema_50 >= prev_ema_200
     }
 
     fn entry_short(
