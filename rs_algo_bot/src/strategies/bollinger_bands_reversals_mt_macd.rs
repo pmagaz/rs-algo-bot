@@ -107,6 +107,8 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         let entry_condition = is_closed && first_htf_entry
             || (upper_macd && close_price > top_band && prev_close <= prev_top_band);
 
+        println!("11111 {} {}", is_closed, entry_condition);
+
         entry_condition
     }
 
