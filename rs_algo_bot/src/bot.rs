@@ -61,9 +61,17 @@ impl Bot {
     }
 
     pub async fn init_session(&mut self) {
-        log::info!("Creating session for {}_{}", &self.symbol, &self.time_frame);
+        log::info!(
+            "Creating session for {}_{}_{}_{}",
+            &self.symbol,
+            &self.strategy_name,
+            &self.time_frame,
+            &self.strategy_type
+        );
 
         self.uuid = self.generate_bot_uuid();
+
+        log::info!("Session uuid: {}", &self.uuid);
 
         let update_bot_data_command = Command {
             command: CommandType::InitSession,
