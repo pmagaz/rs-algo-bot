@@ -230,6 +230,7 @@ impl Bot {
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
                                 log::info!("Instrument {} data received", bot_str);
+
                                 self.instrument.set_data(data).unwrap();
 
                                 if !is_multi_timeframe_strategy(&self.strategy_type) {
@@ -254,6 +255,8 @@ impl Bot {
                                     };
                                 }
                             }
+
+                            self.send_bot_status().await;
                         }
                         MessageType::StreamResponse(res) => {
                             let payload = res.payload.unwrap();
@@ -326,7 +329,7 @@ impl Bot {
                         }
                         MessageType::ExecuteTradeIn(res) => {
                             let trade_in = res.payload.unwrap();
-                            log::info!("TradeIn {} accepted", &trade_in.data.id);
+                            log::info!("TradeIn {:?} accepted", &trade_in.data.id);
                             self.trades_in.push(trade_in.data);
 
                             self.strategy_stats = self.strategy.update_stats(
