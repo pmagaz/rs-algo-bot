@@ -10,8 +10,8 @@ pub fn calculate_trade_stats(
     trade_out: &TradeOut,
     data: &Vec<Candle>,
 ) -> TradeOut {
-    let price_in = trade_out.price_in;
-    let price_out = trade_out.price_out;
+    let price_in = trade_out.ask;
+    let price_out = trade_out.bid;
     let quantity = trade_in.quantity;
     let profit = calculate_trade_profit(quantity, price_in, price_out);
     let profit_per = calculate_trade_profit_per(price_in, price_out);
@@ -24,10 +24,14 @@ pub fn calculate_trade_stats(
         id: 0,
         index_in: trade_in.index_in,
         price_in: trade_in.price_in,
+        ask: trade_in.ask,
+        spread_in: trade_in.spread,
         trade_type: trade_out.trade_type.clone(),
         date_in: trade_in.date_in,
         index_out: trade_out.index_out,
         price_out: trade_out.price_out,
+        bid: trade_out.bid,
+        spread_out: trade_in.spread,
         date_out: trade_out.date_out,
         profit,
         profit_per,
@@ -77,7 +81,7 @@ pub fn calculate_stats(
         let net_profit = gross_profit - commissions;
         let first = trades_in.first().unwrap();
 
-        let initial_order_amount = (first.price_in * first.quantity).ceil();
+        let initial_order_amount = (first.ask * first.quantity).ceil();
         let profit_factor = total_profit_factor(gross_profits, gross_loses);
 
         let net_profit_per = total_profit_per(equity, net_profit, trades_in, trades_out);

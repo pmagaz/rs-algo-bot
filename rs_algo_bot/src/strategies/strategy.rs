@@ -82,7 +82,7 @@ pub trait Strategy: DynClone {
         upper_tf_instrument: &HigherTMInstrument,
         order_size: f64,
     ) -> TradeResult {
-        let index = instrument.data().len() - 1;
+        let index = instrument.data().last().unwrap().date().timestamp_millis() as usize;
         let entry_type: TradeType;
         if self.entry_long(instrument, upper_tf_instrument) {
             entry_type = TradeType::EntryLong
@@ -104,7 +104,7 @@ pub trait Strategy: DynClone {
         trade_in: TradeIn,
     ) -> TradeResult {
         let exit_type: TradeType;
-        let index = instrument.data().len() - 1;
+        let index = instrument.data().last().unwrap().date().timestamp_millis() as usize;
         //let stop_loss = self.stop_loss();
 
         // if stop_loss.stop_type != StopLossType::Atr
