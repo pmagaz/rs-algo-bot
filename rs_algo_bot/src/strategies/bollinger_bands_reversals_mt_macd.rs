@@ -157,7 +157,6 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             .unwrap();
 
         let exit_condition = is_closed && close_price > top_band && prev_close <= prev_top_band;
-
         // if exit_condition {
         //     self.update_stop_loss(StopLossType::Trailing, *low_price);
         // }
