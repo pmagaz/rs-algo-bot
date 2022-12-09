@@ -111,15 +111,6 @@ impl<'a> Strategy for MacdDual<'a> {
             .get(prev_index)
             .unwrap();
 
-        println!(
-            "11111 {} {}",
-            is_closed,
-            first_htf_entry
-                || (is_closed
-                    && upper_macd
-                    && current_macd_a > current_macd_b
-                    && prev_macd_b >= prev_macd_a)
-        );
         first_htf_entry
             || (is_closed
                 && upper_macd

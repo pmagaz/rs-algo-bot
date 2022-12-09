@@ -7,6 +7,7 @@
     - { role: "rs_algo_ws_server/deployment/roles/" }
     - { role: "rs_algo_bot/deployment/stoch-m1/roles/" }
     - { role: "rs_algo_bot/deployment/stoch-m5/roles/" }
+    - { role: "rs_algo_bot/deployment/bb-rev/roles/" }
     - { role: "rs_algo_bot/deployment/bb-rev-mtf-m5/roles/" }
     - { role: "rs_algo_bot/deployment/bb-rev-mtf-ls/roles/" }
     - { role: "rs_algo_bot/deployment/ema-50200-ls/roles/" }

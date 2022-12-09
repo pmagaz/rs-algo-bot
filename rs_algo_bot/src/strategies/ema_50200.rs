@@ -75,12 +75,6 @@ impl<'a> Strategy for Ema<'a> {
             .get(prev_index)
             .unwrap();
 
-        println!(
-            "11111 {} {}",
-            is_closed,
-            current_ema_50 > current_ema_200 && prev_ema_50 <= prev_ema_200
-        );
-
         is_closed && current_ema_50 > current_ema_200 && prev_ema_50 <= prev_ema_200
     }
 

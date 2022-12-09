@@ -9,14 +9,14 @@ use rs_algo_shared::models::{strategy, strategy::StrategyType};
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
-pub struct MutiTimeFrameBollingerBands<'a> {
+pub struct BollingerBandsReversals<'a> {
     name: &'a str,
     strategy_type: StrategyType,
     stop_loss: StopLoss,
 }
 
 #[async_trait]
-impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
+impl<'a> Strategy for BollingerBandsReversals<'a> {
     fn new() -> Result<Self> {
         let stop_loss = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -26,7 +26,7 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         let strategy_type = std::env::var("STRATEGY_TYPE").unwrap();
 
         Ok(Self {
-            name: "Bollinger_Bands_Reversals_MT_Macd",
+            name: "Bollinger_Bands_Reversals",
             strategy_type: strategy::from_str(&strategy_type),
             stop_loss: init_stop_loss(StopLossType::Atr, stop_loss),
         })
@@ -54,40 +54,6 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
-        let first_htf_entry = get_bot_upper_timeframe(
-            instrument,
-            upper_tf_instrument,
-            |(idx, prev_idx, upper_inst)| {
-                let curr_upper_macd_a = upper_inst.indicators.macd.get_data_a().get(idx).unwrap();
-                let curr_upper_macd_b = upper_inst.indicators.macd.get_data_b().get(idx).unwrap();
-
-                let prev_upper_macd_a = upper_inst
-                    .indicators
-                    .macd
-                    .get_data_a()
-                    .get(prev_idx)
-                    .unwrap();
-                let prev_upper_macd_b = upper_inst
-                    .indicators
-                    .macd
-                    .get_data_b()
-                    .get(prev_idx)
-                    .unwrap();
-
-                curr_upper_macd_a > curr_upper_macd_b && prev_upper_macd_b >= prev_upper_macd_a
-            },
-        );
-
-        let upper_macd = get_bot_upper_timeframe(
-            instrument,
-            upper_tf_instrument,
-            |(idx, _prev_idx, upper_inst)| {
-                let curr_upper_macd_a = upper_inst.indicators.macd.get_data_a().get(idx).unwrap();
-                let curr_upper_macd_b = upper_inst.indicators.macd.get_data_b().get(idx).unwrap();
-                curr_upper_macd_a > curr_upper_macd_b
-            },
-        );
-
         let index = instrument.data().len() - 1;
         let last_candle = instrument.data().last().unwrap();
         let prev_index = get_prev_index(index);
@@ -104,8 +70,7 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             .get(prev_index)
             .unwrap();
 
-        let entry_condition = is_closed && first_htf_entry
-            || (upper_macd && close_price > top_band && prev_close <= prev_top_band);
+        let entry_condition = is_closed && (close_price > top_band && prev_close <= prev_top_band);
 
         entry_condition
     }
@@ -115,29 +80,6 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         instrument: &Instrument,
         upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
-        let _upper_macd = get_bot_upper_timeframe(
-            instrument,
-            upper_tf_instrument,
-            |(idx, prev_idx, upper_inst)| {
-                let curr_upper_macd_a = upper_inst.indicators.macd.get_data_a().get(idx).unwrap();
-                let curr_upper_macd_b = upper_inst.indicators.macd.get_data_b().get(idx).unwrap();
-
-                let _prev_upper_macd_a = upper_inst
-                    .indicators
-                    .macd
-                    .get_data_a()
-                    .get(prev_idx)
-                    .unwrap();
-                let _prev_upper_macd_b = upper_inst
-                    .indicators
-                    .macd
-                    .get_data_b()
-                    .get(prev_idx)
-                    .unwrap();
-                curr_upper_macd_a < curr_upper_macd_b // && prev_upper_macd_a >= prev_upper_macd_b
-            },
-        );
-
         let index = instrument.data().len() - 1;
         let last_candle = instrument.data().last().unwrap();
         let prev_index = get_prev_index(index);
@@ -161,7 +103,6 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         // if exit_condition {
         //     self.update_stop_loss(StopLossType::Trailing, *low_price);
         // }
-
         exit_condition
     }
 
