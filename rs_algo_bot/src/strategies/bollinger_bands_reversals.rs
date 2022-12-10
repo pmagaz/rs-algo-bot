@@ -72,16 +72,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        println!(
-            "11111 {} {} {} {} {} {}  {} ",
-            is_closed,
-            close_price,
-            top_band,
-            close_price < low_band,
-            prev_close,
-            prev_low_band,
-            prev_close >= prev_low_band
-        );
+        // println!(
+        //     "11111 {} {} {} {} {} {}  {} ",
+        //     is_closed,
+        //     close_price,
+        //     top_band,
+        //     close_price < low_band,
+        //     prev_close,
+        //     prev_low_band,
+        //     prev_close >= prev_low_band
+        // );
 
         let entry_condition = is_closed && (close_price < low_band && prev_close >= prev_low_band);
 
@@ -109,16 +109,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        println!(
-            "22222 {} {} {} {} {} {}  {} ",
-            is_closed,
-            close_price,
-            top_band,
-            close_price > top_band,
-            prev_close,
-            prev_top_band,
-            prev_close <= prev_top_band
-        );
+        // println!(
+        //     "22222 {} {} {} {} {} {}  {} ",
+        //     is_closed,
+        //     close_price,
+        //     top_band,
+        //     close_price > top_band,
+        //     prev_close,
+        //     prev_top_band,
+        //     prev_close <= prev_top_band
+        // );
         let exit_condition = is_closed && close_price > top_band && prev_close <= prev_top_band;
 
         // if exit_condition {
