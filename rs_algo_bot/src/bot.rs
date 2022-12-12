@@ -263,8 +263,8 @@ impl Bot {
                             let data = payload.data;
 
                             let last_candle = self.instrument.data().last().unwrap().clone();
-                            let adapted = adapt_to_time_frame(data, &self.time_frame);
-                            self.instrument.next(adapted, &last_candle).unwrap();
+                            let adapted_DOHLCC = adapt_to_time_frame(data, &self.time_frame);
+                            self.instrument.next(adapted_DOHLCC, &last_candle).unwrap();
 
                             log::info!("{} candle processed", bot_str);
 
@@ -273,9 +273,11 @@ impl Bot {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
                                         let last_htf_candle =
                                             htf_instrument.data().last().unwrap().clone();
-                                        let adapted =
+                                        let adapted_DOHLCC =
                                             adapt_to_time_frame(data, &self.higher_time_frame);
-                                        htf_instrument.next(adapted, &last_htf_candle).unwrap();
+                                        htf_instrument
+                                            .next(adapted_DOHLCC, &last_htf_candle)
+                                            .unwrap();
 
                                         log::info!(
                                             "{}_{} candle processed",
