@@ -263,8 +263,7 @@ impl Bot {
                             let data = payload.data;
 
                             let last_candle = self.instrument.data().last().unwrap().clone();
-                            let adapted_DOHLCC = adapt_to_time_frame(data, &self.time_frame);
-                            self.instrument.next(adapted_DOHLCC, &last_candle).unwrap();
+                            let mut new_candle = self.instrument.next(data, &last_candle).unwrap();
 
                             log::info!("{} candle processed", bot_str);
 
@@ -273,11 +272,7 @@ impl Bot {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
                                         let last_htf_candle =
                                             htf_instrument.data().last().unwrap().clone();
-                                        let adapted_DOHLCC =
-                                            adapt_to_time_frame(data, &self.higher_time_frame);
-                                        htf_instrument
-                                            .next(adapted_DOHLCC, &last_htf_candle)
-                                            .unwrap();
+                                        htf_instrument.next(data, &last_htf_candle).unwrap();
 
                                         log::info!(
                                             "{}_{} candle processed",
@@ -300,6 +295,16 @@ impl Bot {
                                     &self.trades_out,
                                 )
                                 .await;
+
+                            match new_candle.is_closed() {
+                                true => {
+                                    // let new_candle =
+                                    //     self.instrument.next(data, &last_candle).unwrap();
+                                    println!("6666666666 {:?}", new_candle);
+                                    self.instrument.insert_new_candle(data)
+                                }
+                                false => (),
+                            };
 
                             match &trade_out_result {
                                 TradeResult::TradeOut(trade_out) => {
