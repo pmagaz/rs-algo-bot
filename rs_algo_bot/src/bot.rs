@@ -263,7 +263,7 @@ impl Bot {
                             let data = payload.data;
 
                             let last_candle = self.instrument.data().last().unwrap().clone();
-                            let mut new_candle = self.instrument.next(data, &last_candle).unwrap();
+                            let new_candle = self.instrument.next(data, &last_candle).unwrap();
 
                             log::info!("{} candle processed", bot_str);
 
@@ -298,10 +298,7 @@ impl Bot {
 
                             match new_candle.is_closed() {
                                 true => {
-                                    // let new_candle =
-                                    //     self.instrument.next(data, &last_candle).unwrap();
-                                    println!("6666666666 {:?}", new_candle);
-                                    self.instrument.insert_new_candle(data)
+                                    self.instrument.next_candle(data);
                                 }
                                 false => (),
                             };
