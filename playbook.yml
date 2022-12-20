@@ -14,5 +14,5 @@
     - { role: "rs_algo_bot/deployment/bb-rev-h1/roles/" }
     #- { role: "rs_algo_bot/deployment/bb-rev-mtf-m5/roles/" }
     #- { role: "rs_algo_bot/deployment/bb-rev-mtf-ls/roles/" }
-    # - { role: "rs_algo_bot/deployment/ema-50200-ls/roles/" }
+    - { role: "rs_algo_bot/deployment/ema-50200-ls/roles/" }
     #- { role: "rs_algo_bot/deployment/dual-macd/roles/" }
