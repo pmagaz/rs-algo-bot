@@ -262,17 +262,14 @@ impl Bot {
                             let payload = res.payload.unwrap();
                             let data = payload.data;
 
-                            let last_candle = self.instrument.data().last().unwrap().clone();
-                            let new_candle = self.instrument.next(data, &last_candle).unwrap();
+                            let new_candle = self.instrument.next(data).unwrap();
 
                             log::info!("{} candle processed", bot_str);
 
                             if is_multi_timeframe_strategy(&self.strategy_type) {
                                 match &mut self.higher_tf_instrument {
                                     HigherTMInstrument::HigherTMInstrument(htf_instrument) => {
-                                        let last_htf_candle =
-                                            htf_instrument.data().last().unwrap().clone();
-                                        htf_instrument.next(data, &last_htf_candle).unwrap();
+                                        htf_instrument.next(data).unwrap();
 
                                         log::info!(
                                             "{}_{} candle processed",
