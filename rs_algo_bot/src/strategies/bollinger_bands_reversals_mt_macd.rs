@@ -93,7 +93,7 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         let prev_index = get_prev_index(index);
         let close_price = &instrument.data.get(index).unwrap().close;
         let prev_close = &instrument.data.get(prev_index).unwrap().close;
-        let date = &instrument.data.get(index).unwrap().date;
+        let _date = &instrument.data.get(index).unwrap().date;
         let is_closed = last_candle.is_closed();
 
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
@@ -104,10 +104,10 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             .get(prev_index)
             .unwrap();
 
-        let entry_condition = is_closed && first_htf_entry
-            || (upper_macd && close_price > top_band && prev_close <= prev_top_band);
+        
 
-        entry_condition
+        is_closed && first_htf_entry
+            || (upper_macd && close_price > top_band && prev_close <= prev_top_band)
     }
 
     fn exit_long(
@@ -141,8 +141,8 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         let index = instrument.data().len() - 1;
         let last_candle = instrument.data().last().unwrap();
         let prev_index = get_prev_index(index);
-        let low_price = &instrument.data.get(index).unwrap().low;
-        let date = &instrument.data.get(index).unwrap().date;
+        let _low_price = &instrument.data.get(index).unwrap().low;
+        let _date = &instrument.data.get(index).unwrap().date;
 
         let close_price = &instrument.data.get(index).unwrap().close;
         let prev_close = &instrument.data.get(prev_index).unwrap().close;
@@ -156,12 +156,12 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = is_closed && close_price > top_band && prev_close <= prev_top_band;
+        
         // if exit_condition {
         //     self.update_stop_loss(StopLossType::Trailing, *low_price);
         // }
 
-        exit_condition
+        is_closed && close_price > top_band && prev_close <= prev_top_band
     }
 
     fn entry_short(

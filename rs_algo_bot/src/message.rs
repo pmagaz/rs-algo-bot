@@ -116,7 +116,7 @@ pub fn parse_stream(data: &Value) -> LECHES {
     let low = arr[3].as_f64().unwrap();
     let volume = arr[4].as_f64().unwrap();
     let timestamp = arr[5].as_f64().unwrap();
-    let date = parse_time(timestamp as i64);
-    let spread = arr[6].as_f64().unwrap();
+    let _date = parse_time(timestamp as i64);
+    let _spread = arr[6].as_f64().unwrap();
     (ask, ask, bid, high, low, volume)
 }

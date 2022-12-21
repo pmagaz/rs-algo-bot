@@ -101,7 +101,7 @@ where
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
                             let uuid = bot.uuid();
 
-                            let bot_data = match db::bot::find_by_uuid(db_client, &uuid).await {
+                            let bot_data = match db::bot::find_by_uuid(db_client, uuid).await {
                                 Some(bot) => {
                                     log::info!(
                                         "Restoring session data for {}_{} {}",

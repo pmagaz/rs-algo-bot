@@ -14,7 +14,7 @@ use std::sync::Arc;
 use std::{collections::HashMap, env, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
-use tokio_tungstenite::{accept_async, accept_hdr_async};
+use tokio_tungstenite::{accept_async};
 use tungstenite::protocol::Message;
 
 pub async fn run(addr: String) {

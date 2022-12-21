@@ -1,5 +1,5 @@
 use rs_algo_shared::models::market::*;
-use rs_algo_shared::models::strategy::*;
+
 use rs_algo_shared::models::time_frame::*;
 
 pub fn get_market(market: String) -> Market {

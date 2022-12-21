@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::env;
+
 
 use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::helpers::vars::*;
@@ -236,24 +236,22 @@ impl Bot {
                                 if !is_multi_timeframe_strategy(&self.strategy_type) {
                                     self.subscribing_to_stream().await;
                                 }
-                            } else {
-                                if is_multi_timeframe_strategy(&self.strategy_type) {
-                                    match self.higher_tf_instrument.clone() {
-                                        HigherTMInstrument::HigherTMInstrument(
-                                            mut htf_instrument,
-                                        ) => {
-                                            log::info!(
-                                                "Instrument {}_{} data received",
-                                                &self.symbol,
-                                                &self.higher_time_frame
-                                            );
+                            } else if is_multi_timeframe_strategy(&self.strategy_type) {
+                                match self.higher_tf_instrument.clone() {
+                                    HigherTMInstrument::HigherTMInstrument(
+                                        mut htf_instrument,
+                                    ) => {
+                                        log::info!(
+                                            "Instrument {}_{} data received",
+                                            &self.symbol,
+                                            &self.higher_time_frame
+                                        );
 
-                                            htf_instrument.set_data(data).unwrap();
-                                            self.subscribing_to_stream().await;
-                                        }
-                                        HigherTMInstrument::None => {}
-                                    };
-                                }
+                                        htf_instrument.set_data(data).unwrap();
+                                        self.subscribing_to_stream().await;
+                                    }
+                                    HigherTMInstrument::None => {}
+                                };
                             }
 
                             self.send_bot_status().await;
@@ -346,7 +344,7 @@ impl Bot {
                             log::info!("TradeOut {} accepted", &trade_out.data.id);
 
                             let updated_trade_out = self.strategy.update_trade_stats(
-                                &self.trades_in.last().unwrap(),
+                                self.trades_in.last().unwrap(),
                                 &trade_out.data,
                                 &self.instrument.data,
                             );

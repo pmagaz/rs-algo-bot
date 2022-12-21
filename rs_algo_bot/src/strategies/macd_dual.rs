@@ -60,7 +60,7 @@ impl<'a> Strategy for MacdDual<'a> {
             index,
             instrument,
             upper_tf_instrument,
-            |(idx, prev_idx, upper_inst)| {
+            |(_idx, prev_idx, upper_inst)| {
                 let curr_upper_macd_a = upper_inst.indicators.macd.get_data_a().last().unwrap();
                 let curr_upper_macd_b = upper_inst.indicators.macd.get_data_b().last().unwrap();
 
@@ -84,7 +84,7 @@ impl<'a> Strategy for MacdDual<'a> {
             index,
             instrument,
             upper_tf_instrument,
-            |(idx, _prev_idx, upper_inst)| {
+            |(_idx, _prev_idx, upper_inst)| {
                 let curr_upper_macd_a = upper_inst.indicators.macd.get_data_a().last().unwrap();
                 let curr_upper_macd_b = upper_inst.indicators.macd.get_data_b().last().unwrap();
                 curr_upper_macd_a > curr_upper_macd_b
@@ -130,7 +130,7 @@ impl<'a> Strategy for MacdDual<'a> {
             index,
             instrument,
             upper_tf_instrument,
-            |(idx, prev_idx, upper_inst)| {
+            |(_idx, prev_idx, upper_inst)| {
                 let curr_upper_macd_a = upper_inst.indicators.macd.get_data_a().last().unwrap();
                 let curr_upper_macd_b = upper_inst.indicators.macd.get_data_b().last().unwrap();
 
@@ -155,7 +155,7 @@ impl<'a> Strategy for MacdDual<'a> {
 
         let current_macd_a = instrument.indicators.macd.get_data_a().last().unwrap();
         let current_macd_b = instrument.indicators.macd.get_data_b().last().unwrap();
-        let low_price = &instrument.data.get(index).unwrap().low;
+        let _low_price = &instrument.data.get(index).unwrap().low;
         let prev_macd_a = instrument
             .indicators
             .macd
@@ -169,14 +169,14 @@ impl<'a> Strategy for MacdDual<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = first_htf_exit
-            || (is_closed && current_macd_a < current_macd_b && prev_macd_b <= prev_macd_a);
+        
 
         // if exit_condition {
         //     self.update_stop_loss(StopLossType::Trailing, *low_price);
         // }
 
-        exit_condition
+        first_htf_exit
+            || (is_closed && current_macd_a < current_macd_b && prev_macd_b <= prev_macd_a)
     }
 
     fn entry_short(

@@ -57,7 +57,7 @@ pub async fn upsert(client: &Client, doc: &BotData) -> Result<Option<BotData>, E
 
     collection
         .find_one_and_replace(
-            doc! {"_id": doc.uuid().clone()},
+            doc! {"_id": *doc.uuid()},
             doc,
             FindOneAndReplaceOptions::builder()
                 .upsert(Some(true))

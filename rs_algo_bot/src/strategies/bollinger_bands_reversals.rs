@@ -52,17 +52,17 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
     fn entry_long(
         &mut self,
         instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
+        _upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
         let index = instrument.data().len() - 1;
         let last_candle = instrument.data().last().unwrap();
         let prev_index = get_prev_index(index);
         let close_price = &instrument.data.get(index).unwrap().close;
         let prev_close = &instrument.data.get(prev_index).unwrap().close;
-        let date = &instrument.data.get(index).unwrap().date;
+        let _date = &instrument.data.get(index).unwrap().date;
         let is_closed = last_candle.is_closed();
 
-        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
+        let _top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
         let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
 
         let prev_low_band = instrument
@@ -83,15 +83,15 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         //     prev_close >= prev_low_band
         // );
 
-        let entry_condition = is_closed && (close_price < low_band && prev_close >= prev_low_band);
+        
 
-        entry_condition
+        is_closed && (close_price < low_band && prev_close >= prev_low_band)
     }
 
     fn exit_long(
         &mut self,
         instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
+        _upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
         let index = instrument.data().len() - 1;
         let last_candle = instrument.data().last().unwrap();
@@ -119,12 +119,12 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         //     prev_top_band,
         //     prev_close <= prev_top_band
         // );
-        let exit_condition = is_closed && close_price > top_band && prev_close <= prev_top_band;
+        
 
         // if exit_condition {
         //     self.update_stop_loss(StopLossType::Trailing, *low_price);
         // }
-        exit_condition
+        is_closed && close_price > top_band && prev_close <= prev_top_band
     }
 
     fn entry_short(
