@@ -295,7 +295,7 @@ impl Bot {
 
                             match new_candle.is_closed() {
                                 true => {
-                                    self.instrument.next_candle(data);
+                                    self.instrument.add_new_candle(data);
                                 }
                                 false => (),
                             };
