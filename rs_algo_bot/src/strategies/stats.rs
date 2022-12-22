@@ -15,6 +15,7 @@ pub fn calculate_trade_stats(
     let quantity = trade_in.quantity;
     let profit = calculate_trade_profit(quantity, price_in, price_out);
     let profit_per = calculate_trade_profit_per(price_in, price_out);
+
     let run_up = calculate_trade_runup(data, price_in);
     let run_up_per = calculate_trade_runup_per(run_up, price_in);
     let draw_down = calculate_trade_drawdown(data, price_in);

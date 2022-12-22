@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 
-
 use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::helpers::vars::*;
 use crate::message;
@@ -238,9 +237,7 @@ impl Bot {
                                 }
                             } else if is_multi_timeframe_strategy(&self.strategy_type) {
                                 match self.higher_tf_instrument.clone() {
-                                    HigherTMInstrument::HigherTMInstrument(
-                                        mut htf_instrument,
-                                    ) => {
+                                    HigherTMInstrument::HigherTMInstrument(mut htf_instrument) => {
                                         log::info!(
                                             "Instrument {}_{} data received",
                                             &self.symbol,
@@ -341,12 +338,23 @@ impl Bot {
                         }
                         MessageType::ExecuteTradeOut(res) => {
                             let trade_out = res.payload.unwrap();
-                            log::info!("TradeOut {} accepted", &trade_out.data.id);
+                            log::info!(
+                                "TradeOut {} accepted ask {} bid {}",
+                                &trade_out.data.id,
+                                &trade_out.data.ask,
+                                &trade_out.data.bid
+                            );
 
                             let updated_trade_out = self.strategy.update_trade_stats(
                                 self.trades_in.last().unwrap(),
                                 &trade_out.data,
                                 &self.instrument.data,
+                            );
+
+                            log::info!(
+                                "TradeOut stats profit {} profit_per {} ",
+                                &updated_trade_out.profit,
+                                &updated_trade_out.profit_per,
                             );
 
                             self.trades_out.push(updated_trade_out);
