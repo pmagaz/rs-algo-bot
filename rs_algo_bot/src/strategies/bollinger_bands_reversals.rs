@@ -58,9 +58,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let last_candle = instrument.data().last().unwrap();
 
         let prev_index = get_prev_index(index);
-        let close_price = &instrument.data.get(index).unwrap().close;
-        let prev_close = &instrument.data.get(prev_index).unwrap().close;
-        let _date = &instrument.data.get(index).unwrap().date;
+        let close_price = &last_candle.close();
+        let prev_close = &instrument.data.get(prev_index).unwrap().close();
+        let _date = &instrument.data.get(index).unwrap().date();
         let is_closed = last_candle.is_closed();
 
         let _top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
@@ -99,8 +99,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let last_candle = instrument.data().last().unwrap();
         let prev_index = get_prev_index(index);
 
-        let close_price = &instrument.data.get(index).unwrap().close;
-        let prev_close = &instrument.data.get(prev_index).unwrap().close;
+        let close_price = &last_candle.close();
+        let prev_close = &instrument.data.get(prev_index).unwrap().close();
         let is_closed = last_candle.is_closed();
 
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
