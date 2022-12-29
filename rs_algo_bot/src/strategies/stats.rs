@@ -13,6 +13,7 @@ pub fn calculate_trade_stats(
     let price_in = trade_out.ask;
     let price_out = trade_out.bid;
     let quantity = trade_in.quantity;
+
     let profit = calculate_trade_profit(quantity, price_in, price_out);
     let profit_per = calculate_trade_profit_per(price_in, price_out);
 
@@ -22,7 +23,7 @@ pub fn calculate_trade_stats(
     let draw_down_per = calculate_trade_drawdown_per(draw_down, price_in);
 
     TradeOut {
-        id: 0,
+        id: trade_out.id,
         index_in: trade_in.index_in,
         price_in: trade_in.price_in,
         ask: trade_in.ask,

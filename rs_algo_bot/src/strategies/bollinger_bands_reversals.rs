@@ -56,6 +56,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
     ) -> bool {
         let index = instrument.data().len() - 1;
         let last_candle = instrument.data().last().unwrap();
+
         let prev_index = get_prev_index(index);
         let close_price = &instrument.data.get(index).unwrap().close;
         let prev_close = &instrument.data.get(prev_index).unwrap().close;
@@ -72,6 +73,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
+        //println!("111111111111 {} {} {}", is_closed, index, prev_index);
+
         // println!(
         //     "11111 {} {} {} {} {} {}  {} ",
         //     is_closed,
@@ -83,9 +86,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         //     prev_close >= prev_low_band
         // );
 
-        
-
-        is_closed && (close_price < low_band && prev_close >= prev_low_band)
+        // is_closed &&
+        close_price < low_band && prev_close >= prev_low_band
     }
 
     fn exit_long(
@@ -119,12 +121,12 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         //     prev_top_band,
         //     prev_close <= prev_top_band
         // );
-        
 
         // if exit_condition {
         //     self.update_stop_loss(StopLossType::Trailing, *low_price);
         // }
-        is_closed && close_price > top_band && prev_close <= prev_top_band
+        //is_closed &&
+        close_price > top_band && prev_close <= prev_top_band
     }
 
     fn entry_short(
