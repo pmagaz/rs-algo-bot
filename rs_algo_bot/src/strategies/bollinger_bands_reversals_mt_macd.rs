@@ -58,6 +58,9 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             instrument,
             upper_tf_instrument,
             |(idx, prev_idx, upper_inst)| {
+                let curr_upper_candle = upper_inst.data().last().unwrap();
+                log::warn!("Upper {:?} ", curr_upper_candle.date());
+
                 let curr_upper_macd_a = upper_inst.indicators.macd.get_data_a().get(idx).unwrap();
                 let curr_upper_macd_b = upper_inst.indicators.macd.get_data_b().get(idx).unwrap();
 
@@ -96,6 +99,8 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         let _date = &instrument.data.get(index).unwrap().date;
         let is_closed = last_candle.is_closed();
 
+        log::warn!("Current {:?} ", last_candle.date());
+
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
         let prev_top_band = instrument
             .indicators
@@ -103,8 +108,6 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             .get_data_a()
             .get(prev_index)
             .unwrap();
-
-        
 
         is_closed && first_htf_entry
             || (upper_macd && close_price > top_band && prev_close <= prev_top_band)
@@ -156,7 +159,6 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             .get(prev_index)
             .unwrap();
 
-        
         // if exit_condition {
         //     self.update_stop_loss(StopLossType::Trailing, *low_price);
         // }

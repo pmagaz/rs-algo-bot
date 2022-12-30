@@ -10,8 +10,12 @@ pub fn calculate_trade_stats(
     trade_out: &TradeOut,
     data: &Vec<Candle>,
 ) -> TradeOut {
-    let price_in = trade_out.ask;
-    let price_out = trade_out.bid;
+    let (price_in, price_out) = match trade_in.trade_type {
+        TradeType::EntryLong => (trade_in.ask, trade_out.bid),
+        TradeType::EntryShort => (trade_out.bid, trade_in.ask),
+        _ => (trade_in.ask, trade_out.bid),
+    };
+
     let quantity = trade_in.quantity;
 
     let profit = calculate_trade_profit(quantity, price_in, price_out);

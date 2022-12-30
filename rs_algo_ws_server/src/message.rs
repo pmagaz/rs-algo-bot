@@ -2,6 +2,7 @@ use crate::db;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 
+use rs_algo_shared::helpers::date::parse_time;
 use rs_algo_shared::helpers::date::{Duration as Dur, Local};
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::time_frame::*;
@@ -149,9 +150,18 @@ where
 
                     let time_frame_number = time_frame.to_number();
 
+                    let from =
+                        (Local::now() - Dur::milliseconds(600000 * max_bars as i64)).timestamp();
+
                     let from = (Local::now()
-                        - Dur::milliseconds(time_frame_number * 60000 * max_bars as i64))
+                        - Dur::milliseconds(100000 * time_frame_number * max_bars as i64))
                     .timestamp();
+
+                    log::info!(
+                        "Requesting data from {} {} ",
+                        time_frame_number,
+                        parse_time(from)
+                    );
 
                     let res = broker
                         .lock()

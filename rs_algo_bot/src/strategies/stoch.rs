@@ -64,15 +64,21 @@ impl<'a> Strategy for Stoch<'a> {
         let prev_stoch_b = stoch.get_data_b().get(prev_index).unwrap();
         let is_closed = last_candle.is_closed();
 
-        // println!(
-        //     "STOOOOCH {:?} {:?} {:?} {:?} {:?}",
-        //     is_closed, current_stoch_a, current_stoch_b, prev_stoch_a, prev_stoch_b
-        // );
-
-        is_closed
-            && current_stoch_a <= &30.
+        let entry_condition = current_stoch_a <= &30.
             && current_stoch_a > current_stoch_b
-            && prev_stoch_a <= prev_stoch_b
+            && prev_stoch_a <= prev_stoch_b;
+
+        if entry_condition {
+            log::warn!(
+                "Closed {} Stoch {} condition 1 {} condition 2 {}",
+                is_closed,
+                current_stoch_a,
+                current_stoch_a > current_stoch_b,
+                prev_stoch_a <= prev_stoch_b
+            );
+        }
+
+        entry_condition
     }
 
     fn exit_long(
@@ -90,10 +96,21 @@ impl<'a> Strategy for Stoch<'a> {
         let prev_stoch_b = stoch.get_data_b().get(prev_index).unwrap();
         let is_closed = last_candle.is_closed();
 
-        is_closed
-            && current_stoch_a >= &70.
+        let exit_condition = current_stoch_a >= &70.
             && current_stoch_a < current_stoch_b
-            && prev_stoch_a >= prev_stoch_b
+            && prev_stoch_a >= prev_stoch_b;
+
+        if exit_condition {
+            log::warn!(
+                "Closed {} Stoch {} condition 1 {} condition 2 {}",
+                is_closed,
+                current_stoch_a,
+                current_stoch_a > current_stoch_b,
+                prev_stoch_a <= prev_stoch_b
+            );
+        }
+
+        exit_condition
     }
 
     fn entry_short(
