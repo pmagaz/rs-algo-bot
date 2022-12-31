@@ -73,7 +73,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let entry_condition = close_price < low_band && prev_close >= prev_low_band;
+        let entry_condition = is_closed && close_price < low_band && prev_close >= prev_low_band;
+
+        log::warn!(
+            "Candle Date {} closed {} ",
+            last_candle.date(),
+            last_candle.is_closed()
+        );
+
         if entry_condition {
             log::warn!(
                 "Closed {} condition 1 {} condition 2 {}",
@@ -108,7 +115,15 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = close_price > top_band && prev_close <= prev_top_band;
+        let exit_condition = is_closed && close_price > top_band; // && prev_close <= prev_top_band;
+
+        log::warn!(
+            "Candle Date {} closed {} close price {} top band {}",
+            last_candle.date(),
+            last_candle.is_closed(),
+            close_price,
+            top_band
+        );
 
         if exit_condition {
             log::warn!(

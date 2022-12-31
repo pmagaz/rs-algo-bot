@@ -56,6 +56,7 @@ impl<'a> Strategy for Ema<'a> {
     ) -> bool {
         let index = instrument.data().len() - 1;
         let prev_index = get_prev_index(index);
+
         let last_candle = instrument.data().last().unwrap();
         let is_closed = last_candle.is_closed();
 

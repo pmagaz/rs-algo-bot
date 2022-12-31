@@ -54,8 +54,10 @@ impl<'a> Strategy for Stoch<'a> {
         instrument: &Instrument,
         _upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
+        let index = instrument.data().len() - 1;
+        let prev_index = get_prev_index(index);
+
         let last_candle = instrument.data().last().unwrap();
-        let prev_index = get_prev_index(instrument.data().len());
         let stoch = &instrument.indicators.stoch;
         let current_stoch_a = stoch.get_data_a().last().unwrap();
         let prev_stoch_a = stoch.get_data_a().get(prev_index).unwrap();
@@ -67,6 +69,18 @@ impl<'a> Strategy for Stoch<'a> {
         let entry_condition = current_stoch_a <= &30.
             && current_stoch_a > current_stoch_b
             && prev_stoch_a <= prev_stoch_b;
+
+        log::warn!(
+            "Candle Date {} closed {} ",
+            last_candle.date(),
+            last_candle.is_closed()
+        );
+
+        log::warn!(
+            "Current Stoch {:?} prev_stoch {:?} ",
+            (current_stoch_a, current_stoch_b),
+            (prev_stoch_a, prev_stoch_b)
+        );
 
         if entry_condition {
             log::warn!(
@@ -86,8 +100,10 @@ impl<'a> Strategy for Stoch<'a> {
         instrument: &Instrument,
         _upper_tf_instrument: &HigherTMInstrument,
     ) -> bool {
+        let index = instrument.data().len() - 1;
+        let prev_index = get_prev_index(index);
+
         let last_candle = instrument.data().last().unwrap();
-        let prev_index = get_prev_index(instrument.data().len());
         let stoch = &instrument.indicators.stoch;
         let current_stoch_a = stoch.get_data_a().last().unwrap();
         let prev_stoch_a = stoch.get_data_a().get(prev_index).unwrap();
@@ -99,6 +115,18 @@ impl<'a> Strategy for Stoch<'a> {
         let exit_condition = current_stoch_a >= &70.
             && current_stoch_a < current_stoch_b
             && prev_stoch_a >= prev_stoch_b;
+
+        log::warn!(
+            "Candle Date {} closed {} ",
+            last_candle.date(),
+            last_candle.is_closed()
+        );
+
+        log::warn!(
+            "Current Stoch {:?} closed {:?} ",
+            (current_stoch_a, current_stoch_b),
+            (prev_stoch_a, prev_stoch_b)
+        );
 
         if exit_condition {
             log::warn!(

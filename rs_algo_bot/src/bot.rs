@@ -324,8 +324,6 @@ impl Bot {
                                     }
                                     HigherTMInstrument::None => (),
                                 };
-
-                                log::info!("Processed {} data", bot_str);
                             }
 
                             match &trade_out_result {
