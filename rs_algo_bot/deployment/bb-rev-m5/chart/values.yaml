@@ -33,7 +33,7 @@ autoscaling:
   # targetMemoryUtilizationPercentage: 80
 
 nodeSelector:
-  nodeType: worker
+  nodeType: master
 
 affinity:
   nodeAffinity:
@@ -43,7 +43,7 @@ affinity:
         - key: nodeType
           operator: In
           values:
-          - worker
+          - master
 
 tolerations: []
 

@@ -33,9 +33,9 @@ ingress:
 
 resources:
   requests:
-    cpu: 100m
+    cpu: 50m
   limits:
-    cpu: 800m
+    cpu: 500m
     ephemeral-storage: 256Mi 
     memory: 256Mi
 
@@ -47,7 +47,7 @@ autoscaling:
   # targetMemoryUtilizationPercentage: 80
 
 nodeSelector:
-  nodeType: worker
+  nodeType: master
 
 affinity:
   nodeAffinity:
@@ -57,7 +57,7 @@ affinity:
         - key: nodeType
           operator: In
           values:
-          - worker
+          - master
 
 tolerations: []
 
