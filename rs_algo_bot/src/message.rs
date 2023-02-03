@@ -2,6 +2,7 @@ use rs_algo_shared::broker::{DOHLC, LECHES, VEC_DOHLC};
 use rs_algo_shared::helpers::date::DateTime;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::bot::BotData;
+use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::ws::message::*;
@@ -28,6 +29,10 @@ pub fn get_type(msg: &str) -> MessageType {
             Some("InitSession") => MessageType::InitSession(ResponseBody {
                 response: ResponseType::InitSession,
                 payload: Some(parse_bot_data(&parsed["payload"])),
+            }),
+            Some("GetInstrumentPricing") => MessageType::PricingData(ResponseBody {
+                response: ResponseType::GetInstrumentPricing,
+                payload: Some(parse_pricing_data(&parsed["payload"])),
             }),
             Some("GetInstrumentData") => MessageType::InstrumentData(ResponseBody {
                 response: ResponseType::GetInstrumentData,
@@ -75,6 +80,7 @@ pub fn get_type(msg: &str) -> MessageType {
 }
 
 pub fn parse_trade_in(data: &Value) -> TradeIn {
+    log::info!("333333333 {:?}", data);
     let trade_in: TradeIn = serde_json::from_value(data.clone()).unwrap();
     trade_in
 }
@@ -106,6 +112,11 @@ pub fn parse_vec_dohlc(data: &Value) -> VEC_DOHLC {
         result.push(parse_dohlc(obj));
     }
     result
+}
+
+pub fn parse_pricing_data(data: &Value) -> Pricing {
+    let bot_data: Pricing = serde_json::from_value(data.clone()).unwrap();
+    bot_data
 }
 
 pub fn parse_stream(data: &Value) -> LECHES {

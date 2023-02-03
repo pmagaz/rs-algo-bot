@@ -140,6 +140,17 @@ where
                     };
                     Some(serde_json::to_string(&response).unwrap())
                 }
+                CommandType::GetInstrumentPricing => {
+                    let res = broker
+                        .lock()
+                        .await
+                        .get_instrument_pricing(symbol)
+                        .await
+                        .unwrap();
+                    log::info!("Requesting {} pricing data", symbol);
+
+                    Some(serde_json::to_string(&res).unwrap())
+                }
                 CommandType::GetInstrumentData => {
                     let max_bars = env::var("MAX_BARS").unwrap().parse::<i32>().unwrap();
 

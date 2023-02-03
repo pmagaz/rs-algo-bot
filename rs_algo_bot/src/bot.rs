@@ -131,6 +131,20 @@ impl Bot {
         }
     }
 
+    pub async fn get_pricing_data(&mut self) {
+        log::info!("Requesting {} pricing data", &self.symbol,);
+
+        let instrument_pricing_data = Command {
+            command: CommandType::GetInstrumentPricing,
+            data: Some(&self),
+        };
+
+        self.websocket
+            .send(&serde_json::to_string(&instrument_pricing_data).unwrap())
+            .await
+            .unwrap();
+    }
+
     pub async fn subscribing_to_stream(&mut self) {
         log::info!(
             "Subscribing to {}_{} stream",
@@ -227,6 +241,16 @@ impl Bot {
 
                             self.restore_values(bot_data).await;
                             self.get_instrument_data().await;
+                            self.get_pricing_data().await;
+                        }
+                        MessageType::PricingData(res) => {
+                            let pricing = res.payload.unwrap();
+                            log::info!(
+                                "Instrument pricing {} received: {:?}",
+                                self.symbol,
+                                (pricing.ask(), pricing.bid())
+                            );
+                            self.pricing = pricing;
                         }
                         MessageType::InstrumentData(res) => {
                             let payload = res.payload.unwrap();

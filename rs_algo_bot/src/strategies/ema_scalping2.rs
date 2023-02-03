@@ -37,7 +37,7 @@ impl<'a> Strategy for EmaScalping2<'a> {
             .parse::<f64>()
             .unwrap();
 
-        let base_time_frame = &std::env::var("BASE_TIME_FRAME")
+        let base_time_frame = &std::env::var("TIME_FRAME")
             .unwrap()
             .parse::<String>()
             .unwrap()
