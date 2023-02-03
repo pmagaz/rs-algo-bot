@@ -49,11 +49,7 @@ impl<'a> Strategy for MacdDual<'a> {
         &self.stop_loss
     }
 
-    fn entry_long(
-        &mut self,
-        instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
-    ) -> bool {
+    fn entry_long(&mut self, instrument: &Instrument, upper_tf_instrument: &HTFInstrument) -> bool {
         let index = instrument.data().len() - 1;
 
         let first_htf_entry = get_upper_timeframe_data(
@@ -118,11 +114,7 @@ impl<'a> Strategy for MacdDual<'a> {
                 && prev_macd_b >= prev_macd_a)
     }
 
-    fn exit_long(
-        &mut self,
-        instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
-    ) -> bool {
+    fn exit_long(&mut self, instrument: &Instrument, upper_tf_instrument: &HTFInstrument) -> bool {
         let index = instrument.data().len() - 1;
         let prev_index = get_prev_index(index);
 
@@ -169,8 +161,6 @@ impl<'a> Strategy for MacdDual<'a> {
             .get(prev_index)
             .unwrap();
 
-        
-
         // if exit_condition {
         //     self.update_stop_loss(StopLossType::Trailing, *low_price);
         // }
@@ -182,7 +172,7 @@ impl<'a> Strategy for MacdDual<'a> {
     fn entry_short(
         &mut self,
         instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
+        upper_tf_instrument: &HTFInstrument,
     ) -> bool {
         match self.strategy_type {
             StrategyType::LongShort => self.exit_long(instrument, upper_tf_instrument),
@@ -192,11 +182,7 @@ impl<'a> Strategy for MacdDual<'a> {
         }
     }
 
-    fn exit_short(
-        &mut self,
-        instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
-    ) -> bool {
+    fn exit_short(&mut self, instrument: &Instrument, upper_tf_instrument: &HTFInstrument) -> bool {
         match self.strategy_type {
             StrategyType::LongShort => self.entry_long(instrument, upper_tf_instrument),
             StrategyType::LongShortMultiTF => self.entry_long(instrument, upper_tf_instrument),

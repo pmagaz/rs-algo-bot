@@ -11,12 +11,14 @@ use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::market::*;
+use rs_algo_shared::models::order::Order;
+use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::scanner::candle::Candle;
-use rs_algo_shared::scanner::instrument::{HigherTMInstrument, Instrument};
+use rs_algo_shared::scanner::instrument::{HTFInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
 use serde::{Deserialize, Serialize};
@@ -29,6 +31,8 @@ pub struct Bot {
     uuid: uuid::Uuid,
     symbol: String,
     market: Market,
+    #[serde(skip_serializing)]
+    pricing: Pricing,
     strategy_name: String,
     strategy_type: StrategyType,
     time_frame: TimeFrameType,
@@ -36,12 +40,13 @@ pub struct Bot {
     date_start: DbDateTime,
     last_update: DbDateTime,
     instrument: Instrument,
-    higher_tf_instrument: HigherTMInstrument,
+    htf_instrument: HTFInstrument,
     trades_in: Vec<TradeIn>,
     trades_out: Vec<TradeOut>,
+    orders: Vec<Order>,
+    strategy_stats: StrategyStats,
     #[serde(skip_serializing)]
     strategy: Box<dyn Strategy>,
-    strategy_stats: StrategyStats,
 }
 
 impl Bot {
@@ -237,10 +242,8 @@ impl Bot {
                                     self.subscribing_to_stream().await;
                                 }
                             } else if is_multi_timeframe_strategy(&self.strategy_type) {
-                                match self.higher_tf_instrument {
-                                    HigherTMInstrument::HigherTMInstrument(
-                                        ref mut htf_instrument,
-                                    ) => {
+                                match self.htf_instrument {
+                                    HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
                                         log::info!(
                                             "Instrument {}_{} data received",
                                             &self.symbol,
@@ -251,7 +254,7 @@ impl Bot {
 
                                         self.subscribing_to_stream().await;
                                     }
-                                    HigherTMInstrument::None => {}
+                                    HTFInstrument::None => {}
                                 };
                             }
 
@@ -267,23 +270,27 @@ impl Bot {
                             log::info!("{} candle processed", bot_str);
 
                             if is_multi_timeframe_strategy(&self.strategy_type) {
-                                match self.higher_tf_instrument {
-                                    HigherTMInstrument::HigherTMInstrument(
-                                        ref mut htf_instrument,
-                                    ) => {
+                                match self.htf_instrument {
+                                    HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
                                         higher_candle = htf_instrument.next(data).unwrap();
                                     }
-                                    HigherTMInstrument::None => (),
+                                    HTFInstrument::None => (),
                                 };
                             }
 
-                            let (trade_out_result, trade_in_result) = self
+                            let (
+                                order_position_result,
+                                entry_position_result,
+                                exit_position_result,
+                            ) = self
                                 .strategy
                                 .tick(
                                     &self.instrument,
-                                    &self.higher_tf_instrument,
+                                    &self.htf_instrument,
                                     &self.trades_in,
                                     &self.trades_out,
+                                    &self.orders,
+                                    &self.pricing,
                                 )
                                 .await;
 
@@ -297,10 +304,8 @@ impl Bot {
                             if is_multi_timeframe_strategy(&self.strategy_type)
                                 && higher_candle.is_closed()
                             {
-                                match self.higher_tf_instrument {
-                                    HigherTMInstrument::HigherTMInstrument(
-                                        ref mut htf_instrument,
-                                    ) => {
+                                match self.htf_instrument {
+                                    HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
                                         let data = (
                                             higher_candle.date(),
                                             higher_candle.open(),
@@ -311,44 +316,42 @@ impl Bot {
                                         );
                                         htf_instrument.init_candle(data);
                                     }
-                                    HigherTMInstrument::None => (),
+                                    HTFInstrument::None => (),
                                 };
                             }
 
                             if is_multi_timeframe_strategy(&self.strategy_type) {
-                                match self.higher_tf_instrument {
-                                    HigherTMInstrument::HigherTMInstrument(
-                                        ref mut htf_instrument,
-                                    ) => {
+                                match self.htf_instrument {
+                                    HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
                                         htf_instrument.init_candle(data);
                                     }
-                                    HigherTMInstrument::None => (),
+                                    HTFInstrument::None => (),
                                 };
                             }
 
-                            match &trade_out_result {
-                                TradeResult::TradeOut(trade_out) => {
-                                    self.send_trade::<TradeOut>(
-                                        trade_out,
-                                        self.symbol.clone(),
-                                        self.time_frame.clone(),
-                                    )
-                                    .await;
-                                }
-                                _ => (),
-                            };
+                            // match &trade_out_result {
+                            //     TradeResult::TradeOut(trade_out) => {
+                            //         self.send_trade::<TradeOut>(
+                            //             trade_out,
+                            //             self.symbol.clone(),
+                            //             self.time_frame.clone(),
+                            //         )
+                            //         .await;
+                            //     }
+                            //     _ => (),
+                            // };
 
-                            match &trade_in_result {
-                                TradeResult::TradeIn(trade_in) => {
-                                    self.send_trade::<TradeIn>(
-                                        trade_in,
-                                        self.symbol.clone(),
-                                        self.time_frame.clone(),
-                                    )
-                                    .await;
-                                }
-                                _ => (),
-                            };
+                            // match &trade_in_result {
+                            //     TradeResult::TradeIn(trade_in) => {
+                            //         self.send_trade::<TradeIn>(
+                            //             trade_in,
+                            //             self.symbol.clone(),
+                            //             self.time_frame.clone(),
+                            //         )
+                            //         .await;
+                            //     }
+                            //     _ => (),
+                            // };
 
                             log::info!("Sending {} bot data", bot_str);
 
@@ -380,6 +383,7 @@ impl Bot {
                                 self.trades_in.last().unwrap(),
                                 &trade_out.data,
                                 &self.instrument.data,
+                                &self.pricing,
                             );
 
                             log::info!(
@@ -502,35 +506,31 @@ impl BotBuilder {
                 .unwrap()
                 .init();
 
-            let higher_tf_instrument = match self.strategy_type {
+            let htf_instrument = match self.strategy_type {
                 Some(strategy) => match strategy {
-                    StrategyType::OnlyLongMultiTF => {
-                        HigherTMInstrument::HigherTMInstrument(htf_instrument)
-                    }
-                    StrategyType::OnlyShortMultiTF => {
-                        HigherTMInstrument::HigherTMInstrument(htf_instrument)
-                    }
-                    StrategyType::LongShortMultiTF => {
-                        HigherTMInstrument::HigherTMInstrument(htf_instrument)
-                    }
-                    _ => HigherTMInstrument::None,
+                    StrategyType::OnlyLongMTF => HTFInstrument::HTFInstrument(htf_instrument),
+                    StrategyType::OnlyShortMTF => HTFInstrument::HTFInstrument(htf_instrument),
+                    StrategyType::LongShortMTF => HTFInstrument::HTFInstrument(htf_instrument),
+                    _ => HTFInstrument::None,
                 },
-                None => HigherTMInstrument::None,
+                None => HTFInstrument::None,
             };
 
             Ok(Bot {
                 uuid: uuid::Uuid::new(),
                 symbol,
                 market,
+                pricing: Pricing::default(),
                 time_frame,
+                higher_time_frame,
                 date_start: to_dbtime(Local::now()),
                 last_update: to_dbtime(Local::now()),
-                higher_time_frame,
                 websocket,
                 instrument,
-                higher_tf_instrument,
+                htf_instrument,
                 trades_in: vec![],
                 trades_out: vec![],
+                orders: vec![],
                 strategy: set_strategy(&strategy_name),
                 strategy_name: strategy_name.clone(),
                 strategy_type,

@@ -52,7 +52,7 @@ impl<'a> Strategy for Stoch<'a> {
     fn entry_long(
         &mut self,
         instrument: &Instrument,
-        _upper_tf_instrument: &HigherTMInstrument,
+        _upper_tf_instrument: &HTFInstrument,
     ) -> bool {
         let index = instrument.data().len() - 1;
         let prev_index = get_prev_index(index);
@@ -95,11 +95,7 @@ impl<'a> Strategy for Stoch<'a> {
         entry_condition
     }
 
-    fn exit_long(
-        &mut self,
-        instrument: &Instrument,
-        _upper_tf_instrument: &HigherTMInstrument,
-    ) -> bool {
+    fn exit_long(&mut self, instrument: &Instrument, _upper_tf_instrument: &HTFInstrument) -> bool {
         let index = instrument.data().len() - 1;
         let prev_index = get_prev_index(index);
 
@@ -144,7 +140,7 @@ impl<'a> Strategy for Stoch<'a> {
     fn entry_short(
         &mut self,
         instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
+        upper_tf_instrument: &HTFInstrument,
     ) -> bool {
         match self.strategy_type {
             StrategyType::LongShort => self.exit_long(instrument, upper_tf_instrument),
@@ -154,11 +150,7 @@ impl<'a> Strategy for Stoch<'a> {
         }
     }
 
-    fn exit_short(
-        &mut self,
-        instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
-    ) -> bool {
+    fn exit_short(&mut self, instrument: &Instrument, upper_tf_instrument: &HTFInstrument) -> bool {
         match self.strategy_type {
             StrategyType::LongShort => self.entry_long(instrument, upper_tf_instrument),
             StrategyType::LongShortMultiTF => self.entry_long(instrument, upper_tf_instrument),

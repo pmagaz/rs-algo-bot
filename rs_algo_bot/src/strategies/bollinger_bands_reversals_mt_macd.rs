@@ -49,11 +49,7 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         &self.stop_loss
     }
 
-    fn entry_long(
-        &mut self,
-        instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
-    ) -> bool {
+    fn entry_long(&mut self, instrument: &Instrument, upper_tf_instrument: &HTFInstrument) -> bool {
         let first_htf_entry = get_bot_upper_timeframe(
             instrument,
             upper_tf_instrument,
@@ -113,11 +109,7 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
             || (upper_macd && close_price > top_band && prev_close <= prev_top_band)
     }
 
-    fn exit_long(
-        &mut self,
-        instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
-    ) -> bool {
+    fn exit_long(&mut self, instrument: &Instrument, upper_tf_instrument: &HTFInstrument) -> bool {
         let _upper_macd = get_bot_upper_timeframe(
             instrument,
             upper_tf_instrument,
@@ -169,7 +161,7 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
     fn entry_short(
         &mut self,
         instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
+        upper_tf_instrument: &HTFInstrument,
     ) -> bool {
         match self.strategy_type {
             StrategyType::LongShort => self.exit_long(instrument, upper_tf_instrument),
@@ -179,11 +171,7 @@ impl<'a> Strategy for MutiTimeFrameBollingerBands<'a> {
         }
     }
 
-    fn exit_short(
-        &mut self,
-        instrument: &Instrument,
-        upper_tf_instrument: &HigherTMInstrument,
-    ) -> bool {
+    fn exit_short(&mut self, instrument: &Instrument, upper_tf_instrument: &HTFInstrument) -> bool {
         match self.strategy_type {
             StrategyType::LongShort => self.entry_long(instrument, upper_tf_instrument),
             StrategyType::LongShortMultiTF => self.entry_long(instrument, upper_tf_instrument),

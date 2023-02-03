@@ -1,4 +1,5 @@
 use rs_algo_shared::helpers::calc::*;
+use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::trade::*;
 
@@ -9,22 +10,24 @@ pub fn calculate_trade_stats(
     trade_in: &TradeIn,
     trade_out: &TradeOut,
     data: &Vec<Candle>,
+    pricing: &Pricing,
 ) -> TradeOut {
-    let (price_in, price_out) = match trade_in.trade_type {
-        TradeType::EntryLong => (trade_in.ask, trade_out.bid),
-        TradeType::EntryShort => (trade_out.bid, trade_in.ask),
-        _ => (trade_in.ask, trade_out.bid),
+    let trade_type = &trade_in.trade_type;
+    let (price_in, price_out) = match trade_type.is_long() {
+        true => (trade_in.price_in, trade_out.price_out),
+        false => (trade_out.price_out, trade_in.price_in),
+        _ => (trade_in.price_in, trade_out.price_out),
     };
 
     let quantity = trade_in.quantity;
 
-    let profit = calculate_trade_profit(quantity, price_in, price_out);
-    let profit_per = calculate_trade_profit_per(price_in, price_out);
+    let profit = calculate_trade_profit(quantity, price_in, price_out, trade_type);
+    let profit_per = calculate_trade_profit_per(price_in, price_out, trade_type);
 
-    let run_up = calculate_trade_runup(data, price_in);
-    let run_up_per = calculate_trade_runup_per(run_up, price_in);
-    let draw_down = calculate_trade_drawdown(data, price_in);
-    let draw_down_per = calculate_trade_drawdown_per(draw_down, price_in);
+    let run_up = calculate_trade_runup(data, price_in, trade_type);
+    let run_up_per = calculate_trade_runup_per(run_up, price_in, trade_type);
+    let draw_down = calculate_trade_drawdown(data, price_in, trade_type);
+    let draw_down_per = calculate_trade_drawdown_per(draw_down, price_in, trade_type);
 
     TradeOut {
         id: trade_out.id,
@@ -35,6 +38,7 @@ pub fn calculate_trade_stats(
         trade_type: trade_out.trade_type.clone(),
         date_in: trade_in.date_in,
         index_out: trade_out.index_out,
+        price_origin: trade_out.price_origin,
         price_out: trade_out.price_out,
         bid: trade_out.bid,
         spread_out: trade_in.spread,
@@ -46,7 +50,6 @@ pub fn calculate_trade_stats(
         draw_down,
         draw_down_per,
     }
-    //let stop_loss_activated = resolve_stop_loss(price_out, &trade_in);
 }
 
 pub fn calculate_stats(
@@ -60,17 +63,11 @@ pub fn calculate_stats(
     let _size = 1.;
     let data = &instrument.data;
     if !trades_out.is_empty() {
-        // let _date_start = trades_out[0].date_in;
-        // let _date_end = trades_out.last().unwrap().date_out;
-        // let _sessions: usize = trades_out.iter().fold(0, |mut acc, x| {
-        //     acc += x.index_out - x.index_in;
-        //     acc
-        // });
         let current_candle = data.last().unwrap();
         let current_price = current_candle.close;
 
-        let w_trades: Vec<&TradeOut> = trades_out.iter().filter(|x| x.profit > 0.).collect();
-        let l_trades: Vec<&TradeOut> = trades_out.iter().filter(|x| x.profit <= 0.).collect();
+        let w_trades: Vec<&TradeOut> = trades_out.iter().filter(|x| x.profit >= 0.).collect();
+        let l_trades: Vec<&TradeOut> = trades_out.iter().filter(|x| x.profit < 0.).collect();
         let wining_trades = w_trades.len();
         let losing_trades = l_trades.len();
         let trades = wining_trades + losing_trades;
@@ -87,14 +84,13 @@ pub fn calculate_stats(
         let net_profit = gross_profit - commissions;
         let first = trades_in.first().unwrap();
 
-        let initial_order_amount = (first.ask * first.quantity).ceil();
+        let initial_order_amount = (first.price_in * first.quantity).ceil();
         let profit_factor = total_profit_factor(gross_profits, gross_loses);
-
-        let net_profit_per = total_profit_per(equity, net_profit, trades_in, trades_out);
+        let net_profit_per = total_profit_per(equity, net_profit, &trades_in, &trades_out);
         let profitable_trades = total_profitable_trades(wining_trades, trades);
-        let max_drawdown = total_drawdown(trades_out, equity);
+        let max_drawdown = total_drawdown(&trades_out, equity);
 
-        let max_runup = total_runup(trades_out, equity);
+        let max_runup = total_runup(&trades_out, equity);
 
         let strategy_start_price = match instrument.data.first().map(|x| x.open) {
             Some(open) => open,
