@@ -54,7 +54,7 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::ExecuteTradeIn,
                 payload: Some(TradeData {
                     symbol: symbol.to_owned(),
-                    time_frame,
+                    //time_frame,
                     data: parse_trade_in(&parsed["payload"]["data"]),
                 }),
             }),
@@ -62,7 +62,7 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::ExecuteTradeOut,
                 payload: Some(TradeData {
                     symbol: symbol.to_owned(),
-                    time_frame,
+                    //time_frame,
                     data: parse_trade_out(&parsed["payload"]["data"]),
                 }),
             }),
@@ -80,7 +80,6 @@ pub fn get_type(msg: &str) -> MessageType {
 }
 
 pub fn parse_trade_in(data: &Value) -> TradeIn {
-    log::info!("333333333 {:?}", data);
     let trade_in: TradeIn = serde_json::from_value(data.clone()).unwrap();
     trade_in
 }

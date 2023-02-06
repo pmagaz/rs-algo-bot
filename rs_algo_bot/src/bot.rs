@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::env;
 
 use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::helpers::vars::*;
@@ -10,13 +11,13 @@ use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
-use rs_algo_shared::models::market::*;
 use rs_algo_shared::models::order::Order;
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
+use rs_algo_shared::models::{market::*, order};
 use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::{HTFInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
@@ -36,7 +37,7 @@ pub struct Bot {
     strategy_name: String,
     strategy_type: StrategyType,
     time_frame: TimeFrameType,
-    higher_time_frame: TimeFrameType,
+    higher_time_frame: Option<TimeFrameType>,
     date_start: DbDateTime,
     last_update: DbDateTime,
     instrument: Instrument,
@@ -107,6 +108,11 @@ impl Bot {
             .await
             .unwrap();
 
+        let higher_time_frame = match &self.higher_time_frame {
+            Some(htf) => htf,
+            None => &TimeFrameType::ERR,
+        };
+
         if is_multi_timeframe_strategy(&self.strategy_type) {
             let get_higher_instrument_data = Command {
                 command: CommandType::GetInstrumentData,
@@ -114,15 +120,11 @@ impl Bot {
                     symbol: &self.symbol,
                     strategy: &self.strategy_name,
                     strategy_type: self.strategy_type.to_owned(),
-                    time_frame: self.higher_time_frame.to_owned(),
+                    time_frame: higher_time_frame.to_owned(),
                 }),
             };
 
-            log::info!(
-                "Requesting {} {} data",
-                &self.symbol,
-                &self.higher_time_frame
-            );
+            log::info!("Requesting {} {} data", &self.symbol, &higher_time_frame);
 
             self.websocket
                 .send(&serde_json::to_string(&get_higher_instrument_data).unwrap())
@@ -171,18 +173,20 @@ impl Bot {
     pub async fn restore_values(&mut self, data: BotData) {
         self.trades_in = data.trades_in().clone();
         self.trades_out = data.trades_out().clone();
+        self.orders = data.orders().clone();
         self.strategy_stats = data.strategy_stats().clone();
     }
 
-    pub async fn send_trade<T>(&mut self, trade: &T, symbol: String, time_frame: TimeFrameType)
+    pub async fn send_position<T>(&mut self, trade: &T, symbol: String, time_frame: TimeFrameType)
     where
         for<'de> T: Serialize + Deserialize<'de>,
     {
+        log::info!("Sending position {}_{}", symbol, time_frame);
         let execute_trade = Command {
-            command: CommandType::ExecuteTrade,
+            command: CommandType::ExecutePosition,
             data: Some(TradeData {
                 symbol,
-                time_frame,
+                //time_frame,
                 data: trade,
             }),
         };
@@ -193,7 +197,9 @@ impl Bot {
             .unwrap();
     }
 
-    pub async fn send_bot_status(&mut self) {
+    pub async fn send_bot_status(&mut self, bot_str: &str) {
+        log::info!("Sending {} bot data", bot_str);
+
         self.last_update = to_dbtime(Local::now());
 
         let update_bot_data_command = Command {
@@ -210,6 +216,10 @@ impl Bot {
     pub async fn run(&mut self) {
         self.init_session().await;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
+        let overwrite_orders = env::var("OVERWRITE_ORDERS")
+            .unwrap()
+            .parse::<bool>()
+            .unwrap();
 
         loop {
             let msg = self.websocket.read().await.unwrap();
@@ -246,9 +256,9 @@ impl Bot {
                         MessageType::PricingData(res) => {
                             let pricing = res.payload.unwrap();
                             log::info!(
-                                "Instrument pricing {} received: {:?}",
+                                "{} pricing received: {:?}",
                                 self.symbol,
-                                (pricing.ask(), pricing.bid())
+                                (pricing.ask(), pricing.bid(), pricing.spread())
                             );
                             self.pricing = pricing;
                         }
@@ -271,7 +281,7 @@ impl Bot {
                                         log::info!(
                                             "Instrument {}_{} data received",
                                             &self.symbol,
-                                            &self.higher_time_frame
+                                            &htf_instrument.time_frame()
                                         );
 
                                         htf_instrument.set_data(data).unwrap();
@@ -282,7 +292,7 @@ impl Bot {
                                 };
                             }
 
-                            self.send_bot_status().await;
+                            self.send_bot_status(&bot_str).await;
                         }
                         MessageType::StreamResponse(res) => {
                             let payload = res.payload.unwrap();
@@ -302,11 +312,7 @@ impl Bot {
                                 };
                             }
 
-                            let (
-                                order_position_result,
-                                entry_position_result,
-                                exit_position_result,
-                            ) = self
+                            let (position_result, orders_position_result) = self
                                 .strategy
                                 .tick(
                                     &self.instrument,
@@ -353,33 +359,118 @@ impl Bot {
                                 };
                             }
 
-                            // match &trade_out_result {
-                            //     TradeResult::TradeOut(trade_out) => {
-                            //         self.send_trade::<TradeOut>(
-                            //             trade_out,
-                            //             self.symbol.clone(),
-                            //             self.time_frame.clone(),
-                            //         )
-                            //         .await;
-                            //     }
-                            //     _ => (),
-                            // };
+                            //////////
 
-                            // match &trade_in_result {
-                            //     TradeResult::TradeIn(trade_in) => {
-                            //         self.send_trade::<TradeIn>(
-                            //             trade_in,
-                            //             self.symbol.clone(),
-                            //             self.time_frame.clone(),
-                            //         )
-                            //         .await;
-                            //     }
-                            //     _ => (),
-                            // };
+                            match &orders_position_result {
+                                PositionResult::MarketInOrder(
+                                    TradeResult::TradeIn(trade_in),
+                                    order,
+                                ) => {
+                                    log::info!("Position Result MarketInOrder");
+                                    self.send_position::<PositionResult>(
+                                        &orders_position_result,
+                                        self.symbol.clone(),
+                                        self.time_frame.clone(),
+                                    )
+                                    .await;
 
-                            log::info!("Sending {} bot data", bot_str);
+                                    order::fulfill_bot_order::<TradeIn>(
+                                        &trade_in,
+                                        &order,
+                                        &mut self.orders,
+                                    );
 
-                            self.send_bot_status().await;
+                                    self.trades_in.push(trade_in.clone());
+                                }
+                                PositionResult::MarketOutOrder(
+                                    TradeResult::TradeOut(trade_out),
+                                    order,
+                                ) => {
+                                    log::info!("Position Result MarketOutOrder");
+                                    self.send_position::<PositionResult>(
+                                        &orders_position_result,
+                                        self.symbol.clone(),
+                                        self.time_frame.clone(),
+                                    )
+                                    .await;
+
+                                    order::fulfill_bot_order::<TradeOut>(
+                                        &trade_out,
+                                        &order,
+                                        &mut self.orders,
+                                    );
+
+                                    self.orders = order::cancel_trade_pending_orders(
+                                        trade_out,
+                                        self.orders.clone(),
+                                    );
+
+                                    self.trades_out.push(trade_out.clone());
+                                }
+                                _ => (),
+                            };
+
+                            match &position_result {
+                                PositionResult::MarketIn(
+                                    TradeResult::TradeIn(trade_in),
+                                    new_orders,
+                                ) => {
+                                    log::info!("Position Result TradeIn");
+                                    self.send_position::<PositionResult>(
+                                        &position_result,
+                                        self.symbol.clone(),
+                                        self.time_frame.clone(),
+                                    )
+                                    .await;
+
+                                    match new_orders {
+                                        Some(new_ords) => {
+                                            self.orders = order::add_pending(
+                                                self.orders.clone(),
+                                                new_ords.clone(),
+                                            )
+                                        }
+                                        None => (),
+                                    }
+
+                                    self.trades_in.push(trade_in.clone());
+                                }
+                                PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
+                                    log::info!("Position Result TradeOut");
+                                    self.send_position::<PositionResult>(
+                                        &position_result,
+                                        self.symbol.clone(),
+                                        self.time_frame.clone(),
+                                    )
+                                    .await;
+
+                                    self.orders = order::cancel_trade_pending_orders(
+                                        trade_out,
+                                        self.orders.clone(),
+                                    );
+
+                                    self.trades_out.push(trade_out.clone());
+                                }
+                                PositionResult::PendingOrder(new_orders) => {
+                                    match overwrite_orders {
+                                        true => {
+                                            self.orders = order::cancel_all_bot_pending_orders(
+                                                self.orders.clone(),
+                                            );
+                                        }
+                                        false => (),
+                                    }
+
+                                    self.orders =
+                                        order::add_pending(self.orders.clone(), new_orders.clone());
+                                }
+                                _ => (),
+                            };
+
+                            log::info!("Total orders {:?}", self.orders.len());
+
+                            self.get_pricing_data().await;
+                            self.send_bot_status(&bot_str).await;
                         }
                         MessageType::ExecuteTradeIn(res) => {
                             let trade_in = res.payload.unwrap();
@@ -392,7 +483,7 @@ impl Bot {
                                 &self.trades_out,
                             );
 
-                            self.send_bot_status().await;
+                            self.send_bot_status(&bot_str).await;
                         }
                         MessageType::ExecuteTradeOut(res) => {
                             let trade_out = res.payload.unwrap();
@@ -424,7 +515,7 @@ impl Bot {
                                 &self.trades_out,
                             );
 
-                            self.send_bot_status().await;
+                            self.send_bot_status(&bot_str).await;
                         }
                         _ => (),
                     };
@@ -509,7 +600,7 @@ impl BotBuilder {
             self.symbol,
             self.market,
             self.time_frame,
-            self.higher_time_frame,
+            self.higher_time_frame.clone(),
             self.strategy_name,
             self.strategy_type.clone(),
             self.websocket,
@@ -540,13 +631,18 @@ impl BotBuilder {
                 None => HTFInstrument::None,
             };
 
+            // let higher_time_frame = match &self.higher_time_frame {
+            //     Some(htf) => htf,
+            //     None => &TimeFrameType::ERR,
+            // };
+
             Ok(Bot {
                 uuid: uuid::Uuid::new(),
                 symbol,
                 market,
                 pricing: Pricing::default(),
                 time_frame,
-                higher_time_frame,
+                higher_time_frame: self.higher_time_frame,
                 date_start: to_dbtime(Local::now()),
                 last_update: to_dbtime(Local::now()),
                 websocket,

@@ -102,13 +102,12 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
     ) -> Position {
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
-        let anchor_htf = time_frame::get_htf_data(
-            index,
+        let anchor_htf = time_frame::get_bot_htf_data(
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let macd_a = htf_inst.indicators.macd.get_data_a().get(idx).unwrap();
-                let macd_b = htf_inst.indicators.macd.get_data_b().get(idx).unwrap();
+                let macd_a = htf_inst.indicators.macd.get_data_a().last().unwrap();
+                let macd_b = htf_inst.indicators.macd.get_data_b().last().unwrap();
                 macd_a > macd_b
             },
         );
@@ -173,13 +172,12 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
 
-        let anchor_htf = time_frame::get_htf_data(
-            index,
+        let anchor_htf = time_frame::get_bot_htf_data(
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().last().unwrap();
+                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().last().unwrap();
                 htf_ema_5 < htf_ema_8
             },
         );
@@ -246,13 +244,12 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
     ) -> Position {
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
-        let anchor_htf = time_frame::get_htf_data(
-            index,
+        let anchor_htf = time_frame::get_bot_htf_data(
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let macd_a = htf_inst.indicators.macd.get_data_a().get(idx).unwrap();
-                let macd_b = htf_inst.indicators.macd.get_data_b().get(idx).unwrap();
+                let macd_a = htf_inst.indicators.macd.get_data_a().last().unwrap();
+                let macd_b = htf_inst.indicators.macd.get_data_b().last().unwrap();
                 macd_a < macd_b
             },
         );
@@ -318,13 +315,12 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
 
-        let anchor_htf = time_frame::get_htf_data(
-            index,
+        let anchor_htf = time_frame::get_bot_htf_data(
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().last().unwrap();
+                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().last().unwrap();
                 htf_ema_5 > htf_ema_8
             },
         );
