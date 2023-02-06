@@ -215,6 +215,7 @@ impl Bot {
 
     pub async fn run(&mut self) {
         self.init_session().await;
+        let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
         let overwrite_orders = env::var("OVERWRITE_ORDERS")
             .unwrap()
@@ -366,46 +367,51 @@ impl Bot {
                                     TradeResult::TradeIn(trade_in),
                                     order,
                                 ) => {
-                                    log::info!("Position Result MarketInOrder");
-                                    self.send_position::<PositionResult>(
-                                        &orders_position_result,
-                                        self.symbol.clone(),
-                                        self.time_frame.clone(),
-                                    )
-                                    .await;
+                                    if !open_positions {
+                                        log::info!("Position Result MarketInOrder");
+                                        self.send_position::<PositionResult>(
+                                            &orders_position_result,
+                                            self.symbol.clone(),
+                                            self.time_frame.clone(),
+                                        )
+                                        .await;
 
-                                    order::fulfill_bot_order::<TradeIn>(
-                                        &trade_in,
-                                        &order,
-                                        &mut self.orders,
-                                    );
-
-                                    self.trades_in.push(trade_in.clone());
+                                        order::fulfill_bot_order::<TradeIn>(
+                                            &trade_in,
+                                            &order,
+                                            &mut self.orders,
+                                        );
+                                        open_positions = true;
+                                        self.trades_in.push(trade_in.clone());
+                                    }
                                 }
                                 PositionResult::MarketOutOrder(
                                     TradeResult::TradeOut(trade_out),
                                     order,
                                 ) => {
                                     log::info!("Position Result MarketOutOrder");
-                                    self.send_position::<PositionResult>(
-                                        &orders_position_result,
-                                        self.symbol.clone(),
-                                        self.time_frame.clone(),
-                                    )
-                                    .await;
+                                    if open_positions {
+                                        self.send_position::<PositionResult>(
+                                            &orders_position_result,
+                                            self.symbol.clone(),
+                                            self.time_frame.clone(),
+                                        )
+                                        .await;
 
-                                    order::fulfill_bot_order::<TradeOut>(
-                                        &trade_out,
-                                        &order,
-                                        &mut self.orders,
-                                    );
+                                        order::fulfill_bot_order::<TradeOut>(
+                                            &trade_out,
+                                            &order,
+                                            &mut self.orders,
+                                        );
 
-                                    self.orders = order::cancel_trade_pending_orders(
-                                        trade_out,
-                                        self.orders.clone(),
-                                    );
+                                        self.orders = order::cancel_trade_pending_orders(
+                                            trade_out,
+                                            self.orders.clone(),
+                                        );
 
-                                    self.trades_out.push(trade_out.clone());
+                                        open_positions = false;
+                                        self.trades_out.push(trade_out.clone());
+                                    }
                                 }
                                 _ => (),
                             };
@@ -423,6 +429,9 @@ impl Bot {
                                     )
                                     .await;
 
+                                    open_positions = true;
+                                    self.trades_in.push(trade_in.clone());
+
                                     match new_orders {
                                         Some(new_ords) => {
                                             self.orders = order::add_pending(
@@ -432,8 +441,6 @@ impl Bot {
                                         }
                                         None => (),
                                     }
-
-                                    self.trades_in.push(trade_in.clone());
                                 }
                                 PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
                                     log::info!("Position Result TradeOut");
@@ -449,6 +456,7 @@ impl Bot {
                                         self.orders.clone(),
                                     );
 
+                                    open_positions = false;
                                     self.trades_out.push(trade_out.clone());
                                 }
                                 PositionResult::PendingOrder(new_orders) => {
