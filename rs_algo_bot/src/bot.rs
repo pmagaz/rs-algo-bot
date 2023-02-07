@@ -389,8 +389,9 @@ impl Bot {
                                     TradeResult::TradeOut(trade_out),
                                     order,
                                 ) => {
-                                    log::info!("Position Result MarketOutOrder");
                                     if open_positions {
+                                        log::info!("Position Result MarketOutOrder");
+
                                         self.send_position::<PositionResult>(
                                             &orders_position_result,
                                             self.symbol.clone(),
@@ -421,56 +422,65 @@ impl Bot {
                                     TradeResult::TradeIn(trade_in),
                                     new_orders,
                                 ) => {
-                                    log::info!("Position Result TradeIn");
-                                    self.send_position::<PositionResult>(
-                                        &position_result,
-                                        self.symbol.clone(),
-                                        self.time_frame.clone(),
-                                    )
-                                    .await;
+                                    if !open_positions {
+                                        log::info!("Position Result TradeIn");
+                                        self.send_position::<PositionResult>(
+                                            &position_result,
+                                            self.symbol.clone(),
+                                            self.time_frame.clone(),
+                                        )
+                                        .await;
 
-                                    open_positions = true;
-                                    self.trades_in.push(trade_in.clone());
+                                        open_positions = true;
+                                        self.trades_in.push(trade_in.clone());
 
-                                    match new_orders {
-                                        Some(new_ords) => {
-                                            self.orders = order::add_pending(
-                                                self.orders.clone(),
-                                                new_ords.clone(),
-                                            )
+                                        match new_orders {
+                                            Some(new_ords) => {
+                                                self.orders = order::add_pending(
+                                                    self.orders.clone(),
+                                                    new_ords.clone(),
+                                                )
+                                            }
+                                            None => (),
                                         }
-                                        None => (),
                                     }
                                 }
                                 PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
-                                    log::info!("Position Result TradeOut");
-                                    self.send_position::<PositionResult>(
-                                        &position_result,
-                                        self.symbol.clone(),
-                                        self.time_frame.clone(),
-                                    )
-                                    .await;
+                                    if open_positions {
+                                        log::info!("Position Result TradeOut");
+                                        self.send_position::<PositionResult>(
+                                            &position_result,
+                                            self.symbol.clone(),
+                                            self.time_frame.clone(),
+                                        )
+                                        .await;
 
-                                    self.orders = order::cancel_trade_pending_orders(
-                                        trade_out,
-                                        self.orders.clone(),
-                                    );
+                                        self.orders = order::cancel_trade_pending_orders(
+                                            trade_out,
+                                            self.orders.clone(),
+                                        );
 
-                                    open_positions = false;
-                                    self.trades_out.push(trade_out.clone());
+                                        open_positions = false;
+                                        self.trades_out.push(trade_out.clone());
+                                    }
                                 }
                                 PositionResult::PendingOrder(new_orders) => {
-                                    match overwrite_orders {
-                                        true => {
-                                            self.orders = order::cancel_all_bot_pending_orders(
-                                                self.orders.clone(),
-                                            );
+                                    if !open_positions {
+                                        log::info!("New Pending orders Result");
+                                        match overwrite_orders {
+                                            true => {
+                                                self.orders = order::cancel_all_bot_pending_orders(
+                                                    self.orders.clone(),
+                                                );
+                                            }
+                                            false => (),
                                         }
-                                        false => (),
-                                    }
 
-                                    self.orders =
-                                        order::add_pending(self.orders.clone(), new_orders.clone());
+                                        self.orders = order::add_pending(
+                                            self.orders.clone(),
+                                            new_orders.clone(),
+                                        );
+                                    }
                                 }
                                 _ => (),
                             };

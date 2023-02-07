@@ -217,14 +217,14 @@ where
                                 }
                                 PositionResult::MarketInOrder(
                                     TradeResult::TradeIn(trade_in),
-                                    _,
+                                    order,
                                 ) => {
                                     log::info!("MarketInOrder position received");
                                     let trade_data = TradeData {
                                         symbol: symbol.to_string(),
-                                        data: trade_in,
+                                        data: order,
                                     };
-                                    let trade_result = guard.open_trade(trade_data).await.unwrap();
+                                    let trade_result = guard.order_in(trade_data).await.unwrap();
                                     serde_json::to_string(&trade_result).unwrap()
                                 }
                                 PositionResult::MarketOutOrder(
