@@ -1,4 +1,0 @@
-package_name: rs_algo_bot
-release_name: rs-algo-bot-bb-rev-mtf
-local_path: /home/dev/rs-algo-bot
-chart_path: deployment/bb-rev-mtf-m5/chart

@@ -1,0 +1,4 @@
+package_name: rs_algo_bot
+release_name: rab-bbrev-usdjpy-m30
+local_path: /home/dev/rs-algo-bot
+chart_path: deployment/bb-rev/chart
