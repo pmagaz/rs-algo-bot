@@ -11,7 +11,7 @@ use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
-use rs_algo_shared::models::order::Order;
+use rs_algo_shared::models::order::{Order, OrderType};
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
@@ -238,15 +238,36 @@ impl Bot {
                             let bot_data = res.payload.unwrap();
                             let trades_in = bot_data.trades_in().len();
                             let trades_out = bot_data.trades_out().len();
+                            let orders = bot_data.orders();
+                            let pending_orders = order::get_pending(&orders);
+                            let active_stop_losses: Vec<Order> = pending_orders
+                                .iter()
+                                .filter(|x| x.order_type.is_stop())
+                                .map(|x| x.clone())
+                                .collect();
                             let num_active_trades = trades_in - trades_out;
                             match trades_in.cmp(&trades_out) {
                                 Ordering::Greater => {
-                                    log::info!("{} opened trades found", num_active_trades);
-                                    true
+                                    log::info!("{} trades found", num_active_trades);
+                                    //open_positions = true
                                 }
                                 _ => {
-                                    log::info!("No opened trades found");
-                                    false
+                                    log::info!("No trades found");
+                                    //open_positions = false
+                                }
+                            };
+
+                            match active_stop_losses.len().cmp(&0) {
+                                Ordering::Greater => {
+                                    log::info!(
+                                        "{} active stop losses found",
+                                        active_stop_losses.len()
+                                    );
+                                    open_positions = true
+                                }
+                                _ => {
+                                    log::info!("No active stop losses");
+                                    open_positions = false
                                 }
                             };
 
@@ -337,7 +358,7 @@ impl Bot {
                             {
                                 match self.htf_instrument {
                                     HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
-                                        let data = (
+                                        let htf_data = (
                                             higher_candle.date(),
                                             higher_candle.open(),
                                             higher_candle.high(),
@@ -345,22 +366,20 @@ impl Bot {
                                             higher_candle.close(),
                                             higher_candle.volume(),
                                         );
-                                        htf_instrument.init_candle(data);
+                                        htf_instrument.init_candle(htf_data);
                                     }
                                     HTFInstrument::None => (),
                                 };
                             }
 
-                            if is_multi_timeframe_strategy(&self.strategy_type) {
-                                match self.htf_instrument {
-                                    HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
-                                        htf_instrument.init_candle(data);
-                                    }
-                                    HTFInstrument::None => (),
-                                };
-                            }
-
-                            //////////
+                            // if is_multi_timeframe_strategy(&self.strategy_type) {
+                            //     match self.htf_instrument {
+                            //         HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
+                            //             htf_instrument.init_candle(data);
+                            //         }
+                            //         HTFInstrument::None => (),
+                            //     };
+                            // }
 
                             match &orders_position_result {
                                 PositionResult::MarketInOrder(
@@ -381,8 +400,9 @@ impl Bot {
                                             &order,
                                             &mut self.orders,
                                         );
+
+                                        //temp
                                         open_positions = true;
-                                        self.trades_in.push(trade_in.clone());
                                     }
                                 }
                                 PositionResult::MarketOutOrder(
@@ -410,8 +430,8 @@ impl Bot {
                                             self.orders.clone(),
                                         );
 
+                                        //temp
                                         open_positions = false;
-                                        self.trades_out.push(trade_out.clone());
                                     }
                                 }
                                 _ => (),
@@ -432,6 +452,7 @@ impl Bot {
                                         .await;
 
                                         open_positions = true;
+                                        log::info!("55555555 {}", self.trades_in.len());
                                         self.trades_in.push(trade_in.clone());
 
                                         match new_orders {
@@ -493,6 +514,7 @@ impl Bot {
                         MessageType::ExecuteTradeIn(res) => {
                             let trade_in = res.payload.unwrap();
                             log::info!("TradeIn {:?} accepted", &trade_in.data.id);
+                            log::info!("6666666666 {}", self.trades_in.len());
                             self.trades_in.push(trade_in.data);
 
                             self.strategy_stats = self.strategy.update_stats(
@@ -501,6 +523,7 @@ impl Bot {
                                 &self.trades_out,
                             );
 
+                            open_positions = true;
                             self.send_bot_status(&bot_str).await;
                         }
                         MessageType::ExecuteTradeOut(res) => {
@@ -533,6 +556,7 @@ impl Bot {
                                 &self.trades_out,
                             );
 
+                            open_positions = false;
                             self.send_bot_status(&bot_str).await;
                         }
                         _ => (),
