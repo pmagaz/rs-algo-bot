@@ -149,7 +149,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let risk = buy_price + spread - stop_loss_price;
         let sell_price = buy_price + (risk * self.risk_reward_ratio);
         //let sell_price = *top_band;
-        match true {
+        match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, *close_price, buy_price),
                 //OrderType::SellOrderLong(OrderDirection::Up, *close_price, sell_price),
@@ -223,7 +223,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         // let sell_price = buy_price + (risk * self.risk_reward_ratio);
         let sell_price = *top_band;
 
-        match true {
+        match exit_condition {
             true => Position::MarketOut(None),
             // true => Position::Order(vec![
             //     OrderType::BuyOrderLong(OrderDirection::Up, *close_price, buy_price),
