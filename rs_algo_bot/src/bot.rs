@@ -171,10 +171,36 @@ impl Bot {
     }
 
     pub async fn restore_values(&mut self, data: BotData) {
-        self.trades_in = data.trades_in().clone();
-        self.trades_out = data.trades_out().clone();
-        self.orders = data.orders().clone();
+        let max_historical_positions = env::var("MAX_HISTORICAL_POSITIONS")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+
         self.strategy_stats = data.strategy_stats().clone();
+
+        self.trades_in = data
+            .trades_in()
+            .iter()
+            .rev()
+            .take(max_historical_positions)
+            .map(|x| x.clone())
+            .collect();
+
+        self.trades_out = data
+            .trades_out()
+            .iter()
+            .rev()
+            .take(max_historical_positions)
+            .map(|x| x.clone())
+            .collect();
+
+        self.orders = data
+            .orders()
+            .iter()
+            .rev()
+            .take(max_historical_positions)
+            .map(|x| x.clone())
+            .collect();
     }
 
     pub async fn send_position<T>(&mut self, trade: &T, symbol: String, time_frame: TimeFrameType)
