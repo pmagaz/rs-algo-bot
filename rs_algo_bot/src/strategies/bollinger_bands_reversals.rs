@@ -290,19 +290,15 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let stop_loss_price = candle.high() + calc::to_pips(pips_margin, pricing);
         let risk = buy_price - spread + stop_loss_price;
         let sell_price = buy_price - (risk * self.risk_reward_ratio);
-        //let sell_price = *top_band;
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(OrderDirection::Down, *close_price, buy_price),
-                //OrderType::SellOrderLong(OrderDirection::Up, *close_price, sell_price),
-                //OrderType::StopLoss(OrderDirection::Up, StopLossType::Price(stop_loss_price)),
                 OrderType::StopLoss(OrderDirection::Up, StopLossType::Atr(1.5)),
             ]),
 
             false => Position::None,
         }
-        //Position::None
     }
 
     fn exit_short(
@@ -360,44 +356,12 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let exit_condition =
             anchor_htf || (ridding_bars < 3 && close_price > low_band && prev_high < prev_low_band);
-        //let buy_price = highest_bar + calc::to_pips(pips_margin, pricing);
-        // let stop_loss_price = candle.low() - calc::to_pips(pips_margin, pricing);
-        // let risk = buy_price + spread - stop_loss_price;
-        // let sell_price = buy_price + (risk * self.risk_reward_ratio);
+
         let sell_price = *top_band;
 
         match exit_condition {
             true => Position::MarketOut(None),
-            // true => Position::Order(vec![
-            //     OrderType::BuyOrderLong(OrderDirection::Up, *close_price, buy_price),
-            //     //OrderType::SellOrderLong(OrderDirection::Up, *close_price, sell_price),
-            //     //OrderType::StopLoss(OrderDirection::Down, StopLossType::Atr(atr_value)),
-            //     //OrderType::StopLoss(OrderDirection::Down, StopLossType::Price(stop_loss_price)),
-            // ]),
             false => Position::None,
         }
     }
-
-    // fn backtest_result(
-    //     &self,
-    //     instrument: &Instrument,
-    //     trades_in: Vec<TradeIn>,
-    //     trades_out: Vec<TradeOut>,
-    //     orders: Vec<Order>,
-    //     equity: f64,
-    //     commission: f64,
-    // ) -> BackTestResult {
-    //     resolve_backtest(
-    //         instrument,
-    //         &self.time_frame,
-    //         &self.higher_time_frame,
-    //         &self.strategy_type,
-    //         trades_in,
-    //         trades_out,
-    //         orders,
-    //         self.name,
-    //         equity,
-    //         commission,
-    //     )
-    // }
 }
