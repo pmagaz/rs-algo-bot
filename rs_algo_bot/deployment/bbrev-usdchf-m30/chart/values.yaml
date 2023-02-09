@@ -1,0 +1,50 @@
+replicaCount: 1
+
+image:
+  repository: cluster.loc:5000/rs-algo-bot
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets:
+ - name: docker-credentials 
+
+envSecretName: rs-algo-screener-secrets
+
+podAnnotations: {}
+
+service: {}
+
+serviceAccount: {}
+
+ingress: {}
+
+resources:
+  requests:
+    cpu: 25m
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 40
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+  nodeType: worker
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: nodeType
+          operator: In
+          values:
+          - worker
+
+tolerations: []
+
+podSecurityContext: {}

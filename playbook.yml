@@ -9,3 +9,5 @@
     - { role: "rs_algo_bot/deployment/bbrev-eursusd-m30/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-usdjpy-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-usdjpy-m30/roles" }
+    - { role: "rs_algo_bot/deployment/bbrev-usdchf-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbrev-usdchf-m30/roles" }
