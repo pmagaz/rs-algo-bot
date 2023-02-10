@@ -470,6 +470,7 @@ impl Bot {
                                 ) => {
                                     if !open_positions {
                                         log::info!("Position Result TradeIn");
+
                                         self.send_position::<PositionResult>(
                                             &position_result,
                                             self.symbol.clone(),
@@ -477,9 +478,8 @@ impl Bot {
                                         )
                                         .await;
 
-                                        open_positions = true;
-                                        log::info!("55555555 {}", self.trades_in.len());
-                                        self.trades_in.push(trade_in.clone());
+                                        //open_positions = true;
+                                        //self.trades_in.push(trade_in.clone());
 
                                         match new_orders {
                                             Some(new_ords) => {
@@ -507,8 +507,8 @@ impl Bot {
                                             self.orders.clone(),
                                         );
 
-                                        open_positions = false;
-                                        self.trades_out.push(trade_out.clone());
+                                        //open_positions = false;
+                                        //self.trades_out.push(trade_out.clone());
                                     }
                                 }
                                 PositionResult::PendingOrder(new_orders) => {
@@ -539,8 +539,6 @@ impl Bot {
                         }
                         MessageType::ExecuteTradeIn(res) => {
                             let trade_in = res.payload.unwrap();
-                            log::info!("TradeIn {:?} accepted", &trade_in.data.id);
-                            log::info!("6666666666 {}", self.trades_in.len());
                             self.trades_in.push(trade_in.data);
 
                             self.strategy_stats = self.strategy.update_stats(
