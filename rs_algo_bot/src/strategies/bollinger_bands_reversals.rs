@@ -100,14 +100,20 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         htf_instrument: &HTFInstrument,
         pricing: &Pricing,
     ) -> Position {
+        let atr_value = std::env::var("ATR_STOP_LOSS")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap()
+            .clone();
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
-        let anchor_htf = time_frame::get_bot_htf_data(
+        let anchor_htf = time_frame::get_htf_data(
+            index,
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let macd_a = htf_inst.indicators.macd.get_data_a().last().unwrap();
-                let macd_b = htf_inst.indicators.macd.get_data_b().last().unwrap();
+                let macd_a = htf_inst.indicators.macd.get_data_a().get(idx).unwrap();
+                let macd_b = htf_inst.indicators.macd.get_data_b().get(idx).unwrap();
                 macd_a > macd_b
             },
         );
@@ -118,16 +124,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
         let prev_close = &prev_candle.close();
-        let date = &candle.date();
-        let pips_margin = 3.;
-        let previous_bars = 3;
-        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
-        let prev_top_band = instrument
-            .indicators
-            .bb
-            .get_data_a()
-            .get(prev_index)
-            .unwrap();
 
         let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
         let prev_low_band = instrument
@@ -137,24 +133,18 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let highest_bar = data[prev_index - previous_bars..prev_index]
-            .iter()
-            .max_by(|x, y| x.high().partial_cmp(&y.high()).unwrap())
-            .map(|x| x.high())
-            .unwrap();
+        let pips_margin = 3.;
 
-        let entry_condition = anchor_htf && close_price < low_band && prev_close >= prev_low_band;
-        let buy_price = close_price + calc::to_pips(pips_margin, pricing);
-        let stop_loss_price = candle.low() - calc::to_pips(pips_margin, pricing);
-        let risk = buy_price + spread - stop_loss_price;
-        let sell_price = buy_price + (risk * self.risk_reward_ratio);
-        //let sell_price = *top_band;
+        let entry_condition = anchor_htf
+            && candle.is_closed()
+            && close_price < low_band
+            && prev_close >= prev_low_band;
+        let buy_price = candle.high() + calc::to_pips(pips_margin, pricing);
+
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, *close_price, buy_price),
-                //OrderType::SellOrderLong(OrderDirection::Up, *close_price, sell_price),
-                OrderType::StopLoss(OrderDirection::Down, StopLossType::Atr(1.5)),
-                //OrderType::StopLoss(OrderDirection::Down, StopLossType::Price(stop_loss_price)),
+                OrderType::StopLoss(OrderDirection::Down, StopLossType::Atr(atr_value)),
             ]),
 
             false => Position::None,
@@ -172,12 +162,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
 
-        let anchor_htf = time_frame::get_bot_htf_data(
+        let anchor_htf = time_frame::get_htf_data(
+            index,
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().last().unwrap();
-                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().last().unwrap();
+                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
+                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
                 htf_ema_5 < htf_ema_8
             },
         );
@@ -187,11 +178,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
-        let prev_close = &prev_candle.close();
         let prev_high = &prev_candle.high();
-        let date = &candle.date();
-        let pips_margin = 3.;
-        let previous_bars = 3;
+
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
         let prev_top_band = instrument
             .indicators
@@ -200,14 +188,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
-        let prev_low_band = instrument
-            .indicators
-            .bb
-            .get_data_b()
-            .get(prev_index)
-            .unwrap();
-
+        let previous_bars = 3;
         let mut ridding_bars = 0;
         for candle in data[prev_index - previous_bars..prev_index].iter() {
             if candle.close() > *top_band {
@@ -215,22 +196,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             }
         }
 
-        let exit_condition =
-            anchor_htf || (ridding_bars < 3 && close_price < top_band && prev_high > prev_top_band);
-        //let buy_price = highest_bar + calc::to_pips(pips_margin, pricing);
-        // let stop_loss_price = candle.low() - calc::to_pips(pips_margin, pricing);
-        // let risk = buy_price + spread - stop_loss_price;
-        // let sell_price = buy_price + (risk * self.risk_reward_ratio);
-        let sell_price = *top_band;
+        let exit_condition = anchor_htf
+            || candle.is_closed()
+                && ridding_bars < 3
+                && close_price < top_band
+                && prev_high > prev_top_band;
 
         match exit_condition {
             true => Position::MarketOut(None),
-            // true => Position::Order(vec![
-            //     OrderType::BuyOrderLong(OrderDirection::Up, *close_price, buy_price),
-            //     //OrderType::SellOrderLong(OrderDirection::Up, *close_price, sell_price),
-            //     //OrderType::StopLoss(OrderDirection::Down, StopLossType::Atr(atr_value)),
-            //     //OrderType::StopLoss(OrderDirection::Down, StopLossType::Price(stop_loss_price)),
-            // ]),
             false => Position::None,
         }
     }
@@ -242,8 +215,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         htf_instrument: &HTFInstrument,
         pricing: &Pricing,
     ) -> Position {
+        let atr_value = std::env::var("ATR_STOP_LOSS")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap()
+            .clone();
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
+
         let anchor_htf = time_frame::get_bot_htf_data(
             instrument,
             htf_instrument,
@@ -260,16 +239,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
         let prev_close = &prev_candle.close();
-        let date = &candle.date();
+
         let pips_margin = 3.;
         let previous_bars = 3;
-        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
-        let prev_top_band = instrument
-            .indicators
-            .bb
-            .get_data_a()
-            .get(prev_index)
-            .unwrap();
 
         let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
         let prev_low_band = instrument
@@ -279,22 +251,19 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let lowest_bar = data[prev_index - previous_bars..prev_index]
-            .iter()
-            .min_by(|x, y| x.low().partial_cmp(&y.low()).unwrap())
-            .map(|x| x.low())
-            .unwrap();
+        let entry_condition = anchor_htf
+            && candle.is_closed()
+            && close_price > low_band
+            && prev_close <= prev_low_band;
 
-        let entry_condition = anchor_htf && close_price > low_band && prev_close <= prev_low_band;
         let buy_price = close_price - calc::to_pips(pips_margin, pricing);
         let stop_loss_price = candle.high() + calc::to_pips(pips_margin, pricing);
         let risk = buy_price - spread + stop_loss_price;
-        let sell_price = buy_price - (risk * self.risk_reward_ratio);
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(OrderDirection::Down, *close_price, buy_price),
-                OrderType::StopLoss(OrderDirection::Up, StopLossType::Atr(1.5)),
+                OrderType::StopLoss(OrderDirection::Up, StopLossType::Atr(atr_value)),
             ]),
 
             false => Position::None,
@@ -311,13 +280,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
 
-        let anchor_htf = time_frame::get_bot_htf_data(
+        let anchor_htf = time_frame::get_htf_data(
+            index,
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().last().unwrap();
-                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().last().unwrap();
-                htf_ema_5 > htf_ema_8
+                let macd_a = htf_inst.indicators.macd.get_data_a().get(idx).unwrap();
+                let macd_b = htf_inst.indicators.macd.get_data_b().get(idx).unwrap();
+                macd_a > macd_b
             },
         );
 
@@ -327,17 +297,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
         let prev_close = &prev_candle.close();
-        let prev_high = &prev_candle.high();
-        let date = &candle.date();
-        let pips_margin = 3.;
-        let previous_bars = 3;
-        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
-        let prev_top_band = instrument
-            .indicators
-            .bb
-            .get_data_a()
-            .get(prev_index)
-            .unwrap();
 
         let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
         let prev_low_band = instrument
@@ -347,17 +306,19 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
+        let previous_bars = 3;
         let mut ridding_bars = 0;
+
         for candle in data[prev_index - previous_bars..prev_index].iter() {
             if candle.close() < *low_band {
                 ridding_bars += 1;
             }
         }
-
-        let exit_condition =
-            anchor_htf || (ridding_bars < 3 && close_price > low_band && prev_high < prev_low_band);
-
-        let sell_price = *top_band;
+        let exit_condition = anchor_htf
+            || candle.is_closed()
+                && ridding_bars < 3
+                && close_price < low_band
+                && prev_close >= prev_low_band;
 
         match exit_condition {
             true => Position::MarketOut(None),
