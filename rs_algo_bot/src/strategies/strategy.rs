@@ -132,7 +132,8 @@ pub trait Strategy: DynClone {
                 match self.entry_long(index, instrument, htf_instrument, pricing) {
                     Position::MarketIn(order_types) => {
                         let trade_type = TradeType::MarketInLong;
-                        let trade_in_result = resolve_bot_trade_in(
+                        let trade_in_result = resolve_trade_in(
+                            index,
                             trade_size,
                             instrument,
                             pricing,
@@ -144,7 +145,7 @@ pub trait Strategy: DynClone {
                             Some(orders) => {
                                 long_entry = true;
                                 short_entry = false;
-                                Some(order::prepare_bot_orders(
+                                Some(order::prepare_orders(
                                     index,
                                     instrument,
                                     pricing,
@@ -171,7 +172,7 @@ pub trait Strategy: DynClone {
                         //     std::cmp::Ordering::Equal => {
                         //         long_entry = true;
                         //         short_entry = false;
-                        //         prepare_bot_orders(
+                        //         prepare_orders(
                         //             index,
                         //             instrument,
                         //             pricing,
@@ -182,7 +183,7 @@ pub trait Strategy: DynClone {
                         //     _ => vec![],
                         // };
 
-                        let prepared_orders = order::prepare_bot_orders(
+                        let prepared_orders = order::prepare_orders(
                             index,
                             instrument,
                             pricing,
@@ -221,7 +222,8 @@ pub trait Strategy: DynClone {
                     Position::MarketIn(order_types) => {
                         let trade_type = TradeType::MarketInShort;
 
-                        let trade_in_result = resolve_bot_trade_in(
+                        let trade_in_result = resolve_trade_in(
+                            index,
                             trade_size,
                             instrument,
                             pricing,
@@ -233,7 +235,7 @@ pub trait Strategy: DynClone {
                             Some(orders) => {
                                 long_entry = true;
                                 short_entry = false;
-                                Some(order::prepare_bot_orders(
+                                Some(order::prepare_orders(
                                     index,
                                     instrument,
                                     pricing,
@@ -260,7 +262,7 @@ pub trait Strategy: DynClone {
                         //     std::cmp::Ordering::Equal => {
                         //         short_entry = true;
                         //         long_entry = false;
-                        //         prepare_bot_orders(
+                        //         prepare_orders(
                         //             index,
                         //             instrument,
                         //             pricing,
@@ -271,7 +273,7 @@ pub trait Strategy: DynClone {
                         //     _ => vec![],
                         // };
 
-                        let prepared_orders = order::prepare_bot_orders(
+                        let prepared_orders = order::prepare_orders(
                             index,
                             instrument,
                             pricing,
@@ -333,8 +335,14 @@ pub trait Strategy: DynClone {
                         let trade_type = TradeType::MarketOutLong;
                         long_exit = true;
                         short_exit = false;
-                        let trade_out_result =
-                            resolve_bot_trade_out(instrument, pricing, trade_in, &trade_type, None);
+                        let trade_out_result = resolve_trade_out(
+                            index,
+                            instrument,
+                            pricing,
+                            trade_in,
+                            &trade_type,
+                            None,
+                        );
 
                         PositionResult::MarketOut(trade_out_result)
                     }
@@ -342,7 +350,7 @@ pub trait Strategy: DynClone {
                         let trade_type = TradeType::OrderOutLong;
                         long_exit = true;
                         short_exit = false;
-                        let orders = order::prepare_bot_orders(
+                        let orders = order::prepare_orders(
                             index,
                             instrument,
                             pricing,
@@ -367,8 +375,14 @@ pub trait Strategy: DynClone {
                         let trade_type = TradeType::MarketOutShort;
                         short_exit = true;
                         long_exit = false;
-                        let trade_out_result =
-                            resolve_bot_trade_out(instrument, pricing, trade_in, &trade_type, None);
+                        let trade_out_result = resolve_trade_out(
+                            index,
+                            instrument,
+                            pricing,
+                            trade_in,
+                            &trade_type,
+                            None,
+                        );
 
                         PositionResult::MarketOut(trade_out_result)
                     }
@@ -376,7 +390,7 @@ pub trait Strategy: DynClone {
                         let trade_type = TradeType::OrderOutShort;
                         short_exit = true;
                         long_exit = false;
-                        let orders = order::prepare_bot_orders(
+                        let orders = order::prepare_orders(
                             index,
                             instrument,
                             pricing,
@@ -409,13 +423,14 @@ pub trait Strategy: DynClone {
         pending_orders: &Vec<Order>,
         trades_in: &Vec<TradeIn>,
     ) -> PositionResult {
-        match order::resolve_bot_active_orders(index, instrument, pending_orders, pricing) {
+        match order::resolve_active_orders(index, instrument, pending_orders, pricing) {
             Position::MarketInOrder(mut order) => {
                 let trade_type = match order.order_type.is_long() {
                     true => TradeType::OrderInLong,
                     false => TradeType::OrderInShort,
                 };
-                let trade_in_result = resolve_bot_trade_in(
+                let trade_in_result = resolve_trade_in(
+                    index,
                     trade_size,
                     instrument,
                     pricing,
@@ -455,7 +470,8 @@ pub trait Strategy: DynClone {
                     };
 
                 let trade_out_result = match trades_in.last() {
-                    Some(trade_in) => resolve_bot_trade_out(
+                    Some(trade_in) => resolve_trade_out(
+                        index,
                         instrument,
                         pricing,
                         trade_in,

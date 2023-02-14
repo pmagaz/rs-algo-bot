@@ -425,6 +425,7 @@ impl Bot {
                                             &trade_in,
                                             &order,
                                             &mut self.orders,
+                                            &self.instrument,
                                         );
 
                                         //temp
@@ -449,6 +450,7 @@ impl Bot {
                                             &trade_out,
                                             &order,
                                             &mut self.orders,
+                                            &self.instrument,
                                         );
 
                                         self.orders = order::cancel_trade_pending_orders(
@@ -516,7 +518,9 @@ impl Bot {
                                         log::info!("New Pending orders Result");
                                         match overwrite_orders {
                                             true => {
-                                                self.orders = order::cancel_all_bot_pending_orders(
+                                                self.orders = order::cancel_all_pending_orders(
+                                                    0,
+                                                    &self.instrument,
                                                     self.orders.clone(),
                                                 );
                                             }
