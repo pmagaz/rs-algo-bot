@@ -349,7 +349,7 @@ impl Bot {
                             let new_candle = self.instrument.next(data).unwrap();
                             let mut higher_candle: Candle = new_candle.clone();
 
-                            log::info!("{} candle processed", bot_str);
+                            log::info!("{} candle processed {:?}", bot_str, new_candle);
 
                             if is_multi_timeframe_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
@@ -371,13 +371,6 @@ impl Bot {
                                     &self.pricing,
                                 )
                                 .await;
-
-                            match new_candle.is_closed() {
-                                true => {
-                                    self.instrument.init_candle(data);
-                                }
-                                false => (),
-                            };
 
                             if is_multi_timeframe_strategy(&self.strategy_type)
                                 && higher_candle.is_closed()
