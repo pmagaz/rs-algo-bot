@@ -152,11 +152,14 @@ where
                     Some(serde_json::to_string(&res).unwrap())
                 }
                 CommandType::GetInstrumentData => {
-                    let num_bars = env::var("NUM_BARS").unwrap().parse::<i64>().unwrap();
-
                     let time_frame = match &query.data {
                         Some(data) => TimeFrame::new(data["time_frame"].as_str().unwrap()),
                         None => TimeFrameType::ERR,
+                    };
+
+                    let num_bars = match &query.data {
+                        Some(data) => data["num_bars"].as_i64().unwrap(),
+                        None => env::var("NUM_BARS").unwrap().parse::<i64>().unwrap(),
                     };
 
                     let time_frame_number = time_frame.to_number();

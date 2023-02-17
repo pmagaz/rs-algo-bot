@@ -92,14 +92,14 @@ impl Bot {
 
     pub async fn get_instrument_data(&mut self) {
         log::info!("Requesting {}_{} data", &self.symbol, &self.time_frame);
-
         let get_instrument_data = Command {
             command: CommandType::GetInstrumentData,
-            data: Some(Payload {
+            data: Some(InstrumentDataPayload {
                 symbol: &self.symbol,
                 strategy: &self.strategy_name,
                 time_frame: self.time_frame.to_owned(),
                 strategy_type: self.strategy_type.to_owned(),
+                num_bars: env::var("NUM_BARS").unwrap().parse::<i64>().unwrap(),
             }),
         };
 
@@ -116,11 +116,12 @@ impl Bot {
         if is_mtf_strategy(&self.strategy_type) {
             let get_higher_instrument_data = Command {
                 command: CommandType::GetInstrumentData,
-                data: Some(Payload {
+                data: Some(InstrumentDataPayload {
                     symbol: &self.symbol,
                     strategy: &self.strategy_name,
                     strategy_type: self.strategy_type.to_owned(),
                     time_frame: higher_time_frame.to_owned(),
+                    num_bars: env::var("NUM_BARS").unwrap().parse::<i64>().unwrap(),
                 }),
             };
 
