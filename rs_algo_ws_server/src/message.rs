@@ -2,7 +2,7 @@ use crate::db;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 
-use rs_algo_shared::helpers::date::parse_time;
+use rs_algo_shared::helpers::date;
 use rs_algo_shared::helpers::date::{Duration as Dur, Local};
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::time_frame::*;
@@ -152,7 +152,7 @@ where
                     Some(serde_json::to_string(&res).unwrap())
                 }
                 CommandType::GetInstrumentData => {
-                    let max_bars = env::var("MAX_BARS").unwrap().parse::<i32>().unwrap();
+                    let num_bars = env::var("NUM_BARS").unwrap().parse::<i64>().unwrap();
 
                     let time_frame = match &query.data {
                         Some(data) => TimeFrame::new(data["time_frame"].as_str().unwrap()),
@@ -160,24 +160,18 @@ where
                     };
 
                     let time_frame_number = time_frame.to_number();
+                    let time_frame_from = TimeFrame::get_starting_bar(num_bars, &time_frame);
 
-                    let from =
-                        (Local::now() - Dur::milliseconds(600000 * max_bars as i64)).timestamp();
-
-                    let from = (Local::now()
-                        - Dur::milliseconds(100000 * time_frame_number * max_bars as i64))
-                    .timestamp();
-
-                    log::info!(
-                        "Requesting data from {} {} ",
-                        time_frame_number,
-                        parse_time(from)
-                    );
+                    log::info!("Requesting Instrument data from {} ", time_frame_from,);
 
                     let res = broker
                         .lock()
                         .await
-                        .get_instrument_data(symbol, time_frame_number as usize, from)
+                        .get_instrument_data(
+                            symbol,
+                            time_frame_number as usize,
+                            time_frame_from.timestamp(),
+                        )
                         .await
                         .unwrap();
 

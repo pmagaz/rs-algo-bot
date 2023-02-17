@@ -141,6 +141,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && prev_close >= prev_low_band;
         let buy_price = candle.high() + calc::to_pips(pips_margin, pricing);
 
+        log::info!("Strategy Long {:?}", (candle.is_closed()));
+
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, *close_price, buy_price),
@@ -259,6 +261,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let buy_price = close_price - calc::to_pips(pips_margin, pricing);
         let stop_loss_price = candle.high() + calc::to_pips(pips_margin, pricing);
         let risk = buy_price - spread + stop_loss_price;
+        log::info!("Strategy Short {:?}", (candle.is_closed()));
 
         match entry_condition {
             true => Position::Order(vec![

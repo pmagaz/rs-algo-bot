@@ -113,7 +113,7 @@ impl Bot {
             None => &TimeFrameType::ERR,
         };
 
-        if is_multi_timeframe_strategy(&self.strategy_type) {
+        if is_mtf_strategy(&self.strategy_type) {
             let get_higher_instrument_data = Command {
                 command: CommandType::GetInstrumentData,
                 data: Some(Payload {
@@ -320,10 +320,10 @@ impl Bot {
 
                                 self.instrument.set_data(data).unwrap();
 
-                                if !is_multi_timeframe_strategy(&self.strategy_type) {
+                                if !is_mtf_strategy(&self.strategy_type) {
                                     self.subscribing_to_stream().await;
                                 }
-                            } else if is_multi_timeframe_strategy(&self.strategy_type) {
+                            } else if is_mtf_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
                                     HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
                                         log::info!(
@@ -349,9 +349,9 @@ impl Bot {
                             let new_candle = self.instrument.next(data).unwrap();
                             let mut higher_candle: Candle = new_candle.clone();
 
-                            log::info!("{} candle processed {:?}", bot_str, new_candle);
+                            log::info!("Candle processed {:?}", new_candle.date());
 
-                            if is_multi_timeframe_strategy(&self.strategy_type) {
+                            if is_mtf_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
                                     HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
                                         higher_candle = htf_instrument.next(data).unwrap();
@@ -372,9 +372,14 @@ impl Bot {
                                 )
                                 .await;
 
-                            if is_multi_timeframe_strategy(&self.strategy_type)
-                                && higher_candle.is_closed()
-                            {
+                            match new_candle.is_closed() {
+                                true => {
+                                    self.instrument.init_candle(data);
+                                }
+                                false => (),
+                            };
+
+                            if higher_candle.is_closed() && is_mtf_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
                                     HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
                                         let htf_data = (
@@ -391,7 +396,7 @@ impl Bot {
                                 };
                             }
 
-                            // if is_multi_timeframe_strategy(&self.strategy_type) {
+                            // if is_mtf_strategy(&self.strategy_type) {
                             //     match self.htf_instrument {
                             //         HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
                             //             htf_instrument.init_candle(data);
@@ -528,8 +533,6 @@ impl Bot {
                                 }
                                 _ => (),
                             };
-
-                            log::info!("Total orders {:?}", self.orders.len());
 
                             self.get_pricing_data().await;
                             self.send_bot_status(&bot_str).await;
