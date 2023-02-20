@@ -237,7 +237,7 @@ where
                                     serde_json::to_string(&trade_result).unwrap()
                                 }
                                 _ => {
-                                    log::info!("NOT IMPLEMENTED");
+                                    todo!();
                                     "".to_string()
                                 }
                             };
@@ -282,7 +282,7 @@ where
                                 data["time_frame"].as_str().unwrap(),
                             ]
                             .concat();
-                            log::info!("Updating bot data for {:?}", data.clone());
+                            log::info!("Updating bot data for {:?}", instrument);
 
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
 
