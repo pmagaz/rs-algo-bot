@@ -146,7 +146,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let buy_price = candle.high() + calc::to_pips(pips_margin, pricing);
 
-        match true {
+        match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
                 OrderType::StopLossLong(OrderDirection::Down, StopLossType::Atr(atr_value)),
