@@ -73,10 +73,7 @@ pub fn calculate_stats(
         let trades = wining_trades + losing_trades;
         let won_per_trade_per = avg_per_trade(&w_trades);
         let lost_per_trade_per = avg_per_trade(&l_trades);
-        let stop_losses = trades_out
-            .iter()
-            .filter(|x| x.trade_type == TradeType::StopLoss)
-            .count();
+        let stop_losses = trades_out.iter().filter(|x| x.trade_type.is_stop()).count();
         let gross_profits = total_gross(&w_trades);
         let gross_loses = total_gross(&l_trades);
         let gross_profit = gross_profits + gross_loses;

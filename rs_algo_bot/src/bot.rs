@@ -11,7 +11,7 @@ use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
-use rs_algo_shared::models::order::{Order, OrderType};
+use rs_algo_shared::models::order::{Order, OrderStatus, OrderType};
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
@@ -269,14 +269,16 @@ impl Bot {
                             let pending_orders = order::get_pending(&orders);
                             let active_stop_losses: Vec<Order> = pending_orders
                                 .iter()
-                                .filter(|x| x.order_type.is_stop())
+                                .filter(|x| {
+                                    x.order_type.is_stop() && x.status == OrderStatus::Pending
+                                })
                                 .map(|x| x.clone())
                                 .collect();
                             let num_active_trades = trades_in - trades_out;
                             match trades_in.cmp(&trades_out) {
                                 Ordering::Greater => {
                                     log::info!("{} trades found", num_active_trades);
-                                    //open_positions = true
+                                    open_positions = true
                                 }
                                 _ => {
                                     log::info!("No trades found");
@@ -426,9 +428,6 @@ impl Bot {
                                             &mut self.orders,
                                             &self.instrument,
                                         );
-
-                                        //temp
-                                        open_positions = true;
                                     }
                                 }
                                 PositionResult::MarketOutOrder(
@@ -456,9 +455,6 @@ impl Bot {
                                             trade_out,
                                             self.orders.clone(),
                                         );
-
-                                        //temp
-                                        open_positions = false;
                                     }
                                 }
                                 _ => (),
@@ -478,9 +474,6 @@ impl Bot {
                                             self.time_frame.clone(),
                                         )
                                         .await;
-
-                                        //open_positions = true;
-                                        //self.trades_in.push(trade_in.clone());
 
                                         match new_orders {
                                             Some(new_ords) => {
@@ -514,9 +507,12 @@ impl Bot {
                                 }
                                 PositionResult::PendingOrder(new_orders) => {
                                     if !open_positions {
-                                        log::info!("New Pending orders Result");
                                         match overwrite_orders {
                                             true => {
+                                                log::info!(
+                                                    "OVERWRITING ORDERS {:?}",
+                                                    &self.orders.len()
+                                                );
                                                 self.orders = order::cancel_all_pending_orders(
                                                     0,
                                                     &self.instrument,
