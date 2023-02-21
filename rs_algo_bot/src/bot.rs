@@ -352,7 +352,7 @@ impl Bot {
                             let new_candle = self.instrument.next(data).unwrap();
                             let mut higher_candle: Candle = new_candle.clone();
 
-                            log::info!("Candle processed {:?}", new_candle.date());
+                            log::info!("Candle  processed {:?}", new_candle.date());
 
                             if is_mtf_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
@@ -383,6 +383,7 @@ impl Bot {
                             };
 
                             if higher_candle.is_closed() && is_mtf_strategy(&self.strategy_type) {
+                                log::info!("HTF Candle closed {:?}", higher_candle.date());
                                 match self.htf_instrument {
                                     HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
                                         let htf_data = (
