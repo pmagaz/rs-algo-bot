@@ -11,6 +11,7 @@ use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
+use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::order::{Order, OrderStatus, OrderType};
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
@@ -91,7 +92,16 @@ impl Bot {
     }
 
     pub async fn get_instrument_data(&mut self) {
-        log::info!("Requesting {}_{} data", &self.symbol, &self.time_frame);
+        let num_bars = env::var("NUM_BARS").unwrap().parse::<i64>().unwrap();
+        let time_frame_from =
+            TimeFrame::get_starting_bar(num_bars, &self.time_frame, &ExecutionMode::Bot);
+
+        log::info!(
+            "Requesting {}_{} data from {:?}",
+            &self.symbol,
+            &self.time_frame,
+            time_frame_from
+        );
         let get_instrument_data = Command {
             command: CommandType::GetInstrumentData,
             data: Some(InstrumentDataPayload {
@@ -99,7 +109,7 @@ impl Bot {
                 strategy: &self.strategy_name,
                 time_frame: self.time_frame.to_owned(),
                 strategy_type: self.strategy_type.to_owned(),
-                num_bars: env::var("NUM_BARS").unwrap().parse::<i64>().unwrap(),
+                num_bars: num_bars,
             }),
         };
 
@@ -121,16 +131,21 @@ impl Bot {
                     strategy: &self.strategy_name,
                     strategy_type: self.strategy_type.to_owned(),
                     time_frame: higher_time_frame.to_owned(),
-                    num_bars: env::var("NUM_BARS").unwrap().parse::<i64>().unwrap(),
+                    num_bars: num_bars,
                 }),
             };
-
-            log::info!("Requesting {} {} data", &self.symbol, &higher_time_frame);
 
             self.websocket
                 .send(&serde_json::to_string(&get_higher_instrument_data).unwrap())
                 .await
                 .unwrap();
+
+            log::info!(
+                "Requesting HTF {}_{} data from {:?}",
+                &self.symbol,
+                &higher_time_frame,
+                time_frame_from
+            );
         }
     }
 
@@ -318,8 +333,17 @@ impl Bot {
                             let time_frame = payload.time_frame;
                             let data = payload.data;
 
+                            let since_date = match &data.first() {
+                                Some(x) => x.0.to_string(),
+                                None => "".to_owned(),
+                            };
+
                             if is_base_time_frame(&self.time_frame, &time_frame) {
-                                log::info!("Instrument {} data received", bot_str);
+                                log::info!(
+                                    "Instrument {} data received since {:?}",
+                                    bot_str,
+                                    &since_date,
+                                );
 
                                 self.instrument.set_data(data).unwrap();
 
@@ -329,10 +353,15 @@ impl Bot {
                             } else if is_mtf_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
                                     HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
+                                        let since_date = match &htf_instrument.data.first() {
+                                            Some(x) => x.date().to_string(),
+                                            None => "".to_owned(),
+                                        };
                                         log::info!(
-                                            "Instrument {}_{} data received",
+                                            "Instrument {}_{} data received since {:?}",
                                             &self.symbol,
-                                            &htf_instrument.time_frame()
+                                            &htf_instrument.time_frame(),
+                                            &since_date
                                         );
 
                                         htf_instrument.set_data(data).unwrap();

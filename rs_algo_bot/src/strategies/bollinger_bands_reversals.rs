@@ -228,9 +228,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let macd_a = htf_inst.indicators.macd.get_data_a().last().unwrap();
-                let macd_b = htf_inst.indicators.macd.get_data_b().last().unwrap();
-                macd_a < macd_b
+                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
+                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                htf_ema_5 < htf_ema_8
             },
         );
 
@@ -256,7 +256,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && close_price < top_band
             && prev_high >= prev_top_band;
 
-        let buy_price = close_price - calc::to_pips(pips_margin, pricing);
+        let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
 
         match entry_condition {
             true => Position::Order(vec![

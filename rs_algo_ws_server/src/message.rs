@@ -5,6 +5,7 @@ use crate::handlers::{session::Session, session::Sessions};
 use rs_algo_shared::helpers::date;
 use rs_algo_shared::helpers::date::{Duration as Dur, Local};
 use rs_algo_shared::models::bot::BotData;
+use rs_algo_shared::models::mode;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::{trade, trade::*};
 use rs_algo_shared::ws::message::*;
@@ -162,10 +163,17 @@ where
                         None => env::var("NUM_BARS").unwrap().parse::<i64>().unwrap(),
                     };
 
-                    let time_frame_number = time_frame.to_number();
-                    let time_frame_from = TimeFrame::get_starting_bar(num_bars, &time_frame);
+                    let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
 
-                    log::info!("Requesting Instrument data from {} ", time_frame_from,);
+                    let time_frame_number = time_frame.to_number();
+                    let time_frame_from =
+                        TimeFrame::get_starting_bar(num_bars, &time_frame, &execution_mode);
+
+                    log::info!(
+                        "Requesting {} Instrument data since {} ",
+                        time_frame,
+                        time_frame_from,
+                    );
 
                     let res = broker
                         .lock()
