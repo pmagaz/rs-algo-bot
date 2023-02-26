@@ -290,7 +290,7 @@ where
                                 data["time_frame"].as_str().unwrap(),
                             ]
                             .concat();
-                            log::info!("Updating bot data for {:?}", instrument);
+                            log::info!("Updating bot data for {:?}", &instrument);
 
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
 
