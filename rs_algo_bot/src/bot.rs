@@ -335,7 +335,9 @@ impl Bot {
 
                             let since_date = match &data.first() {
                                 Some(x) => x.0.to_string(),
-                                None => "".to_owned(),
+                                None => {
+                                    panic!("Instrument data not found!");
+                                }
                             };
 
                             if is_base_time_frame(&self.time_frame, &time_frame) {
