@@ -1,6 +1,7 @@
 use crate::db;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
+use crate::heart_beat;
 
 use rs_algo_shared::helpers::date;
 use rs_algo_shared::helpers::date::{Duration as Dur, Local};
@@ -18,28 +19,15 @@ pub async fn send(session: &Session, msg: Message) {
     session.recipient.unbounded_send(msg).unwrap();
 }
 
-pub async fn find_and_send(sessions: &mut Sessions, addr: &SocketAddr, msg: Message) {
-    session::find(sessions, addr, |session| {
-        session.recipient.unbounded_send(msg).unwrap();
-    })
-    .await;
-}
+pub async fn send_reconnect(session: &Session) {
+    log::info!("Sending Reconnect");
 
-pub async fn send_connected(sessions: &mut Sessions, addr: &SocketAddr, _msg: Message) {
-    let msg: ResponseBody<String> = ResponseBody {
-        response: ResponseType::Connected,
-        payload: Option::None,
+    let msg: ResponseBody<bool> = ResponseBody {
+        response: ResponseType::Reconnect,
+        payload: None,
     };
-
-    let msg: String = serde_json::to_string(&msg).unwrap();
-
-    session::find(sessions, addr, |session| {
-        session
-            .recipient
-            .unbounded_send(Message::Text(msg))
-            .unwrap();
-    })
-    .await;
+    let txt_msg = serde_json::to_string(&msg).unwrap();
+    send(&session, Message::Text(txt_msg)).await;
 }
 
 pub async fn broadcast(sessions: &mut Sessions, _addr: &SocketAddr, msg: Message) {
@@ -130,16 +118,28 @@ where
                     }
                     .unwrap();
 
-                    // session::find(sessions, addr, |session| {
-                    //     *session = session.update_data(session_data.clone()).clone();
-                    // })
-                    // .await;
-
                     let response = ResponseBody {
                         response: ResponseType::InitSession,
                         payload: Some(session_data),
                     };
                     Some(serde_json::to_string(&response).unwrap())
+                }
+                CommandType::GetMarketHours => {
+                    let res = broker.lock().await.get_market_hours(symbol).await.unwrap();
+                    let market_hours = res.payload.clone();
+                    log::info!("Requesting {} trading hours", symbol);
+
+                    match market_hours {
+                        Some(mh) => {
+                            session::find(sessions, addr, |session| {
+                                *session = session.update_market_hours(mh).clone();
+                            })
+                            .await;
+                        }
+                        None => todo!(),
+                    };
+
+                    Some(serde_json::to_string(&res).unwrap())
                 }
                 CommandType::GetInstrumentPricing => {
                     let res = broker
@@ -293,8 +293,11 @@ where
                             log::info!("Updating bot data for {:?}", &instrument);
 
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
-
                             db::bot::upsert(db_client, &bot).await.unwrap();
+                            session::find(sessions, addr, |session| {
+                                *session = session.update_last_data().clone();
+                            })
+                            .await;
                         }
                         None => (),
                     }

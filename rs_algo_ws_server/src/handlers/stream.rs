@@ -48,6 +48,7 @@ where
                                                Some(txt) =>  message::send(&session, Message::Text(txt)).await,
                                                None => ()
                                           };
+
                                     } else if msg.is_close() {
                                         log::error!("MSG close!");
                                         break;

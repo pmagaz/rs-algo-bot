@@ -2,6 +2,7 @@ use rs_algo_shared::broker::{DOHLC, LECHES, VEC_DOHLC};
 use rs_algo_shared::helpers::date::DateTime;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::bot::BotData;
+use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
@@ -26,9 +27,17 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::Connected,
                 payload: None,
             }),
+            Some("Reconnect") => MessageType::Reconnect(ResponseBody {
+                response: ResponseType::Reconnect,
+                payload: None,
+            }),
             Some("InitSession") => MessageType::InitSession(ResponseBody {
                 response: ResponseType::InitSession,
                 payload: Some(parse_bot_data(&parsed["payload"])),
+            }),
+            Some("GetMarketHours") => MessageType::MarketHours(ResponseBody {
+                response: ResponseType::GetMarketHours,
+                payload: Some(parse_market_hours(&parsed["payload"])),
             }),
             Some("GetInstrumentPricing") => MessageType::PricingData(ResponseBody {
                 response: ResponseType::GetInstrumentPricing,
@@ -114,8 +123,13 @@ pub fn parse_vec_dohlc(data: &Value) -> VEC_DOHLC {
 }
 
 pub fn parse_pricing_data(data: &Value) -> Pricing {
-    let bot_data: Pricing = serde_json::from_value(data.clone()).unwrap();
-    bot_data
+    let pricing: Pricing = serde_json::from_value(data.clone()).unwrap();
+    pricing
+}
+
+pub fn parse_market_hours(data: &Value) -> MarketHours {
+    let market_hours: MarketHours = serde_json::from_value(data.clone()).unwrap();
+    market_hours
 }
 
 pub fn parse_stream(data: &Value) -> LECHES {

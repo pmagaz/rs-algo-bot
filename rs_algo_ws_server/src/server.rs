@@ -14,7 +14,7 @@ use std::sync::Arc;
 use std::{collections::HashMap, env, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
-use tokio_tungstenite::{accept_async};
+use tokio_tungstenite::accept_async;
 use tungstenite::protocol::Message;
 
 pub async fn run(addr: String) {
@@ -32,7 +32,7 @@ pub async fn run(addr: String) {
         .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
         .unwrap();
 
-    heart_beat::init(&mut sessions, addr).await;
+    heart_beat::init(&mut sessions, &addr).await;
 
     let db_client = Arc::new(mongo_client);
 

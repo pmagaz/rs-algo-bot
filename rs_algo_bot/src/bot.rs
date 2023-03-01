@@ -7,6 +7,7 @@ use crate::message;
 
 use crate::strategies::strategy::*;
 
+use futures::Future;
 use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
@@ -24,6 +25,8 @@ use rs_algo_shared::scanner::instrument::{HTFInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use tokio::time::sleep;
 
 #[derive(Serialize)]
 pub struct Bot {
@@ -67,6 +70,14 @@ impl Bot {
         uuid::generate(seed)
     }
 
+    pub async fn retry<F, T>(&mut self, seconds: u64, mut callback: F)
+    where
+        F: Send + FnMut() -> T,
+        T: Future + Send + 'static,
+    {
+        sleep(Duration::from_secs(seconds)).await;
+        callback().await;
+    }
     pub async fn init_session(&mut self) {
         log::info!(
             "Creating session for {}_{}_{}_{}",
@@ -154,7 +165,25 @@ impl Bot {
 
         let instrument_pricing_data = Command {
             command: CommandType::GetInstrumentPricing,
-            data: Some(&self),
+            data: Some(Symbol {
+                symbol: self.symbol.to_owned(),
+            }),
+        };
+
+        self.websocket
+            .send(&serde_json::to_string(&instrument_pricing_data).unwrap())
+            .await
+            .unwrap();
+    }
+
+    pub async fn is_market_open(&mut self) {
+        log::info!("Checking {} market is open...", &self.symbol,);
+
+        let instrument_pricing_data = Command {
+            command: CommandType::GetMarketHours,
+            data: Some(Symbol {
+                symbol: self.symbol.to_owned(),
+            }),
         };
 
         self.websocket
@@ -255,8 +284,21 @@ impl Bot {
             .unwrap();
     }
 
+    pub async fn reconnect(&mut self) {
+        log::info!("Reconnecting...");
+        let secs = env::var("DISCONNECTED_RETRY")
+            .unwrap()
+            .parse::<u64>()
+            .unwrap();
+
+        sleep(Duration::from_secs(secs)).await;
+        self.websocket.re_connect().await;
+        self.init_session().await;
+    }
+
     pub async fn run(&mut self) {
         self.init_session().await;
+        //self.is_market_open().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
         let overwrite_orders = env::var("OVERWRITE_ORDERS")
@@ -265,7 +307,15 @@ impl Bot {
             .unwrap();
 
         loop {
-            let msg = self.websocket.read().await.unwrap();
+            let msg = match self.websocket.read_msg().await {
+                Ok(msg) => msg,
+                Err(err) => {
+                    log::warn!("Disconnected from server: {:?}", err);
+                    self.reconnect().await;
+                    Message::Ping(b"".to_vec())
+                }
+            };
+            //let msg = self.websocket.read().await.unwrap();
             match msg {
                 Message::Text(txt) => {
                     let msg_type = message::get_type(&txt);
@@ -273,6 +323,10 @@ impl Bot {
                     match msg_type {
                         MessageType::Connected(_res) => {
                             log::info!("{} connected to server", bot_str);
+                        }
+                        MessageType::Reconnect(_res) => {
+                            log::info!("{} reconnect msg received", bot_str);
+                            self.reconnect().await;
                         }
                         MessageType::InitSession(res) => {
                             log::info!("Getting {} previous session", bot_str);
@@ -316,8 +370,34 @@ impl Bot {
                             };
 
                             self.restore_values(bot_data).await;
-                            self.get_instrument_data().await;
-                            self.get_pricing_data().await;
+                            self.is_market_open().await;
+                        }
+                        MessageType::MarketHours(res) => {
+                            let market_hours = res.payload.unwrap();
+                            let open = market_hours.open();
+
+                            match market_hours.open() {
+                                true => {
+                                    log::info!("{} market open: {}", self.symbol, open);
+                                    self.get_instrument_data().await;
+                                    self.get_pricing_data().await;
+                                }
+                                false => {
+                                    let secs_to_retry = env::var("MARKET_CLOSED_RETRY")
+                                        .unwrap()
+                                        .parse::<u64>()
+                                        .unwrap();
+
+                                    log::warn!(
+                                        "{} market closed!. Retrying after {} secs...",
+                                        self.symbol,
+                                        secs_to_retry
+                                    );
+                                    // sleep(Duration::from_secs(secs_to_retry)).await;
+                                    // self.is_market_open().await;
+                                    //self.retry(secs_to_retry, self.is_market_open());
+                                }
+                            }
                         }
                         MessageType::PricingData(res) => {
                             let pricing = res.payload.unwrap();

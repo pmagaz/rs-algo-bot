@@ -1,6 +1,8 @@
 use crate::db;
+use crate::message;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::helpers::uuid::*;
+use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::ws::message::*;
@@ -37,8 +39,10 @@ pub struct Session {
     pub strategy: String,
     pub time_frame: TimeFrameType,
     pub strategy_type: StrategyType,
+    pub market_hours: MarketHours,
     pub started: DateTime<Local>,
     pub last_ping: DateTime<Local>,
+    pub last_data: DateTime<Local>,
     pub client_status: SessionStatus,
 }
 
@@ -52,9 +56,11 @@ impl Session {
             symbol: "init".to_string(),
             strategy: "init".to_string(),
             time_frame: TimeFrameType::M1,
+            market_hours: MarketHours::new(false, "init".to_string(), vec![]),
             strategy_type: StrategyType::OnlyLong,
             started: Local::now(),
             last_ping: Local::now(),
+            last_data: Local::now(),
             client_status: SessionStatus::Up,
         }
     }
@@ -70,12 +76,23 @@ impl Session {
         self
     }
 
+    pub fn update_last_data(&mut self) -> &Self {
+        self.last_data = Local::now();
+        self
+    }
+
+    pub fn update_market_hours(&mut self, market_hours: MarketHours) -> &mut Self {
+        self.market_hours = market_hours;
+        self
+    }
+
     pub fn update_data(&mut self, data: SessionData) -> &Self {
         self.session_id = data.id;
         self.symbol = data.symbol;
         self.time_frame = data.time_frame;
         self.strategy = data.strategy;
         self.strategy_type = data.strategy_type;
+        self.last_data = Local::now();
         self.client_status = SessionStatus::Up;
         self
     }
@@ -139,5 +156,14 @@ pub async fn update_db_session(data: &SessionData, db_client: &mongodb::Client) 
 
 pub async fn destroy<'a>(sessions: &'a mut Sessions, addr: &SocketAddr) {
     log::warn!("{} session destroyed", &addr);
+    // match sessions.lock().await.get(addr) {
+    //     Some(ses) => {
+    //         message::send_reconnect(ses).await;
+    //         sessions.lock().await.remove(addr);
+    //     }
+    //     None => {
+    //         log::warn!("Session not found!");
+    //     }
+    // };
     sessions.lock().await.remove(addr);
 }
