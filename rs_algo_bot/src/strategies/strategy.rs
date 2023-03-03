@@ -259,6 +259,8 @@ pub trait Strategy: DynClone {
             _ => PositionResult::None,
         };
 
+        log::info!("Entry: {:?}", (long_entry, short_entry));
+
         if long_entry && !short_entry {
             entry_long
         } else if !long_entry && short_entry {
