@@ -315,7 +315,7 @@ impl Bot {
                     Message::Ping(b"".to_vec())
                 }
             };
-            //let msg = self.websocket.read().await.unwrap();
+
             match msg {
                 Message::Text(txt) => {
                     let msg_type = message::get_type(&txt);
@@ -393,9 +393,9 @@ impl Bot {
                                         self.symbol,
                                         secs_to_retry
                                     );
-                                    // sleep(Duration::from_secs(secs_to_retry)).await;
-                                    // self.is_market_open().await;
-                                    //self.retry(secs_to_retry, self.is_market_open());
+
+                                    sleep(Duration::from_secs(secs_to_retry)).await;
+                                    self.is_market_open().await;
                                 }
                             }
                         }
@@ -511,15 +511,6 @@ impl Bot {
                                 };
                             }
 
-                            // if is_mtf_strategy(&self.strategy_type) {
-                            //     match self.htf_instrument {
-                            //         HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
-                            //             htf_instrument.init_candle(data);
-                            //         }
-                            //         HTFInstrument::None => (),
-                            //     };
-                            // }
-
                             match &orders_position_result {
                                 PositionResult::MarketInOrder(
                                     TradeResult::TradeIn(trade_in),
@@ -612,9 +603,6 @@ impl Bot {
                                             trade_out,
                                             self.orders.clone(),
                                         );
-
-                                        //open_positions = false;
-                                        //self.trades_out.push(trade_out.clone());
                                     }
                                 }
                                 PositionResult::PendingOrder(new_orders) => {
@@ -647,56 +635,92 @@ impl Bot {
                             self.send_bot_status(&bot_str).await;
                         }
                         MessageType::ExecuteTradeIn(res) => {
-                            let trade_in = res.payload.unwrap();
-                            self.trades_in.push(trade_in.data);
+                            let payload = res.payload.unwrap();
+                            let accepted = &payload.accepted;
 
-                            self.strategy_stats = self.strategy.update_stats(
-                                &self.instrument,
-                                &self.trades_in,
-                                &self.trades_out,
-                            );
+                            match accepted {
+                                true => {
+                                    log::info!(
+                                        "{:?} {} accepted!",
+                                        &payload.data.trade_type,
+                                        &payload.data.id
+                                    );
 
-                            open_positions = true;
-                            self.send_bot_status(&bot_str).await;
+                                    let trade_response = payload;
+                                    self.trades_in.push(trade_response.data);
+
+                                    self.strategy_stats = self.strategy.update_stats(
+                                        &self.instrument,
+                                        &self.trades_in,
+                                        &self.trades_out,
+                                    );
+
+                                    open_positions = true;
+                                    self.send_bot_status(&bot_str).await;
+                                }
+                                false => {
+                                    log::warn!(
+                                        "{:?} {} not accepted!",
+                                        &payload.data.trade_type,
+                                        &payload.data.id
+                                    );
+                                }
+                            }
                         }
                         MessageType::ExecuteTradeOut(res) => {
-                            let trade_out = res.payload.unwrap();
-                            log::info!(
-                                "TradeOut {} accepted ask {} bid {}",
-                                &trade_out.data.id,
-                                &trade_out.data.ask,
-                                &trade_out.data.bid
-                            );
+                            let payload = res.payload.unwrap();
+                            let accepted = &payload.accepted;
 
-                            let updated_trade_out = self.strategy.update_trade_stats(
-                                self.trades_in.last().unwrap(),
-                                &trade_out.data,
-                                &self.instrument.data,
-                                &self.pricing,
-                            );
+                            match accepted {
+                                true => {
+                                    log::info!(
+                                        "{:?} {} accepted ask: {} bid: {}",
+                                        &payload.data.trade_type,
+                                        &payload.data.id,
+                                        &payload.data.ask,
+                                        &payload.data.bid
+                                    );
+                                    let trade_response = payload;
 
-                            log::info!(
-                                "TradeOut stats profit {} profit_per {} ",
-                                &updated_trade_out.profit,
-                                &updated_trade_out.profit_per,
-                            );
+                                    let updated_trade_out = self.strategy.update_trade_stats(
+                                        self.trades_in.last().unwrap(),
+                                        &trade_response.data,
+                                        &self.instrument.data,
+                                        &self.pricing,
+                                    );
 
-                            self.trades_out.push(updated_trade_out);
+                                    log::info!(
+                                        "TradeOut stats profit {} profit_per {} ",
+                                        &updated_trade_out.profit,
+                                        &updated_trade_out.profit_per,
+                                    );
 
-                            self.strategy_stats = self.strategy.update_stats(
-                                &self.instrument,
-                                &self.trades_in,
-                                &self.trades_out,
-                            );
+                                    self.trades_out.push(updated_trade_out);
 
-                            open_positions = false;
-                            self.send_bot_status(&bot_str).await;
+                                    self.strategy_stats = self.strategy.update_stats(
+                                        &self.instrument,
+                                        &self.trades_in,
+                                        &self.trades_out,
+                                    );
+
+                                    open_positions = false;
+                                    self.send_bot_status(&bot_str).await;
+                                }
+                                false => {
+                                    log::warn!(
+                                        "{:?} {} not accepted ask: {} bid: {}",
+                                        &payload.data.trade_type,
+                                        &payload.data.id,
+                                        &payload.data.ask,
+                                        &payload.data.bid
+                                    );
+                                }
+                            };
                         }
                         _ => (),
                     };
                 }
                 Message::Ping(_txt) => {
-                    //log::info!("HeartBeat received");
                     self.websocket.pong(b"").await;
                 }
                 _ => panic!("Unexpected response type!"),

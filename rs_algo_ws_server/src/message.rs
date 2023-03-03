@@ -125,23 +125,29 @@ where
                     Some(serde_json::to_string(&response).unwrap())
                 }
                 CommandType::GetMarketHours => {
-                    let res = broker.lock().await.get_market_hours(symbol).await.unwrap();
-                    let market_hours = res.payload.clone();
                     log::info!("Requesting {} trading hours", symbol);
+                    match broker.lock().await.get_market_hours(symbol).await {
+                        Ok(res) => {
+                            let market_hours = res.payload.clone();
 
-                    match market_hours {
-                        Some(mh) => {
-                            session::find(sessions, addr, |session| {
-                                *session = session.update_market_hours(mh).clone();
-                            })
-                            .await;
+                            match market_hours {
+                                Some(mh) => {
+                                    session::find(sessions, addr, |session| {
+                                        *session = session.update_market_hours(mh).clone();
+                                    })
+                                    .await;
+                                }
+                                None => todo!(),
+                            };
+
+                            Some(serde_json::to_string(&res).unwrap())
                         }
-                        None => todo!(),
-                    };
-
-                    Some(serde_json::to_string(&res).unwrap())
+                        Err(_) => None,
+                    }
                 }
                 CommandType::GetInstrumentPricing => {
+                    log::info!("Requesting {} pricing data", symbol);
+
                     let res = broker
                         .lock()
                         .await
@@ -196,82 +202,55 @@ where
                             let position_result: PositionResult =
                                 serde_json::from_value(value["data"].clone()).unwrap();
 
-                            let txt_trade_result = match position_result {
+                            let txt_trade_response = match position_result {
                                 PositionResult::MarketIn(
                                     TradeResult::TradeIn(trade_in),
-                                    new_orders,
+                                    _new_orders,
                                 ) => {
                                     log::info!("TradeIn position received");
-                                    let trade_data = TradeData {
-                                        symbol: symbol.to_string(),
-                                        data: trade_in,
-                                    };
 
-                                    let trade_result = guard.open_trade(trade_data).await.unwrap();
+                                    let trade_data = TradeData::new(symbol, trade_in);
+                                    let trade_response =
+                                        guard.open_trade(trade_data).await.unwrap();
 
-                                    serde_json::to_string(&trade_result).unwrap()
+                                    serde_json::to_string(&trade_response).unwrap()
                                 }
                                 PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
                                     log::info!("TradeOut position received");
-                                    let trade_data = TradeData {
-                                        symbol: symbol.to_string(),
-                                        data: trade_out,
-                                    };
-                                    let trade_result = guard.close_trade(trade_data).await.unwrap();
-                                    serde_json::to_string(&trade_result).unwrap()
+
+                                    let trade_data = TradeData::new(symbol, trade_out);
+                                    let trade_response =
+                                        guard.close_trade(trade_data).await.unwrap();
+                                    serde_json::to_string(&trade_response).unwrap()
                                 }
                                 PositionResult::MarketInOrder(
                                     TradeResult::TradeIn(trade_in),
                                     order,
                                 ) => {
                                     log::info!("MarketInOrder position received");
-                                    let trade_data = TradeData {
-                                        symbol: symbol.to_string(),
-                                        data: order,
-                                    };
-                                    let trade_result = guard.order_in(trade_data).await.unwrap();
-                                    serde_json::to_string(&trade_result).unwrap()
+
+                                    let trade_data = TradeData::new(symbol, order);
+                                    let trade_response = guard.order_in(trade_data).await.unwrap();
+                                    serde_json::to_string(&trade_response).unwrap()
                                 }
                                 PositionResult::MarketOutOrder(
                                     TradeResult::TradeOut(trade_out),
                                     _,
                                 ) => {
                                     log::info!("MarketOutOrder position received");
-                                    let trade_data = TradeData {
-                                        symbol: symbol.to_string(),
-                                        data: trade_out,
-                                    };
-                                    let trade_result = guard.close_trade(trade_data).await.unwrap();
-                                    serde_json::to_string(&trade_result).unwrap()
+
+                                    let trade_data = TradeData::new(symbol, trade_out);
+                                    let trade_response =
+                                        guard.close_trade(trade_data).await.unwrap();
+                                    serde_json::to_string(&trade_response).unwrap()
                                 }
                                 _ => {
                                     todo!();
                                     "".to_string()
                                 }
                             };
-                            // let symbol = &value["symbol"];
-                            // let time_frame = &value["time_frame"];
 
-                            // let txt_trade_result = match trade_type.is_entry() {
-                            //     true => {
-                            //         let trade_in: TradeData<TradeIn> =
-                            //             serde_json::from_value(value.clone()).unwrap();
-
-                            //         let trade_result = guard.open_trade(trade_in).await.unwrap();
-
-                            //         serde_json::to_string(&trade_result).unwrap()
-                            //     }
-                            //     false => {
-                            //         let trade_out: TradeData<TradeOut> =
-                            //             serde_json::from_value(value.clone()).unwrap();
-
-                            //         let trade_result = guard.close_trade(trade_out).await.unwrap();
-
-                            //         serde_json::to_string(&trade_result).unwrap()
-                            //     }
-                            // };
-
-                            Some(txt_trade_result)
+                            Some(txt_trade_response)
                         }
                         None => None,
                     };

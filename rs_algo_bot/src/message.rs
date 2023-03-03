@@ -15,7 +15,10 @@ pub fn get_type(msg: &str) -> MessageType {
     if !msg.is_empty() {
         let parsed: Value = serde_json::from_str(msg).expect("Can't parse to JSON");
         let response = parsed["response"].as_str();
+        let payload = &parsed["payload"];
+        let data = &parsed["payload"]["data"];
         let symbol = parsed["payload"]["symbol"].as_str().unwrap_or("");
+        let accepted = parsed["payload"]["accepted"].as_bool().unwrap_or(false);
 
         let time_frame = match parsed["payload"]["time_frame"].as_str() {
             Some(tm) => TimeFrameType::from_str(tm),
@@ -33,22 +36,22 @@ pub fn get_type(msg: &str) -> MessageType {
             }),
             Some("InitSession") => MessageType::InitSession(ResponseBody {
                 response: ResponseType::InitSession,
-                payload: Some(parse_bot_data(&parsed["payload"])),
+                payload: Some(parse_bot_data(&payload)),
             }),
             Some("GetMarketHours") => MessageType::MarketHours(ResponseBody {
                 response: ResponseType::GetMarketHours,
-                payload: Some(parse_market_hours(&parsed["payload"])),
+                payload: Some(parse_market_hours(&payload)),
             }),
             Some("GetInstrumentPricing") => MessageType::PricingData(ResponseBody {
                 response: ResponseType::GetInstrumentPricing,
-                payload: Some(parse_pricing_data(&parsed["payload"])),
+                payload: Some(parse_pricing_data(&payload)),
             }),
             Some("GetInstrumentData") => MessageType::InstrumentData(ResponseBody {
                 response: ResponseType::GetInstrumentData,
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame,
-                    data: parse_vec_dohlc(&parsed["payload"]["data"]),
+                    data: parse_vec_dohlc(&data),
                 }),
             }),
             Some("SubscribeStream") => MessageType::StreamResponse(ResponseBody {
@@ -56,23 +59,23 @@ pub fn get_type(msg: &str) -> MessageType {
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame,
-                    data: parse_dohlc(&parsed["payload"]),
+                    data: parse_dohlc(&payload),
                 }),
             }),
             Some("ExecuteTradeIn") => MessageType::ExecuteTradeIn(ResponseBody {
                 response: ResponseType::ExecuteTradeIn,
-                payload: Some(TradeData {
+                payload: Some(TradeResponse {
                     symbol: symbol.to_owned(),
-                    //time_frame,
-                    data: parse_trade_in(&parsed["payload"]["data"]),
+                    accepted: accepted,
+                    data: parse_trade_in(&data),
                 }),
             }),
             Some("ExecuteTradeOut") => MessageType::ExecuteTradeOut(ResponseBody {
                 response: ResponseType::ExecuteTradeOut,
-                payload: Some(TradeData {
+                payload: Some(TradeResponse {
                     symbol: symbol.to_owned(),
-                    //time_frame,
-                    data: parse_trade_out(&parsed["payload"]["data"]),
+                    accepted: accepted,
+                    data: parse_trade_out(&data),
                 }),
             }),
             _ => MessageType::Error(ResponseBody {

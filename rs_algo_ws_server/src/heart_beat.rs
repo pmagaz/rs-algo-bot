@@ -31,27 +31,26 @@ pub async fn init2(sessions: &mut Sessions, addr: SocketAddr) {
 pub async fn init(sessions: &mut Sessions, add: &SocketAddr) {
     let mut sessions = sessions.clone();
 
-    let session_timeout_secs = env::var("LAST_DATA_TIMEOUT")
+    let last_data_timeout = env::var("LAST_DATA_TIMEOUT")
         .unwrap()
         .parse::<u64>()
         .unwrap();
 
     tokio::spawn(async move {
-        let mut interval = time::interval(Duration::from_secs(session_timeout_secs));
+        let mut interval = time::interval(Duration::from_secs(last_data_timeout));
 
         loop {
             interval.tick().await;
 
             let session_guard = sessions.lock().await.clone();
             let hb_timeout: DateTime<Local> =
-                Local::now() - Dur::seconds((session_timeout_secs) as i64);
+                Local::now() - Dur::seconds((last_data_timeout) as i64);
 
             for (addr, session) in session_guard.into_iter() {
                 let last_data = session.last_data;
 
                 if last_data < hb_timeout {
                     //session::destroy(&mut sessions, &addr).await;
-
                     handlers::session::find(&mut sessions, &addr, |session| {
                         //*session = session.update_status(SessionStatus::Down).clone();
                         let is_open = session.market_hours.is_open();
@@ -62,7 +61,7 @@ pub async fn init(sessions: &mut Sessions, add: &SocketAddr) {
                         );
                         match is_open {
                             true => {
-                                log::info!("Market open");
+                                log::info!("{:?} session KO. Market open.", addr,);
                                 tokio::spawn({
                                     let session = session.clone();
                                     async move {
@@ -71,7 +70,7 @@ pub async fn init(sessions: &mut Sessions, add: &SocketAddr) {
                                 });
                             }
                             false => {
-                                log::info!("Market closed");
+                                log::info!("{:?} session Ok. Market not open.", addr,);
                             }
                         }
                     })
