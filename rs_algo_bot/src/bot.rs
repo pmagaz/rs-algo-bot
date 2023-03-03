@@ -310,7 +310,7 @@ impl Bot {
             let msg = match self.websocket.read_msg().await {
                 Ok(msg) => msg,
                 Err(err) => {
-                    log::warn!("Disconnected from server: {:?}", err);
+                    log::warn!("[ERROR] Disconnected from server: {:?}", err);
                     self.reconnect().await;
                     Message::Ping(b"".to_vec())
                 }
