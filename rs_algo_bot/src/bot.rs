@@ -440,7 +440,6 @@ impl Bot {
                             } else if is_mtf_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
                                     HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
-                                        log::info!("4444444 {:?}", htf_instrument.data);
                                         let since_date = match &htf_instrument.data.first() {
                                             Some(x) => x.date().to_string(),
                                             None => "".to_owned(),
