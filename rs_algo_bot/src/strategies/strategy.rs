@@ -91,6 +91,10 @@ pub trait Strategy: DynClone {
                 self.resolve_entry_position(index, instrument, htf_instrument, &orders, pricing);
         }
 
+        log::info!(
+            "Position Result {:?}",
+            (open_positions, &position_result, &order_position_result)
+        );
         (position_result, order_position_result)
     }
     fn resolve_entry_position(

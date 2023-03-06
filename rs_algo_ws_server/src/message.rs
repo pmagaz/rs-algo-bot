@@ -175,9 +175,10 @@ where
                         TimeFrame::get_starting_bar(num_bars, &time_frame, &execution_mode);
 
                     log::info!(
-                        "Requesting {} Instrument data since {} ",
+                        "Requesting {} Instrument data since {} {:?}",
                         time_frame,
                         time_frame_from,
+                        (num_bars)
                     );
 
                     let res = broker

@@ -404,7 +404,12 @@ impl Bot {
                             log::info!(
                                 "{} pricing received: {:?}",
                                 self.symbol,
-                                (pricing.ask(), pricing.bid(), pricing.spread())
+                                (
+                                    pricing.ask(),
+                                    pricing.bid(),
+                                    pricing.pip_size(),
+                                    pricing.spread(),
+                                )
                             );
                             self.pricing = pricing;
                         }
@@ -435,6 +440,7 @@ impl Bot {
                             } else if is_mtf_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
                                     HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
+                                        log::info!("4444444 {:?}", htf_instrument.data);
                                         let since_date = match &htf_instrument.data.first() {
                                             Some(x) => x.date().to_string(),
                                             None => "".to_owned(),
@@ -606,6 +612,7 @@ impl Bot {
                                     }
                                 }
                                 PositionResult::PendingOrder(new_orders) => {
+                                    log::info!("OPEN POSITIONS {:?}", &open_positions);
                                     if !open_positions {
                                         match overwrite_orders {
                                             true => {
@@ -809,16 +816,14 @@ impl BotBuilder {
                 .market(market.to_owned())
                 .time_frame(time_frame.to_owned())
                 .build()
-                .unwrap()
-                .init();
+                .unwrap();
 
             let htf_instrument = Instrument::new()
                 .symbol(&symbol)
                 .market(market.to_owned())
                 .time_frame(higher_time_frame.to_owned())
                 .build()
-                .unwrap()
-                .init();
+                .unwrap();
 
             let htf_instrument = match self.strategy_type {
                 Some(strategy) => match strategy {
