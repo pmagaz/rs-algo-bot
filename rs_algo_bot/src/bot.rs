@@ -331,18 +331,13 @@ impl Bot {
                         MessageType::InitSession(res) => {
                             log::info!("Getting {} previous session", bot_str);
 
+                            let now = Local::now();
                             let bot_data = res.payload.unwrap();
                             let trades_in = bot_data.trades_in().len();
                             let trades_out = bot_data.trades_out().len();
                             let orders = bot_data.orders();
                             let pending_orders = order::get_pending(&orders);
-                            let active_stop_losses: Vec<Order> = pending_orders
-                                .iter()
-                                .filter(|x| {
-                                    x.order_type.is_stop() && x.status == OrderStatus::Pending
-                                })
-                                .map(|x| x.clone())
-                                .collect();
+
                             let num_active_trades = trades_in - trades_out;
                             match trades_in.cmp(&trades_out) {
                                 Ordering::Greater => {
@@ -354,6 +349,17 @@ impl Bot {
                                     //open_positions = false
                                 }
                             };
+
+                            let active_stop_losses: Vec<Order> = pending_orders
+                                .iter()
+                                .filter(|x| {
+                                    open_positions
+                                        && x.order_type.is_stop()
+                                        && x.is_still_valid(now)
+                                        && x.status == OrderStatus::Pending
+                                })
+                                .map(|x| x.clone())
+                                .collect();
 
                             match active_stop_losses.len().cmp(&0) {
                                 Ordering::Greater => {
@@ -464,6 +470,7 @@ impl Bot {
                         MessageType::StreamResponse(res) => {
                             let payload = res.payload.unwrap();
                             let data = payload.data;
+                            let index = &self.instrument.data.len() - 1;
 
                             let new_candle = self.instrument.next(data).unwrap();
                             let mut higher_candle: Candle = new_candle.clone();
@@ -478,6 +485,12 @@ impl Bot {
                                     HTFInstrument::None => (),
                                 };
                             }
+
+                            self.orders = order::cancel_pending_expired_orders(
+                                index,
+                                &self.instrument,
+                                &mut self.orders,
+                            );
 
                             let (position_result, orders_position_result) = self
                                 .strategy
@@ -536,6 +549,8 @@ impl Bot {
                                             &mut self.orders,
                                             &self.instrument,
                                         );
+
+                                        order::extend_all_pending_orders(&mut self.orders);
                                     }
                                 }
                                 PositionResult::MarketOutOrder(
@@ -559,9 +574,9 @@ impl Bot {
                                             &self.instrument,
                                         );
 
-                                        self.orders = order::cancel_trade_pending_orders(
+                                        order::cancel_trade_pending_orders(
                                             trade_out,
-                                            self.orders.clone(),
+                                            &mut self.orders,
                                         );
                                     }
                                 }
@@ -604,9 +619,9 @@ impl Bot {
                                         )
                                         .await;
 
-                                        self.orders = order::cancel_trade_pending_orders(
+                                        order::cancel_trade_pending_orders(
                                             trade_out,
-                                            self.orders.clone(),
+                                            &mut self.orders,
                                         );
                                     }
                                 }
@@ -619,11 +634,12 @@ impl Bot {
                                                     "OVERWRITING ORDERS {:?}",
                                                     &self.orders.len()
                                                 );
-                                                self.orders = order::cancel_all_pending_orders(
-                                                    0,
-                                                    &self.instrument,
-                                                    self.orders.clone(),
-                                                );
+
+                                                // order::cancel_pending_expired_orders(
+                                                //     0,
+                                                //     &self.instrument,
+                                                //     &mut self.orders,
+                                                // );
                                             }
                                             false => (),
                                         }

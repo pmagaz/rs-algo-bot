@@ -9,7 +9,7 @@ use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
 use rs_algo_shared::models::time_frame;
 use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
-use rs_algo_shared::models::trade::{Position, TradeIn, TradeOut};
+use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn, TradeOut};
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
@@ -18,6 +18,7 @@ pub struct EmaScalping<'a> {
     time_frame: TimeFrameType,
     higher_time_frame: Option<TimeFrameType>,
     strategy_type: StrategyType,
+    trading_direction: TradeDirection,
     order_size: f64,
     risk_reward_ratio: f64,
     profit_target: f64,
@@ -70,11 +71,14 @@ impl<'a> Strategy for EmaScalping<'a> {
             },
         };
 
+        let trading_direction = TradeDirection::Long;
+
         Ok(Self {
             name: "Ema_Scalping",
             time_frame,
             higher_time_frame,
             strategy_type,
+            trading_direction,
             order_size,
             risk_reward_ratio,
             profit_target,
@@ -95,6 +99,37 @@ impl<'a> Strategy for EmaScalping<'a> {
 
     fn higher_time_frame(&self) -> &Option<TimeFrameType> {
         &self.higher_time_frame
+    }
+
+    fn trading_direction(
+        &mut self,
+        index: usize,
+        instrument: &Instrument,
+        htf_instrument: &HTFInstrument,
+    ) -> &TradeDirection {
+        let close_price = &instrument.data.get(index).unwrap().close();
+
+        self.trading_direction = time_frame::get_htf_trading_direction(
+            index,
+            instrument,
+            htf_instrument,
+            |(idx, _prev_idx, htf_inst)| {
+                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
+                let htf_ema_13 = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+
+                let is_long = htf_ema_5 > htf_ema_13 && close_price > htf_ema_13;
+                let is_short = htf_ema_5 < htf_ema_13 && close_price < htf_ema_13;
+
+                if is_long {
+                    TradeDirection::Long
+                } else if is_short {
+                    TradeDirection::Short
+                } else {
+                    TradeDirection::None
+                }
+            },
+        );
+        &self.trading_direction
     }
 
     fn entry_long(

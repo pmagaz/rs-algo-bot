@@ -4,11 +4,11 @@
   roles:
     - { role: "deployment/git/roles" }
     #- { role: "deployment/mongodb-bot/roles/" }
-    # - { role: "rs_algo_bot/deployment/bbrev-eursusd-m5/roles" }
-    # - { role: "rs_algo_bot/deployment/bbrev-gbpusd-m5/roles" }
-    # - { role: "rs_algo_bot/deployment/bbrev-nzdchf-m5/roles" }
-    # - { role: "rs_algo_bot/deployment/bbrev-usdchf-m5/roles" }
-    # - { role: "rs_algo_bot/deployment/bbrev-usdjpy-m5/roles" }
+    - { role: "rs_algo_bot/deployment/bbrev-eursusd-m5/roles" }
+    - { role: "rs_algo_bot/deployment/bbrev-gbpusd-m5/roles" }
+    - { role: "rs_algo_bot/deployment/bbrev-nzdchf-m5/roles" }
+    - { role: "rs_algo_bot/deployment/bbrev-usdchf-m5/roles" }
+    - { role: "rs_algo_bot/deployment/bbrev-usdjpy-m5/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-bitcoin-m5/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-bitcoin-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-ethereum-m5/roles" }
