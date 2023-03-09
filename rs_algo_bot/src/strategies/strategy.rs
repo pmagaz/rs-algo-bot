@@ -96,11 +96,12 @@ pub trait Strategy: DynClone {
 
         let mut position_result = PositionResult::None;
         let mut order_position_result = PositionResult::None;
-        //let now = Local::now();
         let pending_orders = order::get_pending(&orders);
         let trading_direction = &self
             .trading_direction(index, instrument, htf_instrument)
             .clone();
+
+        log::info!("Trading Direction: {:?}", trading_direction);
 
         let open_positions = match trades_in.len().cmp(&trades_out.len()) {
             Ordering::Greater => true,

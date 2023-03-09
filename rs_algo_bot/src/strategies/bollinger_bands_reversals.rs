@@ -121,6 +121,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let is_long = macd_a > macd_b;
                 let is_short = htf_ema_5 < htf_ema_8;
 
+                log::info!("is_long: {} is_short: {}", is_long, is_short);
+
                 if is_long && !is_short {
                     TradeDirection::Long
                 } else if is_short && !is_long {
@@ -147,20 +149,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .clone();
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
-        let mut a: f64 = 0.;
-        let mut b: f64 = 0.;
-        let anchor_htf = time_frame::get_htf_data(
-            index,
-            instrument,
-            htf_instrument,
-            |(idx, _prev_idx, htf_inst)| {
-                let macd_a = htf_inst.indicators.macd.get_data_a().get(idx).unwrap();
-                let macd_b = htf_inst.indicators.macd.get_data_b().get(idx).unwrap();
-                a = macd_a.clone();
-                b - macd_b.clone();
-                macd_a > macd_b
-            },
-        );
 
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
@@ -179,13 +167,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let pips_margin = 3.;
 
-        let entry_condition = anchor_htf && close_price < low_band && prev_close >= prev_low_band;
+        let entry_condition = self.trading_direction == TradeDirection::Long
+            && close_price < low_band
+            && prev_close >= prev_low_band;
+
         let buy_price = candle.high() + calc::to_pips(pips_margin, pricing);
 
-        log::info!(
-            "Entry condition long {:?}",
-            (entry_condition, a, b, anchor_htf)
-        );
+        if entry_condition {
+            log::info!("Entry Long {} {:?}", index, candle.date());
+        }
+
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
@@ -206,17 +197,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
     ) -> Position {
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
-
-        let anchor_htf = time_frame::get_htf_data(
-            index,
-            instrument,
-            htf_instrument,
-            |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-                htf_ema_5 < htf_ema_8
-            },
-        );
 
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
@@ -241,8 +221,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             }
         }
 
-        let exit_condition =
-            anchor_htf || (ridding_bars < 3 && close_price < top_band && prev_high > prev_top_band);
+        let exit_condition = self.trading_direction == TradeDirection::Short
+            || (ridding_bars < 3 && close_price < top_band && prev_high > prev_top_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -264,20 +244,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .clone();
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
-        let mut a: f64 = 0.;
-        let mut b: f64 = 0.;
-        let anchor_htf = time_frame::get_htf_data(
-            index,
-            instrument,
-            htf_instrument,
-            |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-                a = htf_ema_5.clone();
-                b = htf_ema_8.clone();
-                htf_ema_5 < htf_ema_8
-            },
-        );
 
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
@@ -295,13 +261,28 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let entry_condition = anchor_htf && close_price < top_band && prev_high >= prev_top_band;
-        let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
+        let entry_condition = self.trading_direction == TradeDirection::Short
+            && close_price < top_band
+            && prev_high >= prev_top_band;
 
         log::info!(
-            "Entry condition short {:?}",
-            (entry_condition, a, b, anchor_htf)
+            "SHORT {:?}",
+            (
+                &self.trading_direction,
+                close_price,
+                top_band,
+                close_price < top_band,
+                prev_high,
+                prev_top_band,
+                prev_high >= prev_top_band
+            )
         );
+
+        let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
+
+        if entry_condition {
+            log::info!("Entry short {} {:?}", index, candle.date());
+        }
 
         match entry_condition {
             true => Position::Order(vec![
@@ -322,17 +303,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
     ) -> Position {
         let spread = pricing.spread();
         let close_price = &instrument.data.get(index).unwrap().close();
-
-        let anchor_htf = time_frame::get_htf_data(
-            index,
-            instrument,
-            htf_instrument,
-            |(idx, _prev_idx, htf_inst)| {
-                let macd_a = htf_inst.indicators.macd.get_data_a().get(idx).unwrap();
-                let macd_b = htf_inst.indicators.macd.get_data_b().get(idx).unwrap();
-                macd_a > macd_b
-            },
-        );
 
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
@@ -356,7 +326,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 ridding_bars += 1;
             }
         }
-        let exit_condition = anchor_htf
+        let exit_condition = self.trading_direction == TradeDirection::Long
             || (ridding_bars < 3 && close_price < low_band && prev_close >= prev_low_band);
 
         match exit_condition {

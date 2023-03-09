@@ -161,7 +161,7 @@ impl Bot {
     }
 
     pub async fn get_pricing_data(&mut self) {
-        log::info!("Requesting {} pricing data", &self.symbol,);
+        //log::info!("Requesting {} pricing data", &self.symbol,);
 
         let instrument_pricing_data = Command {
             command: CommandType::GetInstrumentPricing,
@@ -269,8 +269,6 @@ impl Bot {
     }
 
     pub async fn send_bot_status(&mut self, bot_str: &str) {
-        log::info!("Sending {} bot data", bot_str);
-
         self.last_update = to_dbtime(Local::now());
 
         let update_bot_data_command = Command {
@@ -407,16 +405,16 @@ impl Bot {
                         }
                         MessageType::PricingData(res) => {
                             let pricing = res.payload.unwrap();
-                            log::info!(
-                                "{} pricing received: {:?}",
-                                self.symbol,
-                                (
-                                    pricing.ask(),
-                                    pricing.bid(),
-                                    pricing.pip_size(),
-                                    pricing.spread(),
-                                )
-                            );
+                            // log::info!(
+                            //     "{} pricing received: {:?}",
+                            //     self.symbol,
+                            //     (
+                            //         pricing.ask(),
+                            //         pricing.bid(),
+                            //         pricing.pip_size(),
+                            //         pricing.spread(),
+                            //     )
+                            // );
                             self.pricing = pricing;
                         }
                         MessageType::InstrumentData(res) => {
@@ -475,7 +473,7 @@ impl Bot {
                             let new_candle = self.instrument.next(data).unwrap();
                             let mut higher_candle: Candle = new_candle.clone();
 
-                            log::info!("Candle  processed {:?}", new_candle.date());
+                            // log::info!("Candle  processed {:?}", new_candle.date());
 
                             if is_mtf_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
