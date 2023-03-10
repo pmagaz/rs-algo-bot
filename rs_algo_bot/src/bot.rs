@@ -840,9 +840,9 @@ impl BotBuilder {
 
             let htf_instrument = match self.strategy_type {
                 Some(strategy) => match strategy {
-                    StrategyType::OnlyLongMTF => HTFInstrument::HTFInstrument(htf_instrument),
-                    StrategyType::OnlyShortMTF => HTFInstrument::HTFInstrument(htf_instrument),
-                    StrategyType::LongShortMTF => HTFInstrument::HTFInstrument(htf_instrument),
+                    StrategyType::OnlyLongMTF
+                    | StrategyType::OnlyShortMTF
+                    | StrategyType::LongShortMTF => HTFInstrument::HTFInstrument(htf_instrument),
                     _ => HTFInstrument::None,
                 },
                 None => HTFInstrument::None,
@@ -852,6 +852,13 @@ impl BotBuilder {
             //     Some(htf) => htf,
             //     None => &TimeFrameType::ERR,
             // };
+
+            let strategy = set_strategy(
+                &strategy_name,
+                &time_frame.clone().to_string(),
+                Some(&self.higher_time_frame.clone().unwrap().to_string()),
+                strategy_type.clone(),
+            );
 
             Ok(Bot {
                 uuid: uuid::Uuid::new(),
@@ -868,7 +875,7 @@ impl BotBuilder {
                 trades_in: vec![],
                 trades_out: vec![],
                 orders: vec![],
-                strategy: set_strategy(&strategy_name),
+                strategy,
                 strategy_name: strategy_name.clone(),
                 strategy_type,
                 strategy_stats: StrategyStats::new(),

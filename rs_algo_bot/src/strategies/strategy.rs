@@ -9,7 +9,7 @@ use rs_algo_shared::error::Result;
 use rs_algo_shared::models::order::{self, Order, OrderType};
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
-use rs_algo_shared::models::time_frame::TimeFrameType;
+use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::models::{strategy::*, trade};
 use rs_algo_shared::scanner::candle::Candle;
@@ -425,10 +425,19 @@ pub trait Strategy: DynClone {
     }
 }
 
-pub fn set_strategy(strategy_name: &str) -> Box<dyn Strategy> {
+pub fn set_strategy(
+    strategy_name: &str,
+    time_frame: &str,
+    higher_time_frame: Option<&str>,
+    strategy_type: StrategyType,
+) -> Box<dyn Strategy> {
     let strategies: Vec<Box<dyn Strategy>> = vec![Box::new(
-        strategies::bollinger_bands_reversals::BollingerBandsReversals::new(None, None, None)
-            .unwrap(),
+        strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+            Some(time_frame),
+            higher_time_frame,
+            Some(strategy_type),
+        )
+        .unwrap(),
     )];
 
     let mut strategy = strategies[0].clone();
