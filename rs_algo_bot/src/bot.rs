@@ -405,16 +405,6 @@ impl Bot {
                         }
                         MessageType::PricingData(res) => {
                             let pricing = res.payload.unwrap();
-                            // log::info!(
-                            //     "{} pricing received: {:?}",
-                            //     self.symbol,
-                            //     (
-                            //         pricing.ask(),
-                            //         pricing.bid(),
-                            //         pricing.pip_size(),
-                            //         pricing.spread(),
-                            //     )
-                            // );
                             self.pricing = pricing;
                         }
                         MessageType::InstrumentData(res) => {

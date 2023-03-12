@@ -10,9 +10,9 @@
     - { role: "rs_algo_bot/deployment/bbrev-nzdchf-m5/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-usdchf-m5/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-usdjpy-m5/roles" }
+    - { role: "rs_algo_bot/deployment/bbrev-eurchf-m5/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-bitcoin-m5/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-bitcoin-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-ethereum-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-eurchf-m5/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-cardano-m5/roles" }
     - { role: "rs_algo_bot/deployment/bbrev-dogecoin-m5/roles" }
