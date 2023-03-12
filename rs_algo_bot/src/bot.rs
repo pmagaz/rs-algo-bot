@@ -227,21 +227,24 @@ impl Bot {
             .trades_in()
             .iter()
             .rev()
-            .take(max_historical_positions).cloned()
+            .take(max_historical_positions)
+            .cloned()
             .collect();
 
         self.trades_out = data
             .trades_out()
             .iter()
             .rev()
-            .take(max_historical_positions).cloned()
+            .take(max_historical_positions)
+            .cloned()
             .collect();
 
         self.orders = data
             .orders()
             .iter()
             .rev()
-            .take(max_historical_positions).cloned()
+            .take(max_historical_positions)
+            .cloned()
             .collect();
     }
 
@@ -352,7 +355,8 @@ impl Bot {
                                         && x.order_type.is_stop()
                                         && x.is_still_valid(now)
                                         && x.status == OrderStatus::Pending
-                                }).cloned()
+                                })
+                                .cloned()
                                 .collect();
 
                             match active_stop_losses.len().cmp(&0) {
@@ -411,7 +415,8 @@ impl Bot {
                             let since_date = match &data.first() {
                                 Some(x) => x.0.to_string(),
                                 None => {
-                                    panic!("Instrument data not found!");
+                                    "".to_string()
+                                    //panic!("Instrument data not found!");
                                 }
                             };
 
