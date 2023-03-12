@@ -1,17 +1,17 @@
-use crate::handlers::session::{self, SessionStatus, Sessions};
+use crate::handlers::session::{Sessions};
 use crate::handlers::{self};
 use crate::message;
 
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local};
-use rs_algo_shared::ws::message::MessageType;
+
 
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
-use tungstenite::protocol::Message;
 
-pub async fn init2(sessions: &mut Sessions, addr: SocketAddr) {
+
+pub async fn init2(_sessions: &mut Sessions, _addr: SocketAddr) {
     //let mut sessions = sessions.clone();
     //let hb_interval = env::var("HEARTBEAT_INTERVAL")
     // .unwrap()
@@ -28,7 +28,7 @@ pub async fn init2(sessions: &mut Sessions, addr: SocketAddr) {
     // });
 }
 
-pub async fn init(sessions: &mut Sessions, add: &SocketAddr) {
+pub async fn init(sessions: &mut Sessions, _add: &SocketAddr) {
     let mut sessions = sessions.clone();
 
     let last_data_timeout = env::var("LAST_DATA_TIMEOUT")

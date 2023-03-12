@@ -36,22 +36,22 @@ pub fn get_type(msg: &str) -> MessageType {
             }),
             Some("InitSession") => MessageType::InitSession(ResponseBody {
                 response: ResponseType::InitSession,
-                payload: Some(parse_bot_data(&payload)),
+                payload: Some(parse_bot_data(payload)),
             }),
             Some("GetMarketHours") => MessageType::MarketHours(ResponseBody {
                 response: ResponseType::GetMarketHours,
-                payload: Some(parse_market_hours(&payload)),
+                payload: Some(parse_market_hours(payload)),
             }),
             Some("GetInstrumentPricing") => MessageType::PricingData(ResponseBody {
                 response: ResponseType::GetInstrumentPricing,
-                payload: Some(parse_pricing_data(&payload)),
+                payload: Some(parse_pricing_data(payload)),
             }),
             Some("GetInstrumentData") => MessageType::InstrumentData(ResponseBody {
                 response: ResponseType::GetInstrumentData,
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame,
-                    data: parse_vec_dohlc(&data),
+                    data: parse_vec_dohlc(data),
                 }),
             }),
             Some("SubscribeStream") => MessageType::StreamResponse(ResponseBody {
@@ -59,23 +59,23 @@ pub fn get_type(msg: &str) -> MessageType {
                 payload: Some(InstrumentData {
                     symbol: symbol.to_owned(),
                     time_frame,
-                    data: parse_dohlc(&payload),
+                    data: parse_dohlc(payload),
                 }),
             }),
             Some("ExecuteTradeIn") => MessageType::ExecuteTradeIn(ResponseBody {
                 response: ResponseType::ExecuteTradeIn,
                 payload: Some(TradeResponse {
                     symbol: symbol.to_owned(),
-                    accepted: accepted,
-                    data: parse_trade_in(&data),
+                    accepted,
+                    data: parse_trade_in(data),
                 }),
             }),
             Some("ExecuteTradeOut") => MessageType::ExecuteTradeOut(ResponseBody {
                 response: ResponseType::ExecuteTradeOut,
                 payload: Some(TradeResponse {
                     symbol: symbol.to_owned(),
-                    accepted: accepted,
-                    data: parse_trade_out(&data),
+                    accepted,
+                    data: parse_trade_out(data),
                 }),
             }),
             _ => MessageType::Error(ResponseBody {

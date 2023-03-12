@@ -13,7 +13,7 @@ use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode::ExecutionMode;
-use rs_algo_shared::models::order::{Order, OrderStatus, OrderType};
+use rs_algo_shared::models::order::{Order, OrderStatus};
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
@@ -120,7 +120,7 @@ impl Bot {
                 strategy: &self.strategy_name,
                 time_frame: self.time_frame.to_owned(),
                 strategy_type: self.strategy_type.to_owned(),
-                num_bars: num_bars,
+                num_bars,
             }),
         };
 
@@ -142,7 +142,7 @@ impl Bot {
                     strategy: &self.strategy_name,
                     strategy_type: self.strategy_type.to_owned(),
                     time_frame: higher_time_frame.to_owned(),
-                    num_bars: num_bars,
+                    num_bars,
                 }),
             };
 
@@ -227,24 +227,21 @@ impl Bot {
             .trades_in()
             .iter()
             .rev()
-            .take(max_historical_positions)
-            .map(|x| x.clone())
+            .take(max_historical_positions).cloned()
             .collect();
 
         self.trades_out = data
             .trades_out()
             .iter()
             .rev()
-            .take(max_historical_positions)
-            .map(|x| x.clone())
+            .take(max_historical_positions).cloned()
             .collect();
 
         self.orders = data
             .orders()
             .iter()
             .rev()
-            .take(max_historical_positions)
-            .map(|x| x.clone())
+            .take(max_historical_positions).cloned()
             .collect();
     }
 
@@ -268,7 +265,7 @@ impl Bot {
             .unwrap();
     }
 
-    pub async fn send_bot_status(&mut self, bot_str: &str) {
+    pub async fn send_bot_status(&mut self, _bot_str: &str) {
         self.last_update = to_dbtime(Local::now());
 
         let update_bot_data_command = Command {
@@ -334,7 +331,7 @@ impl Bot {
                             let trades_in = bot_data.trades_in().len();
                             let trades_out = bot_data.trades_out().len();
                             let orders = bot_data.orders();
-                            let pending_orders = order::get_pending(&orders);
+                            let pending_orders = order::get_pending(orders);
 
                             let num_active_trades = trades_in - trades_out;
                             match trades_in.cmp(&trades_out) {
@@ -355,8 +352,7 @@ impl Bot {
                                         && x.order_type.is_stop()
                                         && x.is_still_valid(now)
                                         && x.status == OrderStatus::Pending
-                                })
-                                .map(|x| x.clone())
+                                }).cloned()
                                 .collect();
 
                             match active_stop_losses.len().cmp(&0) {
@@ -532,8 +528,8 @@ impl Bot {
                                         .await;
 
                                         order::fulfill_bot_order::<TradeIn>(
-                                            &trade_in,
-                                            &order,
+                                            trade_in,
+                                            order,
                                             &mut self.orders,
                                             &self.instrument,
                                         );
@@ -556,8 +552,8 @@ impl Bot {
                                         .await;
 
                                         order::fulfill_bot_order::<TradeOut>(
-                                            &trade_out,
-                                            &order,
+                                            trade_out,
+                                            order,
                                             &mut self.orders,
                                             &self.instrument,
                                         );
@@ -573,7 +569,7 @@ impl Bot {
 
                             match &position_result {
                                 PositionResult::MarketIn(
-                                    TradeResult::TradeIn(trade_in),
+                                    TradeResult::TradeIn(_trade_in),
                                     new_orders,
                                 ) => {
                                     if !open_positions {
@@ -824,7 +820,7 @@ impl BotBuilder {
             let htf_instrument = Instrument::new()
                 .symbol(&symbol)
                 .market(market.to_owned())
-                .time_frame(higher_time_frame.to_owned())
+                .time_frame(higher_time_frame)
                 .build()
                 .unwrap();
 
@@ -845,7 +841,7 @@ impl BotBuilder {
 
             let strategy = set_strategy(
                 &strategy_name,
-                &time_frame.clone().to_string(),
+                &time_frame.to_string(),
                 Some(&self.higher_time_frame.clone().unwrap().to_string()),
                 strategy_type.clone(),
             );

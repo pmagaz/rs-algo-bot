@@ -30,12 +30,12 @@ pub async fn find_by_uuid(client: &Client, uuid: &Uuid) -> Option<BotData> {
         .database(db_name)
         .collection::<BotData>(collection_name);
 
-    let bot_data = collection
+    
+
+    collection
         .find_one(doc! { "_id": uuid}, FindOneOptions::builder().build())
         .await
-        .unwrap();
-
-    bot_data
+        .unwrap()
 }
 
 pub async fn insert(client: &Client, bot_data: &BotData) -> Result<InsertOneResult, Error> {

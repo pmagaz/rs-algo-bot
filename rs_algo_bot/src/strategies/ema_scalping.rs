@@ -3,13 +3,13 @@ use super::strategy::*;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
-use rs_algo_shared::models::order::{Order, OrderDirection, OrderType};
+use rs_algo_shared::models::order::{OrderDirection, OrderType};
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
 use rs_algo_shared::models::time_frame;
 use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
-use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn, TradeOut};
+use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn};
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
@@ -44,7 +44,7 @@ impl<'a> Strategy for EmaScalping<'a> {
             .unwrap()
             .parse::<String>()
             .unwrap()
-            .clone();
+            ;
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
@@ -94,7 +94,7 @@ impl<'a> Strategy for EmaScalping<'a> {
     }
 
     fn time_frame(&self) -> &TimeFrameType {
-        &&self.time_frame
+        &self.time_frame
     }
 
     fn higher_time_frame(&self) -> &Option<TimeFrameType> {
@@ -246,7 +246,7 @@ impl<'a> Strategy for EmaScalping<'a> {
             .get_data_a()
             .get(prev_index)
             .unwrap();
-        let ema_8 = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
+        let _ema_8 = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
         let ema_8 = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
 
         let entry_condition = anchor_htf

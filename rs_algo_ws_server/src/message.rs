@@ -1,13 +1,13 @@
 use crate::db;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
-use crate::heart_beat;
 
-use rs_algo_shared::helpers::date::{Duration as Dur, Local};
+
+
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode;
 use rs_algo_shared::models::time_frame::*;
-use rs_algo_shared::models::{trade, trade::*};
+use rs_algo_shared::models::{trade::*};
 use rs_algo_shared::ws::message::*;
 use serde_json::Value;
 use std::env;
@@ -26,7 +26,7 @@ pub async fn send_reconnect(session: &Session) {
         payload: None,
     };
     let txt_msg = serde_json::to_string(&msg).unwrap();
-    send(&session, Message::Text(txt_msg)).await;
+    send(session, Message::Text(txt_msg)).await;
 }
 
 pub async fn broadcast(sessions: &mut Sessions, _addr: &SocketAddr, msg: Message) {
@@ -224,7 +224,7 @@ where
                                     serde_json::to_string(&trade_response).unwrap()
                                 }
                                 PositionResult::MarketInOrder(
-                                    TradeResult::TradeIn(trade_in),
+                                    TradeResult::TradeIn(_trade_in),
                                     order,
                                 ) => {
                                     log::info!("MarketInOrder position received");

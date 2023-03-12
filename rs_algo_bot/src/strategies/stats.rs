@@ -10,7 +10,7 @@ pub fn calculate_trade_stats(
     trade_in: &TradeIn,
     trade_out: &TradeOut,
     data: &Vec<Candle>,
-    pricing: &Pricing,
+    _pricing: &Pricing,
 ) -> TradeOut {
     let trade_type = &trade_in.trade_type;
     let (price_in, price_out) = match trade_type.is_long() {
@@ -83,11 +83,11 @@ pub fn calculate_stats(
 
         let initial_order_amount = (first.price_in * first.quantity).ceil();
         let profit_factor = total_profit_factor(gross_profits, gross_loses);
-        let net_profit_per = total_profit_per(equity, net_profit, &trades_in, &trades_out);
+        let net_profit_per = total_profit_per(equity, net_profit, trades_in, trades_out);
         let profitable_trades = total_profitable_trades(wining_trades, trades);
-        let max_drawdown = total_drawdown(&trades_out, equity);
+        let max_drawdown = total_drawdown(trades_out, equity);
 
-        let max_runup = total_runup(&trades_out, equity);
+        let max_runup = total_runup(trades_out, equity);
 
         let strategy_start_price = match instrument.data.first().map(|x| x.open) {
             Some(open) => open,
