@@ -43,8 +43,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let base_time_frame = &std::env::var("TIME_FRAME")
             .unwrap()
             .parse::<String>()
-            .unwrap()
-            ;
+            .unwrap();
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
@@ -120,8 +119,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
                 let is_long = macd_a > macd_b;
                 let is_short = htf_ema_5 < htf_ema_8;
-
-                log::info!("is_long: {} is_short: {}", is_long, is_short);
 
                 if is_long && !is_short {
                     TradeDirection::Long
@@ -262,19 +259,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let entry_condition = self.trading_direction == TradeDirection::Short
             && close_price < top_band
             && prev_high >= prev_top_band;
-
-        log::info!(
-            "SHORT {:?}",
-            (
-                &self.trading_direction,
-                close_price,
-                top_band,
-                close_price < top_band,
-                prev_high,
-                prev_top_band,
-                prev_high >= prev_top_band
-            )
-        );
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
 

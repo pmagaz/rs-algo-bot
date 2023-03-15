@@ -411,7 +411,6 @@ impl Bot {
                             let payload = res.payload.unwrap();
                             let time_frame = payload.time_frame;
                             let data = payload.data;
-
                             let since_date = match &data.first() {
                                 Some(x) => x.0.to_string(),
                                 None => {
@@ -464,8 +463,6 @@ impl Bot {
                             let new_candle = self.instrument.next(data).unwrap();
                             let mut higher_candle: Candle = new_candle.clone();
 
-                            // log::info!("Candle  processed {:?}", new_candle.date());
-
                             if is_mtf_strategy(&self.strategy_type) {
                                 match self.htf_instrument {
                                     HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
@@ -495,7 +492,8 @@ impl Bot {
 
                             match new_candle.is_closed() {
                                 true => {
-                                    self.instrument.init_candle(data);
+                                    self.instrument
+                                        .init_candle(data, &Some(self.time_frame.clone()));
                                 }
                                 false => (),
                             };
@@ -512,7 +510,8 @@ impl Bot {
                                             higher_candle.close(),
                                             higher_candle.volume(),
                                         );
-                                        htf_instrument.init_candle(htf_data);
+                                        htf_instrument
+                                            .init_candle(htf_data, &self.higher_time_frame);
                                     }
                                     HTFInstrument::None => (),
                                 };
