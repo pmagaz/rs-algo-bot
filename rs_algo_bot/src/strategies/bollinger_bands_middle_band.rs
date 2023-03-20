@@ -73,7 +73,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let trading_direction = TradeDirection::Long;
 
         Ok(Self {
-            name: "BollingerBandsMiddleBand",
+            name: "Bollinger_Bands_MiddleBand",
             time_frame,
             higher_time_frame,
             order_size,

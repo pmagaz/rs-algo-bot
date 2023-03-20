@@ -73,7 +73,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let trading_direction = TradeDirection::Long;
 
         Ok(Self {
-            name: "BollingerBandsReversals",
+            name: "Bollinger_Bands_Reversals",
             time_frame,
             higher_time_frame,
             strategy_type,

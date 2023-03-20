@@ -434,13 +434,18 @@ pub fn set_strategy(
     ];
 
     let mut strategy = strategies[0].clone();
+    let mut found = false;
     for stra in strategies.iter() {
         if strategy_name == stra.name() {
             strategy = stra.clone();
+            found = true
         }
     }
-
-    log::info!("Using strategy {}", strategy.name());
+    if found {
+        log::info!("Using strategy {}", strategy.name());
+    } else {
+        panic!("Strategy not found!");
+    }
 
     strategy
 }
