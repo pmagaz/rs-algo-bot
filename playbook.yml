@@ -6,7 +6,7 @@
     #- { role: "deployment/mongodb-bot/roles/" }
     - { role: "rs_algo_ws_server/deployment/roles/" }
     - { role: "rs_algo_bot/deployment/bbmb/bbmb-audusd-m15/roles" }
-    - { role: "rs_algo_bot/deployment/bbmb/bbmb-cadpjy-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-cadjpy-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbmb/bbmb-eursusd-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbmb/bbmb-gbpusd-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbmb/bbmb-nzdchf-m15/roles" }

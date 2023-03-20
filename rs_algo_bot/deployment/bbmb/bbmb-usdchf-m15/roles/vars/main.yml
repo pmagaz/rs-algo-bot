@@ -1,4 +1,4 @@
 package_name: rs_algo_bot
 release_name: bot-bbmb-usdchf-m15
 local_path: /home/dev/rs-algo-bot
-chart_path: deployment/bbmb-usdchf-m15/chart
+chart_path: deployment/bbmb/bbmb-usdchf-m15/chart
