@@ -5,14 +5,13 @@
     - { role: "deployment/git/roles" }
     #- { role: "deployment/mongodb-bot/roles/" }
     - { role: "rs_algo_ws_server/deployment/roles/" }
-    - { role: "rs_algo_bot/deployment/bbrev-eursusd-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-gbpusd-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-nzdchf-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-usdchf-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-usdjpy-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-eurchf-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-bitcoin-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-bitcoin-m15/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-ethereum-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-cardano-m5/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev-dogecoin-m5/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-audusd-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-cadpjy-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-eursusd-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-gbpusd-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-nzdchf-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-usdchf-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-usdjpy-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-eurchf-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-bitcoin-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbmb/bbmb-ethereum-m15/roles" }

@@ -1,0 +1,4 @@
+package_name: rs_algo_bot
+release_name: bot-bbmb-eurchf-m15
+local_path: /home/dev/rs-algo-bot
+chart_path: deployment/bbmb-eurchf-m15/chart

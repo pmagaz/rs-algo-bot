@@ -64,6 +64,7 @@ impl Bot {
             &self.symbol,
             &self.strategy_name,
             &self.time_frame.to_string(),
+            &self.higher_time_frame.clone().unwrap().to_string(),
             &self.strategy_type.to_string(),
         ];
 
@@ -459,7 +460,6 @@ impl Bot {
                             let payload = res.payload.unwrap();
                             let data = payload.data;
                             let index = &self.instrument.data.len() - 1;
-
                             let new_candle = self.instrument.next(data).unwrap();
                             let mut higher_candle: Candle = new_candle.clone();
 

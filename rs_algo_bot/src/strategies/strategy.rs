@@ -9,7 +9,7 @@ use rs_algo_shared::error::Result;
 use rs_algo_shared::models::order::{self, Order};
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
-use rs_algo_shared::models::time_frame::{TimeFrameType};
+use rs_algo_shared::models::time_frame::TimeFrameType;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::models::{strategy::*, trade};
 use rs_algo_shared::scanner::candle::Candle;
@@ -128,10 +128,10 @@ pub trait Strategy: DynClone {
             );
         }
 
-        log::info!(
-            "Position Result {:?}",
-            (open_positions, &position_result, &order_position_result)
-        );
+        // log::info!(
+        //     "Position Result {:?}",
+        //     (open_positions, &position_result, &order_position_result)
+        // );
         (position_result, order_position_result)
     }
 
@@ -153,7 +153,6 @@ pub trait Strategy: DynClone {
             .parse::<bool>()
             .unwrap();
 
-        
         match trading_direction.is_long() {
             true => match self.is_long_strategy() {
                 true => match self.entry_long(index, instrument, htf_instrument, pricing) {
@@ -168,13 +167,9 @@ pub trait Strategy: DynClone {
                             None,
                         );
 
-                        let prepared_orders = order_types.map(|orders| order::prepare_orders(
-                                index,
-                                instrument,
-                                pricing,
-                                &trade_type,
-                                &orders,
-                            ));
+                        let prepared_orders = order_types.map(|orders| {
+                            order::prepare_orders(index, instrument, pricing, &trade_type, &orders)
+                        });
 
                         let new_orders = match overwrite_orders {
                             true => prepared_orders,
@@ -227,13 +222,9 @@ pub trait Strategy: DynClone {
                             None,
                         );
 
-                        let prepared_orders = order_types.map(|orders| order::prepare_orders(
-                                index,
-                                instrument,
-                                pricing,
-                                &trade_type,
-                                &orders,
-                            ));
+                        let prepared_orders = order_types.map(|orders| {
+                            order::prepare_orders(index, instrument, pricing, &trade_type, &orders)
+                        });
 
                         let new_orders = match overwrite_orders {
                             true => prepared_orders,
@@ -283,8 +274,6 @@ pub trait Strategy: DynClone {
         pricing: &Pricing,
         trade_in: &TradeIn,
     ) -> PositionResult {
-        
-
         match self.is_long_strategy() {
             true => match self.exit_long(index, instrument, htf_instrument, trade_in, pricing) {
                 Position::MarketOut(_) => {
@@ -425,14 +414,24 @@ pub fn set_strategy(
     higher_time_frame: Option<&str>,
     strategy_type: StrategyType,
 ) -> Box<dyn Strategy> {
-    let strategies: Vec<Box<dyn Strategy>> = vec![Box::new(
-        strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-            Some(time_frame),
-            higher_time_frame,
-            Some(strategy_type),
-        )
-        .unwrap(),
-    )];
+    let strategies: Vec<Box<dyn Strategy>> = vec![
+        Box::new(
+            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_middle_band::BollingerBandsMiddleBand::new(
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+    ];
 
     let mut strategy = strategies[0].clone();
     for stra in strategies.iter() {
