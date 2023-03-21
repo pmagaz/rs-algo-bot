@@ -1,4 +1,0 @@
-package_name: rs_algo_bot
-release_name: bot-bbmb-nzdchf-m15
-local_path: /home/dev/rs-algo-bot
-chart_path: deployment/bbmb/bbmb-nzdchf-m15/chart

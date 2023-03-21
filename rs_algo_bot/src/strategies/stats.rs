@@ -13,15 +13,18 @@ pub fn calculate_trade_stats(
     _pricing: &Pricing,
 ) -> TradeOut {
     let trade_type = &trade_in.trade_type;
-    let (price_in, price_out) = match trade_type.is_long() {
-        true => (trade_in.price_in, trade_out.price_out),
-        false => (trade_out.price_out, trade_in.price_in),
-        _ => (trade_in.price_in, trade_out.price_out),
-    };
+    // let (price_in, price_out) = match trade_type.is_long() {
+    //     true => (trade_in.price_in, trade_out.price_out),
+    //     false => (trade_out.price_out, trade_in.price_in),
+    // };
 
+    let price_in = trade_in.price_in;
+    let price_out = trade_out.price_out;
     let quantity = trade_in.quantity;
 
     let profit = calculate_trade_profit(quantity, price_in, price_out, trade_type);
+    log::info!("STATS {:?}", (trade_type, price_in, price_out, profit));
+
     let profit_per = calculate_trade_profit_per(price_in, price_out, trade_type);
 
     let run_up = calculate_trade_runup(data, price_in, trade_type);

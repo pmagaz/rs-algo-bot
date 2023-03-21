@@ -101,8 +101,6 @@ pub trait Strategy: DynClone {
             .trading_direction(index, instrument, htf_instrument)
             .clone();
 
-        log::info!("Trading Direction: {:?}", trading_direction);
-
         let open_positions = match trades_in.len().cmp(&trades_out.len()) {
             Ordering::Greater => true,
             _ => false,
@@ -128,10 +126,10 @@ pub trait Strategy: DynClone {
             );
         }
 
-        // log::info!(
-        //     "Position Result {:?}",
-        //     (open_positions, &position_result, &order_position_result)
-        // );
+        log::info!(
+            "Position Result {:?}",
+            (open_positions, &position_result, &order_position_result)
+        );
         (position_result, order_position_result)
     }
 
@@ -274,7 +272,7 @@ pub trait Strategy: DynClone {
         pricing: &Pricing,
         trade_in: &TradeIn,
     ) -> PositionResult {
-        match self.is_long_strategy() {
+        match trade_in.trade_type.is_long() && self.is_long_strategy() {
             true => match self.exit_long(index, instrument, htf_instrument, trade_in, pricing) {
                 Position::MarketOut(_) => {
                     let trade_type = TradeType::MarketOutLong;
@@ -287,6 +285,7 @@ pub trait Strategy: DynClone {
                         None,
                     );
 
+                    log::info!("exit_lonnnnng");
                     PositionResult::MarketOut(trade_out_result)
                 }
                 Position::Order(order_types) => {
@@ -313,7 +312,7 @@ pub trait Strategy: DynClone {
                         &trade_type,
                         None,
                     );
-
+                    log::info!("exit_shooortttt");
                     PositionResult::MarketOut(trade_out_result)
                 }
                 Position::Order(order_types) => {
@@ -375,6 +374,7 @@ pub trait Strategy: DynClone {
                     None => TradeResult::None,
                 };
 
+                log::info!("exit_orderrrrrrr");
                 PositionResult::MarketOutOrder(trade_out_result, order)
             }
             _ => PositionResult::None,

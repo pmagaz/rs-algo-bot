@@ -152,6 +152,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
         let prev_close = &prev_candle.close();
+        let is_closed = candle.is_closed();
 
         let middle_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
         let prev_middle_band = instrument
@@ -161,16 +162,17 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .get(prev_index)
             .unwrap();
 
-        let pips_margin = 1.;
+        let pips_margin = 0.5;
 
         let entry_condition = self.trading_direction == TradeDirection::Long
+            && is_closed
             && close_price > middle_band
             && prev_close <= prev_middle_band;
 
         let buy_price = candle.high() + calc::to_pips(pips_margin, pricing);
 
         if entry_condition {
-            log::info!("Entry Long {} {:?}", index, candle.date());
+            log::info!("Entry Long {:?}", (index, buy_price, candle));
         }
 
         match entry_condition {
@@ -200,6 +202,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
         let prev_close = &prev_candle.close();
+        let is_closed = candle.is_closed();
 
         let middle_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
         let prev_middle_band = instrument
@@ -210,7 +213,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .unwrap();
 
         let exit_condition = self.trading_direction == TradeDirection::Short
-            || (close_price < middle_band && prev_close < prev_middle_band);
+            || (is_closed && close_price < middle_band && prev_close >= prev_middle_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -238,6 +241,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
         let prev_close = &prev_candle.close();
+        let is_closed = candle.is_closed();
 
         let middle_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
         let prev_middle_band = instrument
@@ -246,16 +250,22 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .get_data_c()
             .get(prev_index)
             .unwrap();
-        let pips_margin = 1.;
+        let pips_margin = 0.5;
 
         let entry_condition = self.trading_direction == TradeDirection::Short
-            || (close_price < middle_band && prev_close < prev_middle_band);
+            && is_closed
+            && close_price < middle_band
+            && prev_close >= prev_middle_band;
 
-        let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
+        let buy_price = candle.low() - calc::to_pips(pips_margin, pricing);
 
         if entry_condition {
-            log::info!("Entry short {} {:?}", index, candle.date());
+            log::info!("Entry Short {:?}", (index, buy_price, candle));
         }
+        log::info!(
+            "Data Entry {:?}",
+            (close_price, middle_band, prev_close, prev_middle_band)
+        );
 
         match entry_condition {
             true => Position::Order(vec![
@@ -283,6 +293,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
         let prev_close = &prev_candle.close();
+        let is_closed = candle.is_closed();
 
         let middle_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
         let prev_middle_band = instrument
@@ -293,8 +304,15 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .unwrap();
 
         let exit_condition = self.trading_direction == TradeDirection::Long
-            && close_price > middle_band
-            && prev_close <= prev_middle_band;
+            || (is_closed && close_price > middle_band && prev_close <= prev_middle_band);
+
+        if exit_condition {
+            log::info!("Exit Short {:?}", (index, candle));
+            log::info!(
+                "Data Exit {:?}",
+                (close_price, middle_band, prev_close, prev_middle_band)
+            );
+        }
 
         match exit_condition {
             true => Position::MarketOut(None),
