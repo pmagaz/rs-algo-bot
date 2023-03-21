@@ -1,4 +1,4 @@
 package_name: rs_algo_bot
 release_name: bot-bbrev-gbpusd-m15
 local_path: /home/dev/rs-algo-bot
-chart_path: deployment/bbrev-gbpusd-m15/chart
+chart_path: deployment/bbrev/bbrev-gbpusd-m15/chart
