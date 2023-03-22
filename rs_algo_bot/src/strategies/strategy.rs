@@ -57,6 +57,7 @@ pub trait Strategy: DynClone {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
+        trade_in: &TradeIn,
         pricing: &Pricing,
     ) -> Position;
     fn trading_direction(
@@ -110,7 +111,7 @@ pub trait Strategy: DynClone {
             self.resolve_pending_orders(index, instrument, pricing, &pending_orders, trades_in);
 
         if open_positions {
-            let trade_in = trades_in.last().unwrap().to_owned();
+            let trade_in = trades_in.last().unwrap();
             position_result =
                 self.resolve_exit_position(index, instrument, htf_instrument, pricing, &trade_in);
         }
@@ -272,7 +273,7 @@ pub trait Strategy: DynClone {
         pricing: &Pricing,
         trade_in: &TradeIn,
     ) -> PositionResult {
-        match trade_in.trade_type.is_long() && self.is_long_strategy() {
+        match trade_in.trade_type.is_long_entry() {
             true => match self.exit_long(index, instrument, htf_instrument, trade_in, pricing) {
                 Position::MarketOut(_) => {
                     let trade_type = TradeType::MarketOutLong;
@@ -301,7 +302,7 @@ pub trait Strategy: DynClone {
                 }
                 _ => PositionResult::None,
             },
-            false => match self.exit_short(index, instrument, htf_instrument, pricing) {
+            false => match self.exit_short(index, instrument, htf_instrument, trade_in, pricing) {
                 Position::MarketOut(_) => {
                     let trade_type = TradeType::MarketOutShort;
                     let trade_out_result = trade::resolve_trade_out(

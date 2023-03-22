@@ -162,7 +162,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let pips_margin = 3.;
+        let pips_margin = 0.1;
 
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
@@ -190,7 +190,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        _trade_in: &TradeIn,
+        trade_in: &TradeIn,
         pricing: &Pricing,
     ) -> Position {
         let _spread = pricing.spread();
@@ -254,7 +254,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_high = &prev_candle.high();
         let is_closed = candle.is_closed();
 
-        let pips_margin = 3.;
+        let pips_margin = 0.1;
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
         let prev_top_band = instrument
             .indicators
@@ -289,6 +289,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
+        trade_in: &TradeIn,
         pricing: &Pricing,
     ) -> Position {
         let _spread = pricing.spread();

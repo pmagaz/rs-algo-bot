@@ -5,8 +5,8 @@
     - { role: "deployment/git/roles" }
     #- { role: "deployment/mongodb-bot/roles/" }
     - { role: "rs_algo_ws_server/deployment/roles/" }
-    - { role: "rs_algo_bot/deployment/bbmb/bbmb-bitcoin-m15/roles" }
-    - { role: "rs_algo_bot/deployment/bbmb/bbmb-ethereum-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/bbmb/bbmb-bitcoin-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/bbmb/bbmb-ethereum-m15/roles" }
     # bbmb
     - { role: "rs_algo_bot/deployment/bbmb/bbmb-audusd-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbmb/bbmb-eursusd-m15/roles" }

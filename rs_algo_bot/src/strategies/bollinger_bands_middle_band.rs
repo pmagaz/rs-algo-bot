@@ -162,7 +162,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .get(prev_index)
             .unwrap();
 
-        let pips_margin = 0.5;
+        let pips_margin = 0.1;
 
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
@@ -190,7 +190,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        _trade_in: &TradeIn,
+        trade_in: &TradeIn,
         pricing: &Pricing,
     ) -> Position {
         let _spread = pricing.spread();
@@ -214,6 +214,10 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
 
         let exit_condition = self.trading_direction == TradeDirection::Short
             || (is_closed && close_price < middle_band && prev_close >= prev_middle_band);
+
+        if exit_condition {
+            log::info!("Exit Long {:?}", (index, close_price, candle));
+        }
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -250,7 +254,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .get_data_c()
             .get(prev_index)
             .unwrap();
-        let pips_margin = 0.5;
+        let pips_margin = 0.1;
 
         let entry_condition = self.trading_direction == TradeDirection::Short
             && is_closed
@@ -262,10 +266,6 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         if entry_condition {
             log::info!("Entry Short {:?}", (index, buy_price, candle));
         }
-        log::info!(
-            "Data Entry {:?}",
-            (close_price, middle_band, prev_close, prev_middle_band)
-        );
 
         match entry_condition {
             true => Position::Order(vec![
@@ -282,6 +282,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
+        trade_in: &TradeIn,
         pricing: &Pricing,
     ) -> Position {
         let _spread = pricing.spread();
@@ -308,10 +309,6 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
 
         if exit_condition {
             log::info!("Exit Short {:?}", (index, candle));
-            log::info!(
-                "Data Exit {:?}",
-                (close_price, middle_band, prev_close, prev_middle_band)
-            );
         }
 
         match exit_condition {
