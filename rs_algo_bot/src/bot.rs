@@ -472,12 +472,6 @@ impl Bot {
                                 };
                             }
 
-                            self.orders = order::cancel_pending_expired_orders(
-                                index,
-                                &self.instrument,
-                                &mut self.orders,
-                            );
-
                             let (position_result, orders_position_result) = self
                                 .strategy
                                 .tick(
@@ -562,10 +556,10 @@ impl Bot {
                                             &self.instrument,
                                         );
 
-                                        order::cancel_trade_pending_orders(
-                                            trade_out,
-                                            &mut self.orders,
-                                        );
+                                        // order::cancel_trade_pending_orders(
+                                        //     trade_out,
+                                        //     &mut self.orders,
+                                        // );
                                     }
                                 }
                                 _ => (),
@@ -607,10 +601,10 @@ impl Bot {
                                         )
                                         .await;
 
-                                        order::cancel_trade_pending_orders(
-                                            trade_out,
-                                            &mut self.orders,
-                                        );
+                                        // order::cancel_trade_pending_orders(
+                                        //     trade_out,
+                                        //     &mut self.orders,
+                                        // );
                                     }
                                 }
                                 PositionResult::PendingOrder(new_orders) => {
@@ -641,6 +635,11 @@ impl Bot {
                                 _ => (),
                             };
 
+                            self.orders = order::cancel_pending_expired_orders(
+                                index,
+                                &self.instrument,
+                                &mut self.orders,
+                            );
                             self.get_pricing_data().await;
                             self.send_bot_status(&bot_str).await;
                         }
@@ -699,6 +698,11 @@ impl Bot {
                                         &trade_response.data,
                                         &self.instrument.data,
                                         &self.pricing,
+                                    );
+
+                                    order::cancel_trade_pending_orders(
+                                        &updated_trade_out,
+                                        &mut self.orders,
                                     );
 
                                     log::info!(

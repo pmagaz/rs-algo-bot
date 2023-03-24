@@ -111,13 +111,13 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let macd_a = htf_inst.indicators.macd.get_data_a().get(idx).unwrap();
-                let macd_b = htf_inst.indicators.macd.get_data_b().get(idx).unwrap();
+                // let macd_a = htf_inst.indicators.macd.get_data_a().get(idx).unwrap();
+                // let macd_b = htf_inst.indicators.macd.get_data_b().get(idx).unwrap();
 
                 let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
 
-                let is_long = macd_a > macd_b;
+                let is_long = htf_ema_5 > htf_ema_8;
                 let is_short = htf_ema_5 < htf_ema_8;
 
                 if is_long && !is_short {

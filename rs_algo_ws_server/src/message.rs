@@ -2,12 +2,10 @@ use crate::db;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 
-
-
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode;
 use rs_algo_shared::models::time_frame::*;
-use rs_algo_shared::models::{trade::*};
+use rs_algo_shared::models::trade::*;
 use rs_algo_shared::ws::message::*;
 use serde_json::Value;
 use std::env;
