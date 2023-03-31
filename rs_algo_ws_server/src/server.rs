@@ -68,7 +68,6 @@ async fn handle_connection(
 
         let (recipient, receiver) = unbounded();
         let new_session = session::create(&mut sessions, &addr, recipient).await;
-
         let (outgoing, incoming) = ws_stream.split();
         let broker = Arc::clone(&broker);
 

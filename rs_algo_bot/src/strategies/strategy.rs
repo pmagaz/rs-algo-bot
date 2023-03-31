@@ -127,10 +127,6 @@ pub trait Strategy: DynClone {
             );
         }
 
-        log::info!(
-            "Position Result {:?}",
-            (open_positions, &position_result, &order_position_result)
-        );
         (position_result, order_position_result)
     }
 
