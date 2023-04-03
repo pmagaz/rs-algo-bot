@@ -284,11 +284,12 @@ impl Bot {
     }
 
     pub async fn reconnect(&mut self) {
-        log::info!("Reconnecting...");
         let secs = env::var("DISCONNECTED_RETRY")
             .unwrap()
             .parse::<u64>()
             .unwrap();
+
+        log::info!("Reconnecting in {} secs...", secs);
 
         sleep(Duration::from_secs(secs)).await;
         self.websocket.re_connect().await;
@@ -306,440 +307,450 @@ impl Bot {
             .unwrap();
 
         loop {
-            let msg = match self.websocket.read_msg().await {
-                Ok(msg) => msg,
-                Err(err) => {
-                    log::warn!("[ERROR] Disconnected from server: {:?}", err);
-                    self.reconnect().await;
-                    Message::Ping(b"".to_vec())
-                }
-            };
+            match self.websocket.read_msg().await {
+                Ok(msg) => {
+                    match msg {
+                        Message::Text(txt) => {
+                            let msg_type = message::get_type(&txt);
 
-            match msg {
-                Message::Text(txt) => {
-                    let msg_type = message::get_type(&txt);
-
-                    match msg_type {
-                        MessageType::Connected(_res) => {
-                            log::info!("{} connected to server", bot_str);
-                        }
-                        MessageType::Reconnect(_res) => {
-                            log::info!("{} reconnect msg received", bot_str);
-                            self.reconnect().await;
-                        }
-                        MessageType::InitSession(res) => {
-                            log::info!("Getting {} previous session", bot_str);
-
-                            let now = Local::now();
-                            let bot_data = res.payload.unwrap();
-                            let trades_in = bot_data.trades_in().len();
-                            let trades_out = bot_data.trades_out().len();
-                            let orders = bot_data.orders();
-                            let pending_orders = order::get_pending(orders);
-
-                            let num_active_trades = trades_in - trades_out;
-                            match trades_in.cmp(&trades_out) {
-                                Ordering::Greater => {
-                                    log::info!("{} trades found", num_active_trades);
-                                    open_positions = true
+                            match msg_type {
+                                MessageType::Connected(_res) => {
+                                    log::info!("{} connected to server", bot_str);
                                 }
-                                _ => {
-                                    log::info!("No trades found");
-                                    //open_positions = false
+                                MessageType::Reconnect(_res) => {
+                                    log::info!("{} reconnect msg received", bot_str);
+                                    self.reconnect().await;
                                 }
-                            };
+                                MessageType::InitSession(res) => {
+                                    log::info!("Getting {} previous session", bot_str);
 
-                            let active_stop_losses: Vec<Order> = pending_orders
-                                .iter()
-                                .filter(|x| {
-                                    open_positions
-                                        && x.order_type.is_stop()
-                                        && x.is_still_valid(now)
-                                        && x.status == OrderStatus::Pending
-                                })
-                                .cloned()
-                                .collect();
+                                    let now = Local::now();
+                                    let bot_data = res.payload.unwrap();
+                                    let trades_in = bot_data.trades_in().len();
+                                    let trades_out = bot_data.trades_out().len();
+                                    let orders = bot_data.orders();
+                                    let pending_orders = order::get_pending(orders);
 
-                            match active_stop_losses.len().cmp(&0) {
-                                Ordering::Greater => {
-                                    log::info!(
-                                        "{} active stop losses found",
-                                        active_stop_losses.len()
-                                    );
-                                    open_positions = true
-                                }
-                                _ => {
-                                    log::info!("No active stop losses");
-                                    open_positions = false
-                                }
-                            };
+                                    let num_active_trades = trades_in - trades_out;
+                                    match trades_in.cmp(&trades_out) {
+                                        Ordering::Greater => {
+                                            log::info!("{} trades found", num_active_trades);
+                                            open_positions = true
+                                        }
+                                        _ => {
+                                            log::info!("No trades found");
+                                            //open_positions = false
+                                        }
+                                    };
 
-                            self.restore_values(bot_data).await;
-                            self.is_market_open().await;
-                        }
-                        MessageType::MarketHours(res) => {
-                            let market_hours = res.payload.unwrap();
-                            let open = market_hours.open();
+                                    let active_stop_losses: Vec<Order> = pending_orders
+                                        .iter()
+                                        .filter(|x| {
+                                            open_positions
+                                                && x.order_type.is_stop()
+                                                && x.is_still_valid(now)
+                                                && x.status == OrderStatus::Pending
+                                        })
+                                        .cloned()
+                                        .collect();
 
-                            match market_hours.open() {
-                                true => {
-                                    log::info!("{} market open: {}", self.symbol, open);
-                                    self.get_instrument_data().await;
-                                    self.get_pricing_data().await;
-                                }
-                                false => {
-                                    let secs_to_retry = env::var("MARKET_CLOSED_RETRY")
-                                        .unwrap()
-                                        .parse::<u64>()
-                                        .unwrap();
+                                    match active_stop_losses.len().cmp(&0) {
+                                        Ordering::Greater => {
+                                            log::info!(
+                                                "{} active stop losses found",
+                                                active_stop_losses.len()
+                                            );
+                                            open_positions = true
+                                        }
+                                        _ => {
+                                            log::info!("No active stop losses");
+                                            open_positions = false
+                                        }
+                                    };
 
-                                    log::warn!(
-                                        "{} market closed!. Retrying after {} secs...",
-                                        self.symbol,
-                                        secs_to_retry
-                                    );
-
-                                    sleep(Duration::from_secs(secs_to_retry)).await;
+                                    self.restore_values(bot_data).await;
                                     self.is_market_open().await;
                                 }
-                            }
-                        }
-                        MessageType::PricingData(res) => {
-                            let pricing = res.payload.unwrap();
-                            self.pricing = pricing;
-                        }
-                        MessageType::InstrumentData(res) => {
-                            let payload = res.payload.unwrap();
-                            let time_frame = payload.time_frame;
-                            let data = payload.data;
-                            let since_date = match &data.first() {
-                                Some(x) => x.0.to_string(),
-                                None => {
-                                    "".to_string()
-                                    //panic!("Instrument data not found!");
-                                }
-                            };
+                                MessageType::MarketHours(res) => {
+                                    let market_hours = res.payload.unwrap();
+                                    let open = market_hours.open();
 
-                            if is_base_time_frame(&self.time_frame, &time_frame) {
-                                log::info!(
-                                    "Instrument {} data received since {:?}",
-                                    bot_str,
-                                    &since_date,
-                                );
+                                    match market_hours.open() {
+                                        true => {
+                                            log::info!("{} market open: {}", self.symbol, open);
+                                            self.get_instrument_data().await;
+                                            self.get_pricing_data().await;
+                                        }
+                                        false => {
+                                            let secs_to_retry = env::var("MARKET_CLOSED_RETRY")
+                                                .unwrap()
+                                                .parse::<u64>()
+                                                .unwrap();
 
-                                self.instrument.set_data(data).unwrap();
+                                            log::warn!(
+                                                "{} market closed!. Retrying after {} secs...",
+                                                self.symbol,
+                                                secs_to_retry
+                                            );
 
-                                if !is_mtf_strategy(&self.strategy_type) {
-                                    self.subscribing_to_stream().await;
-                                }
-                            } else if is_mtf_strategy(&self.strategy_type) {
-                                match self.htf_instrument {
-                                    HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
-                                        let since_date = match &htf_instrument.data.first() {
-                                            Some(x) => x.date().to_string(),
-                                            None => "".to_owned(),
-                                        };
-                                        log::info!(
-                                            "Instrument {}_{} data received since {:?}",
-                                            &self.symbol,
-                                            &htf_instrument.time_frame(),
-                                            &since_date
-                                        );
-
-                                        htf_instrument.set_data(data).unwrap();
-
-                                        self.subscribing_to_stream().await;
-                                    }
-                                    HTFInstrument::None => {}
-                                };
-                            }
-
-                            self.send_bot_status(&bot_str).await;
-                        }
-                        MessageType::StreamResponse(res) => {
-                            let payload = res.payload.unwrap();
-                            let data = payload.data;
-                            let index = &self.instrument.data.len() - 1;
-                            let new_candle = self.instrument.next(data).unwrap();
-                            let mut higher_candle: Candle = new_candle.clone();
-
-                            if is_mtf_strategy(&self.strategy_type) {
-                                match self.htf_instrument {
-                                    HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
-                                        higher_candle = htf_instrument.next(data).unwrap();
-                                    }
-                                    HTFInstrument::None => (),
-                                };
-                            }
-
-                            let (position_result, orders_position_result) = self
-                                .strategy
-                                .tick(
-                                    &self.instrument,
-                                    &self.htf_instrument,
-                                    &self.trades_in,
-                                    &self.trades_out,
-                                    &self.orders,
-                                    &self.pricing,
-                                )
-                                .await;
-
-                            match new_candle.is_closed() {
-                                true => {
-                                    self.instrument
-                                        .init_candle(data, &Some(self.time_frame.clone()));
-                                }
-                                false => (),
-                            };
-
-                            if higher_candle.is_closed() && is_mtf_strategy(&self.strategy_type) {
-                                log::info!("HTF Candle closed {:?}", higher_candle.date());
-                                match self.htf_instrument {
-                                    HTFInstrument::HTFInstrument(ref mut htf_instrument) => {
-                                        let htf_data = (
-                                            higher_candle.date(),
-                                            higher_candle.open(),
-                                            higher_candle.high(),
-                                            higher_candle.low(),
-                                            higher_candle.close(),
-                                            higher_candle.volume(),
-                                        );
-                                        htf_instrument
-                                            .init_candle(htf_data, &self.higher_time_frame);
-                                    }
-                                    HTFInstrument::None => (),
-                                };
-                            }
-
-                            match &orders_position_result {
-                                PositionResult::MarketInOrder(
-                                    TradeResult::TradeIn(trade_in),
-                                    order,
-                                ) => {
-                                    if !open_positions {
-                                        log::info!("Position Result MarketInOrder");
-                                        self.send_position::<PositionResult>(
-                                            &orders_position_result,
-                                            self.symbol.clone(),
-                                            self.time_frame.clone(),
-                                        )
-                                        .await;
-
-                                        order::fulfill_bot_order::<TradeIn>(
-                                            trade_in,
-                                            order,
-                                            &mut self.orders,
-                                            &self.instrument,
-                                        );
-
-                                        order::extend_all_pending_orders(&mut self.orders);
-                                    }
-                                }
-                                PositionResult::MarketOutOrder(
-                                    TradeResult::TradeOut(trade_out),
-                                    order,
-                                ) => {
-                                    if open_positions {
-                                        log::info!("Position Result MarketOutOrder");
-
-                                        self.send_position::<PositionResult>(
-                                            &orders_position_result,
-                                            self.symbol.clone(),
-                                            self.time_frame.clone(),
-                                        )
-                                        .await;
-
-                                        order::fulfill_bot_order::<TradeOut>(
-                                            trade_out,
-                                            order,
-                                            &mut self.orders,
-                                            &self.instrument,
-                                        );
-
-                                        // order::cancel_trade_pending_orders(
-                                        //     trade_out,
-                                        //     &mut self.orders,
-                                        // );
-                                    }
-                                }
-                                _ => (),
-                            };
-
-                            match &position_result {
-                                PositionResult::MarketIn(
-                                    TradeResult::TradeIn(_trade_in),
-                                    new_orders,
-                                ) => {
-                                    if !open_positions {
-                                        log::info!("Position Result TradeIn");
-
-                                        self.send_position::<PositionResult>(
-                                            &position_result,
-                                            self.symbol.clone(),
-                                            self.time_frame.clone(),
-                                        )
-                                        .await;
-
-                                        match new_orders {
-                                            Some(new_ords) => {
-                                                self.orders = order::add_pending(
-                                                    self.orders.clone(),
-                                                    new_ords.clone(),
-                                                )
-                                            }
-                                            None => (),
+                                            sleep(Duration::from_secs(secs_to_retry)).await;
+                                            self.is_market_open().await;
                                         }
                                     }
                                 }
-                                PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
-                                    if open_positions {
-                                        log::info!("Position Result TradeOut");
-                                        self.send_position::<PositionResult>(
-                                            &position_result,
-                                            self.symbol.clone(),
-                                            self.time_frame.clone(),
+                                MessageType::PricingData(res) => {
+                                    let pricing = res.payload.unwrap();
+                                    self.pricing = pricing;
+                                }
+                                MessageType::InstrumentData(res) => {
+                                    let payload = res.payload.unwrap();
+                                    let time_frame = payload.time_frame;
+                                    let data = payload.data;
+                                    let since_date = match &data.first() {
+                                        Some(x) => x.0.to_string(),
+                                        None => "".to_string(),
+                                    };
+
+                                    if is_base_time_frame(&self.time_frame, &time_frame) {
+                                        log::info!(
+                                            "Instrument {} data received since {:?}",
+                                            bot_str,
+                                            &since_date,
+                                        );
+
+                                        self.instrument.set_data(data).unwrap();
+
+                                        if !is_mtf_strategy(&self.strategy_type) {
+                                            self.subscribing_to_stream().await;
+                                        }
+                                    } else if is_mtf_strategy(&self.strategy_type) {
+                                        match self.htf_instrument {
+                                            HTFInstrument::HTFInstrument(
+                                                ref mut htf_instrument,
+                                            ) => {
+                                                let since_date = match &htf_instrument.data.first()
+                                                {
+                                                    Some(x) => x.date().to_string(),
+                                                    None => "".to_owned(),
+                                                };
+                                                log::info!(
+                                                    "Instrument {}_{} data received since {:?}",
+                                                    &self.symbol,
+                                                    &htf_instrument.time_frame(),
+                                                    &since_date
+                                                );
+
+                                                htf_instrument.set_data(data).unwrap();
+
+                                                self.subscribing_to_stream().await;
+                                            }
+                                            HTFInstrument::None => {}
+                                        };
+                                    }
+
+                                    //TODO REVIEW ACTIVE ORDERS FOR GAPS
+                                    self.send_bot_status(&bot_str).await;
+                                }
+                                MessageType::StreamResponse(res) => {
+                                    let payload = res.payload.unwrap();
+                                    let data = payload.data;
+                                    let index = &self.instrument.data.len() - 1;
+                                    let new_candle = self.instrument.next(data).unwrap();
+                                    let mut higher_candle: Candle = new_candle.clone();
+
+                                    if is_mtf_strategy(&self.strategy_type) {
+                                        match self.htf_instrument {
+                                            HTFInstrument::HTFInstrument(
+                                                ref mut htf_instrument,
+                                            ) => {
+                                                higher_candle = htf_instrument.next(data).unwrap();
+                                            }
+                                            HTFInstrument::None => (),
+                                        };
+                                    }
+
+                                    let (position_result, orders_position_result) = self
+                                        .strategy
+                                        .tick(
+                                            &self.instrument,
+                                            &self.htf_instrument,
+                                            &self.trades_in,
+                                            &self.trades_out,
+                                            &self.orders,
+                                            &self.pricing,
                                         )
                                         .await;
 
-                                        // order::cancel_trade_pending_orders(
-                                        //     trade_out,
-                                        //     &mut self.orders,
-                                        // );
+                                    match new_candle.is_closed() {
+                                        true => {
+                                            self.instrument
+                                                .init_candle(data, &Some(self.time_frame.clone()));
+                                        }
+                                        false => (),
+                                    };
+
+                                    if higher_candle.is_closed()
+                                        && is_mtf_strategy(&self.strategy_type)
+                                    {
+                                        log::info!("HTF Candle closed {:?}", higher_candle.date());
+                                        match self.htf_instrument {
+                                            HTFInstrument::HTFInstrument(
+                                                ref mut htf_instrument,
+                                            ) => {
+                                                let htf_data = (
+                                                    higher_candle.date(),
+                                                    higher_candle.open(),
+                                                    higher_candle.high(),
+                                                    higher_candle.low(),
+                                                    higher_candle.close(),
+                                                    higher_candle.volume(),
+                                                );
+                                                htf_instrument
+                                                    .init_candle(htf_data, &self.higher_time_frame);
+                                            }
+                                            HTFInstrument::None => (),
+                                        };
                                     }
-                                }
-                                PositionResult::PendingOrder(new_orders) => {
-                                    log::info!("OPEN POSITIONS {:?}", &open_positions);
-                                    if !open_positions {
-                                        match overwrite_orders {
-                                            true => {
-                                                log::info!(
-                                                    "OVERWRITING ORDERS {:?}",
-                                                    &self.orders.len()
+
+                                    match &orders_position_result {
+                                        PositionResult::MarketInOrder(
+                                            TradeResult::TradeIn(trade_in),
+                                            order,
+                                        ) => {
+                                            if !open_positions {
+                                                log::info!("Position Result MarketInOrder");
+                                                self.send_position::<PositionResult>(
+                                                    &orders_position_result,
+                                                    self.symbol.clone(),
+                                                    self.time_frame.clone(),
+                                                )
+                                                .await;
+
+                                                order::fulfill_bot_order::<TradeIn>(
+                                                    trade_in,
+                                                    order,
+                                                    &mut self.orders,
+                                                    &self.instrument,
                                                 );
 
-                                                // order::cancel_pending_expired_orders(
-                                                //     0,
-                                                //     &self.instrument,
+                                                order::extend_all_pending_orders(&mut self.orders);
+                                            }
+                                        }
+                                        PositionResult::MarketOutOrder(
+                                            TradeResult::TradeOut(trade_out),
+                                            order,
+                                        ) => {
+                                            if open_positions {
+                                                log::info!("Position Result MarketOutOrder");
+
+                                                self.send_position::<PositionResult>(
+                                                    &orders_position_result,
+                                                    self.symbol.clone(),
+                                                    self.time_frame.clone(),
+                                                )
+                                                .await;
+
+                                                order::fulfill_bot_order::<TradeOut>(
+                                                    trade_out,
+                                                    order,
+                                                    &mut self.orders,
+                                                    &self.instrument,
+                                                );
+
+                                                // order::cancel_trade_pending_orders(
+                                                //     trade_out,
                                                 //     &mut self.orders,
                                                 // );
                                             }
-                                            false => (),
                                         }
+                                        _ => (),
+                                    };
 
-                                        self.orders = order::add_pending(
-                                            self.orders.clone(),
-                                            new_orders.clone(),
-                                        );
+                                    match &position_result {
+                                        PositionResult::MarketIn(
+                                            TradeResult::TradeIn(_trade_in),
+                                            new_orders,
+                                        ) => {
+                                            if !open_positions {
+                                                log::info!("Position Result TradeIn");
+
+                                                self.send_position::<PositionResult>(
+                                                    &position_result,
+                                                    self.symbol.clone(),
+                                                    self.time_frame.clone(),
+                                                )
+                                                .await;
+
+                                                match new_orders {
+                                                    Some(new_ords) => {
+                                                        self.orders = order::add_pending(
+                                                            self.orders.clone(),
+                                                            new_ords.clone(),
+                                                        )
+                                                    }
+                                                    None => (),
+                                                }
+                                            }
+                                        }
+                                        PositionResult::MarketOut(TradeResult::TradeOut(
+                                            trade_out,
+                                        )) => {
+                                            if open_positions {
+                                                log::info!("Position Result TradeOut");
+                                                self.send_position::<PositionResult>(
+                                                    &position_result,
+                                                    self.symbol.clone(),
+                                                    self.time_frame.clone(),
+                                                )
+                                                .await;
+
+                                                // order::cancel_trade_pending_orders(
+                                                //     trade_out,
+                                                //     &mut self.orders,
+                                                // );
+                                            }
+                                        }
+                                        PositionResult::PendingOrder(new_orders) => {
+                                            log::info!("OPEN POSITIONS {:?}", &open_positions);
+                                            if !open_positions {
+                                                match overwrite_orders {
+                                                    true => {
+                                                        log::info!(
+                                                            "OVERWRITING ORDERS {:?}",
+                                                            &self.orders.len()
+                                                        );
+
+                                                        // order::cancel_pending_expired_orders(
+                                                        //     0,
+                                                        //     &self.instrument,
+                                                        //     &mut self.orders,
+                                                        // );
+                                                    }
+                                                    false => (),
+                                                }
+
+                                                self.orders = order::add_pending(
+                                                    self.orders.clone(),
+                                                    new_orders.clone(),
+                                                );
+                                            }
+                                        }
+                                        _ => (),
+                                    };
+
+                                    self.orders = order::cancel_pending_expired_orders(
+                                        index,
+                                        &self.instrument,
+                                        &mut self.orders,
+                                    );
+                                    self.get_pricing_data().await;
+                                    self.send_bot_status(&bot_str).await;
+                                }
+                                MessageType::ExecuteTradeIn(res) => {
+                                    let payload = res.payload.unwrap();
+                                    let accepted = &payload.accepted;
+
+                                    match accepted {
+                                        true => {
+                                            log::info!(
+                                                "{:?} {} accepted!",
+                                                &payload.data.trade_type,
+                                                &payload.data.id
+                                            );
+
+                                            let trade_response = payload;
+                                            self.trades_in.push(trade_response.data);
+
+                                            self.strategy_stats = self.strategy.update_stats(
+                                                &self.instrument,
+                                                &self.trades_in,
+                                                &self.trades_out,
+                                            );
+
+                                            open_positions = true;
+                                            self.send_bot_status(&bot_str).await;
+                                        }
+                                        false => {
+                                            log::warn!(
+                                                "{:?} {} not accepted!",
+                                                &payload.data.trade_type,
+                                                &payload.data.id
+                                            );
+                                        }
                                     }
+                                }
+                                MessageType::ExecuteTradeOut(res) => {
+                                    let payload = res.payload.unwrap();
+                                    let accepted = &payload.accepted;
+
+                                    match accepted {
+                                        true => {
+                                            log::info!(
+                                                "{:?} {} accepted ask: {} bid: {}",
+                                                &payload.data.trade_type,
+                                                &payload.data.id,
+                                                &payload.data.ask,
+                                                &payload.data.bid,
+                                            );
+
+                                            log::info!("TRADE OUT {:?}", (payload.data));
+                                            let trade_response = payload;
+
+                                            let updated_trade_out =
+                                                self.strategy.update_trade_stats(
+                                                    self.trades_in.last().unwrap(),
+                                                    &trade_response.data,
+                                                    &self.instrument.data,
+                                                    &self.pricing,
+                                                );
+
+                                            order::cancel_trade_pending_orders(
+                                                &updated_trade_out,
+                                                &mut self.orders,
+                                            );
+
+                                            log::info!(
+                                                "TradeOut stats profit {} profit_per {} ",
+                                                &updated_trade_out.profit,
+                                                &updated_trade_out.profit_per,
+                                            );
+
+                                            self.trades_out.push(updated_trade_out);
+
+                                            self.strategy_stats = self.strategy.update_stats(
+                                                &self.instrument,
+                                                &self.trades_in,
+                                                &self.trades_out,
+                                            );
+
+                                            open_positions = false;
+                                            self.send_bot_status(&bot_str).await;
+                                        }
+                                        false => {
+                                            log::warn!(
+                                                "{:?} {} not accepted ask: {} bid: {}",
+                                                &payload.data.trade_type,
+                                                &payload.data.id,
+                                                &payload.data.ask,
+                                                &payload.data.bid
+                                            );
+                                        }
+                                    };
                                 }
                                 _ => (),
                             };
-
-                            self.orders = order::cancel_pending_expired_orders(
-                                index,
-                                &self.instrument,
-                                &mut self.orders,
-                            );
-                            self.get_pricing_data().await;
-                            self.send_bot_status(&bot_str).await;
                         }
-                        MessageType::ExecuteTradeIn(res) => {
-                            let payload = res.payload.unwrap();
-                            let accepted = &payload.accepted;
-
-                            match accepted {
-                                true => {
-                                    log::info!(
-                                        "{:?} {} accepted!",
-                                        &payload.data.trade_type,
-                                        &payload.data.id
-                                    );
-
-                                    let trade_response = payload;
-                                    self.trades_in.push(trade_response.data);
-
-                                    self.strategy_stats = self.strategy.update_stats(
-                                        &self.instrument,
-                                        &self.trades_in,
-                                        &self.trades_out,
-                                    );
-
-                                    open_positions = true;
-                                    self.send_bot_status(&bot_str).await;
-                                }
-                                false => {
-                                    log::warn!(
-                                        "{:?} {} not accepted!",
-                                        &payload.data.trade_type,
-                                        &payload.data.id
-                                    );
-                                }
-                            }
+                        Message::Ping(_txt) => {
+                            self.websocket.pong(b"").await;
                         }
-                        MessageType::ExecuteTradeOut(res) => {
-                            let payload = res.payload.unwrap();
-                            let accepted = &payload.accepted;
-
-                            match accepted {
-                                true => {
-                                    log::info!(
-                                        "{:?} {} accepted ask: {} bid: {}",
-                                        &payload.data.trade_type,
-                                        &payload.data.id,
-                                        &payload.data.ask,
-                                        &payload.data.bid,
-                                    );
-
-                                    log::info!("TRADE OUT {:?}", (payload.data));
-                                    let trade_response = payload;
-
-                                    let updated_trade_out = self.strategy.update_trade_stats(
-                                        self.trades_in.last().unwrap(),
-                                        &trade_response.data,
-                                        &self.instrument.data,
-                                        &self.pricing,
-                                    );
-
-                                    order::cancel_trade_pending_orders(
-                                        &updated_trade_out,
-                                        &mut self.orders,
-                                    );
-
-                                    log::info!(
-                                        "TradeOut stats profit {} profit_per {} ",
-                                        &updated_trade_out.profit,
-                                        &updated_trade_out.profit_per,
-                                    );
-
-                                    self.trades_out.push(updated_trade_out);
-
-                                    self.strategy_stats = self.strategy.update_stats(
-                                        &self.instrument,
-                                        &self.trades_in,
-                                        &self.trades_out,
-                                    );
-
-                                    open_positions = false;
-                                    self.send_bot_status(&bot_str).await;
-                                }
-                                false => {
-                                    log::warn!(
-                                        "{:?} {} not accepted ask: {} bid: {}",
-                                        &payload.data.trade_type,
-                                        &payload.data.id,
-                                        &payload.data.ask,
-                                        &payload.data.bid
-                                    );
-                                }
-                            };
-                        }
-                        _ => (),
+                        _ => panic!("Unexpected response type!"),
                     };
                 }
-                Message::Ping(_txt) => {
-                    self.websocket.pong(b"").await;
+                Err(err) => {
+                    log::warn!("[ERROR] Disconnected from server: {:?}", err);
+                    self.reconnect().await;
+                    //Message::Ping(b"".to_vec())
                 }
-                _ => panic!("Unexpected response type!"),
             };
         }
     }

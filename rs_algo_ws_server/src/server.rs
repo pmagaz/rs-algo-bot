@@ -62,32 +62,38 @@ async fn handle_connection(
     let broker = Arc::new(Mutex::new(broker));
 
     loop {
-        let ws_stream = accept_async(&mut *raw_stream)
-            .await
-            .expect("Error during the websocket handshake occurred");
-
         let (recipient, receiver) = unbounded();
         let new_session = session::create(&mut sessions, &addr, recipient).await;
-        let (outgoing, incoming) = ws_stream.split();
-        let broker = Arc::clone(&broker);
 
-        let broadcast_incoming = incoming.try_for_each(|msg| {
-            let broker = Arc::clone(&broker);
-            let db_client = Arc::clone(&db_client);
-            let mut sessions = Arc::clone(&sessions);
-            let new_session = new_session.clone();
-            async move {
-                match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
-                    Some(msg) => message::send(&new_session, Message::Text(msg)).await,
-                    None => (),
-                }
-                Ok(())
+        match accept_async(&mut *raw_stream).await {
+            Ok(msg) => {
+                let (outgoing, incoming) = msg.split();
+                let broker = Arc::clone(&broker);
+
+                let broadcast_incoming = incoming.try_for_each(|msg| {
+                    let broker = Arc::clone(&broker);
+                    let db_client = Arc::clone(&db_client);
+                    let mut sessions = Arc::clone(&sessions);
+                    let new_session = new_session.clone();
+                    async move {
+                        match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
+                            Some(msg) => message::send(&new_session, Message::Text(msg)).await,
+                            None => (),
+                        }
+                        Ok(())
+                    }
+                });
+
+                let receive_from_others = receiver.map(Ok).forward(outgoing);
+                pin_mut!(broadcast_incoming, receive_from_others);
+                future::select(broadcast_incoming, receive_from_others).await;
             }
-        });
-
-        let receive_from_others = receiver.map(Ok).forward(outgoing);
-        pin_mut!(broadcast_incoming, receive_from_others);
-        future::select(broadcast_incoming, receive_from_others).await;
+            Err(err) => {
+                message::send_reconnect(&new_session).await;
+                log::error!("{:?} handling connection", err);
+                break;
+            }
+        };
 
         session::destroy(&mut sessions, &addr).await;
     }

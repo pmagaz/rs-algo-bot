@@ -1,5 +1,5 @@
 use crate::handlers::session::Session;
-use crate::message;
+use crate::{handlers, message};
 use rs_algo_shared::broker::xtb_stream::*;
 pub use rs_algo_shared::broker::BrokerStream;
 use rs_algo_shared::helpers::date::Local;
@@ -42,7 +42,7 @@ where
                             Some(data) => {
                                  match data {
                                     Ok(msg) => {
-                                    if msg.is_text() {
+                                   if msg.is_text() {
                                            let txt = BK::parse_stream_data(msg).await;
                                            match txt {
                                                Some(txt) =>  message::send(&session, Message::Text(txt)).await,
@@ -50,11 +50,16 @@ where
                                           };
 
                                     } else if msg.is_close() {
-                                        log::error!("MSG close!");
+                                        message::send_reconnect(&session).await;
+                                        log::error!("Streaming close msg!");
                                         break;
                                     }
                                     },
-                                    Err(err) => log::error!("{}", err)
+                                    Err(err) => {
+                                        message::send_reconnect(&session).await;
+                                        log::error!("handling stream {:?}", (err, &session));
+                                        break;
+                                    }
                                 };
                             }
                             None => ()

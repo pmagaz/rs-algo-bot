@@ -1,15 +1,13 @@
-use crate::handlers::session::{Sessions};
+use crate::handlers::session::Sessions;
 use crate::handlers::{self};
 use crate::message;
 
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local};
 
-
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::time;
-
 
 pub async fn init2(_sessions: &mut Sessions, _addr: SocketAddr) {
     //let mut sessions = sessions.clone();
@@ -50,10 +48,9 @@ pub async fn init(sessions: &mut Sessions, _add: &SocketAddr) {
                 let last_data = session.last_data;
 
                 if last_data < hb_timeout {
-                    //session::destroy(&mut sessions, &addr).await;
                     handlers::session::find(&mut sessions, &addr, |session| {
-                        //*session = session.update_status(SessionStatus::Down).clone();
                         let is_open = session.market_hours.is_open();
+
                         log::warn!(
                             "Session {:?} last data not received since {:?}",
                             addr,

@@ -13,7 +13,7 @@ use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 
 pub async fn send(session: &Session, msg: Message) {
-    session.recipient.unbounded_send(msg).unwrap();
+    session.recipient.unbounded_send(msg).unwrap()
 }
 
 pub async fn send_reconnect(session: &Session) {
@@ -55,7 +55,6 @@ where
             None
         }
         Message::Pong(_) => {
-            //log::info!("Client Pong received from {addr} ");
             session::find(sessions, addr, |session| {
                 *session = session.update_ping().clone();
             })
@@ -73,11 +72,6 @@ where
                 Some(data) => data["symbol"].as_str().unwrap(),
                 None => "",
             };
-
-            // let time_frame = match &query.data {
-            //     Some(data) => TimeFrame::new(data["time_frame"].as_str().unwrap()),
-            //     None => TimeFrameType::ERR,
-            // };
 
             log::info!("Client {:?} msg received from {addr}", command);
 
@@ -143,14 +137,13 @@ where
                     }
                 }
                 CommandType::GetInstrumentPricing => {
-                    log::info!("Requesting {} pricing data", symbol);
-
                     let res = broker
                         .lock()
                         .await
                         .get_instrument_pricing(symbol)
                         .await
                         .unwrap();
+
                     log::info!("Requesting {} pricing data", symbol);
 
                     Some(serde_json::to_string(&res).unwrap())
@@ -267,7 +260,6 @@ where
                                 data["time_frame"].as_str().unwrap(),
                             ]
                             .concat();
-                            log::info!("Updating bot data for {:?}", &instrument);
 
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
                             db::bot::upsert(db_client, &bot).await.unwrap();
