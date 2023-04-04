@@ -258,8 +258,13 @@ impl Bot {
             command: CommandType::ExecutePosition,
             data: Some(TradeData {
                 symbol,
-                //time_frame,
                 data: trade,
+                options: TradeOptions {
+                    non_profitable_out: env::var("NON_PROFITABLE_OUTS")
+                        .unwrap()
+                        .parse::<bool>()
+                        .unwrap(),
+                },
             }),
         };
 
@@ -413,7 +418,7 @@ impl Bot {
 
                                     if is_base_time_frame(&self.time_frame, &time_frame) {
                                         log::info!(
-                                            "Instrument {} data received since {:?}",
+                                            "Instrument {} data received from {:?}",
                                             bot_str,
                                             &since_date,
                                         );
@@ -434,7 +439,7 @@ impl Bot {
                                                     None => "".to_owned(),
                                                 };
                                                 log::info!(
-                                                    "Instrument {}_{} data received since {:?}",
+                                                    "Instrument {}_{} data received from {:?}",
                                                     &self.symbol,
                                                     &htf_instrument.time_frame(),
                                                     &since_date
@@ -643,8 +648,21 @@ impl Bot {
                                         &self.instrument,
                                         &mut self.orders,
                                     );
-                                    self.get_pricing_data().await;
+                                    //self.get_pricing_data().await;
                                     self.send_bot_status(&bot_str).await;
+                                }
+                                MessageType::StreamPricingResponse(res) => {
+                                    let current_pip_size = self.pricing.pip_size();
+                                    let current_percentage = self.pricing.percentage();
+                                    let pricing = res.payload.unwrap();
+                                    self.pricing = Pricing::new(
+                                        pricing.symbol(),
+                                        pricing.ask(),
+                                        pricing.bid(),
+                                        pricing.spread(),
+                                        current_pip_size,
+                                        current_percentage,
+                                    );
                                 }
                                 MessageType::ExecuteTradeIn(res) => {
                                     let payload = res.payload.unwrap();

@@ -129,6 +129,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 }
             },
         );
+
         &self.trading_direction
     }
 

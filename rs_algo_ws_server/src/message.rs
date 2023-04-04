@@ -16,12 +16,12 @@ pub async fn send(session: &Session, msg: Message) {
     session.recipient.unbounded_send(msg).unwrap()
 }
 
-pub async fn send_reconnect(session: &Session) {
+pub async fn send_reconnect(session: &Session, options: ReconnectOptions) {
     log::info!("Sending Reconnect");
 
-    let msg: ResponseBody<bool> = ResponseBody {
+    let msg: ResponseBody<ReconnectOptions> = ResponseBody {
         response: ResponseType::Reconnect,
-        payload: None,
+        payload: Some(options),
     };
     let txt_msg = serde_json::to_string(&msg).unwrap();
     send(session, Message::Text(txt_msg)).await;
@@ -188,8 +188,10 @@ where
                 CommandType::ExecutePosition => {
                     let res = match &query.data {
                         Some(value) => {
-                            let mut guard = broker.lock().await;
+                            let mut broker_guard = broker.lock().await;
                             let symbol = value["symbol"].as_str().unwrap();
+                            let options: TradeOptions =
+                                serde_json::from_value(value["options"].clone()).unwrap();
                             let position_result: PositionResult =
                                 serde_json::from_value(value["data"].clone()).unwrap();
 
@@ -200,18 +202,18 @@ where
                                 ) => {
                                     log::info!("TradeIn position received");
 
-                                    let trade_data = TradeData::new(symbol, trade_in);
+                                    let trade_data = TradeData::new(symbol, trade_in, options);
                                     let trade_response =
-                                        guard.open_trade(trade_data).await.unwrap();
+                                        broker_guard.open_trade(trade_data).await.unwrap();
 
                                     serde_json::to_string(&trade_response).unwrap()
                                 }
                                 PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
                                     log::info!("TradeOut position received");
 
-                                    let trade_data = TradeData::new(symbol, trade_out);
+                                    let trade_data = TradeData::new(symbol, trade_out, options);
                                     let trade_response =
-                                        guard.close_trade(trade_data).await.unwrap();
+                                        broker_guard.close_trade(trade_data).await.unwrap();
                                     serde_json::to_string(&trade_response).unwrap()
                                 }
                                 PositionResult::MarketInOrder(
@@ -220,8 +222,9 @@ where
                                 ) => {
                                     log::info!("MarketInOrder position received");
 
-                                    let trade_data = TradeData::new(symbol, order);
-                                    let trade_response = guard.order_in(trade_data).await.unwrap();
+                                    let trade_data = TradeData::new(symbol, order, options);
+                                    let trade_response =
+                                        broker_guard.order_in(trade_data).await.unwrap();
                                     serde_json::to_string(&trade_response).unwrap()
                                 }
                                 PositionResult::MarketOutOrder(
@@ -230,9 +233,9 @@ where
                                 ) => {
                                     log::info!("MarketOutOrder position received");
 
-                                    let trade_data = TradeData::new(symbol, trade_out);
+                                    let trade_data = TradeData::new(symbol, trade_out, options);
                                     let trade_response =
-                                        guard.close_trade(trade_data).await.unwrap();
+                                        broker_guard.close_trade(trade_data).await.unwrap();
                                     serde_json::to_string(&trade_response).unwrap()
                                 }
                                 _ => {
@@ -250,16 +253,16 @@ where
                 CommandType::UpdateBotData => {
                     match &query.data {
                         Some(data) => {
-                            let instrument = [
-                                data["strategy_name"].as_str().unwrap(),
-                                "-",
-                                data["strategy_type"].as_str().unwrap(),
-                                "_",
-                                data["symbol"].as_str().unwrap(),
-                                "_",
-                                data["time_frame"].as_str().unwrap(),
-                            ]
-                            .concat();
+                            // let instrument = [
+                            //     data["strategy_name"].as_str().unwrap(),
+                            //     "-",
+                            //     data["strategy_type"].as_str().unwrap(),
+                            //     "_",
+                            //     data["symbol"].as_str().unwrap(),
+                            //     "_",
+                            //     data["time_frame"].as_str().unwrap(),
+                            // ]
+                            // .concat();
 
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
                             db::bot::upsert(db_client, &bot).await.unwrap();

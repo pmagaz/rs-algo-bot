@@ -5,6 +5,7 @@ pub use rs_algo_shared::broker::BrokerStream;
 use rs_algo_shared::helpers::date::Local;
 
 use futures_util::StreamExt;
+use rs_algo_shared::ws::message::ReconnectOptions;
 use std::env;
 use std::sync::Arc;
 use std::time::Duration;
@@ -33,6 +34,7 @@ where
                 .await
                 .unwrap();
             broker_stream.subscribe_stream(&symbol).await.unwrap();
+            broker_stream.subscribe_tick_prices(&symbol).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
 
             loop {
@@ -44,19 +46,20 @@ where
                                     Ok(msg) => {
                                    if msg.is_text() {
                                            let txt = BK::parse_stream_data(msg).await;
+
                                            match txt {
                                                Some(txt) =>  message::send(&session, Message::Text(txt)).await,
                                                None => ()
                                           };
 
                                     } else if msg.is_close() {
-                                        message::send_reconnect(&session).await;
+                                        message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
                                         log::error!("Streaming close msg!");
                                         break;
                                     }
                                     },
                                     Err(err) => {
-                                        message::send_reconnect(&session).await;
+                                        message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
                                         log::error!("handling stream {:?}", (err, &session));
                                         break;
                                     }

@@ -6,11 +6,12 @@ use chrono::Local;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
+use rs_algo_shared::helpers::date;
 use rs_algo_shared::models::order::{self, Order};
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::time_frame::TimeFrameType;
-use rs_algo_shared::models::trade::*;
+use rs_algo_shared::models::{mode, trade::*};
 use rs_algo_shared::models::{strategy::*, trade};
 use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::*;
@@ -123,6 +124,7 @@ pub trait Strategy: DynClone {
                 htf_instrument,
                 pricing,
                 orders,
+                trades_out,
                 trading_direction,
             );
         }
@@ -137,9 +139,9 @@ pub trait Strategy: DynClone {
         htf_instrument: &HTFInstrument,
         pricing: &Pricing,
         orders: &Vec<Order>,
+        trades_out: &Vec<TradeOut>,
         trading_direction: &TradeDirection,
     ) -> PositionResult {
-        let _now = Local::now();
         let pending_orders = order::get_pending(orders);
         let trade_size = env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
@@ -148,7 +150,9 @@ pub trait Strategy: DynClone {
             .parse::<bool>()
             .unwrap();
 
-        match trading_direction.is_long() {
+        let is_next_trade = self.waits_for_next_trade(index, instrument, trades_out);
+
+        match trading_direction.is_long() && is_next_trade {
             true => match self.is_long_strategy() {
                 true => match self.entry_long(index, instrument, htf_instrument, pricing) {
                     Position::MarketIn(order_types) => {
@@ -203,7 +207,7 @@ pub trait Strategy: DynClone {
 
                 _ => PositionResult::None,
             },
-            false => match self.is_short_strategy() {
+            false => match self.is_short_strategy() && is_next_trade {
                 true => match self.entry_short(index, instrument, htf_instrument, pricing) {
                     Position::MarketIn(order_types) => {
                         let trade_type = TradeType::MarketInShort;
@@ -402,6 +406,59 @@ pub trait Strategy: DynClone {
         pricing: &Pricing,
     ) -> TradeOut {
         calculate_trade_stats(trade_in, trade_out, data, pricing)
+    }
+
+    fn waits_for_next_trade(
+        &self,
+        index: usize,
+        instrument: &Instrument,
+        trades_out: &Vec<TradeOut>,
+    ) -> bool {
+        let wait_for_new_entry = env::var("WAIT_FOR_NEW_ENTRY")
+            .unwrap()
+            .parse::<bool>()
+            .unwrap();
+
+        match wait_for_new_entry {
+            true => {
+                let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
+
+                let candles_until_new_entry = env::var("CANDLES_UNTIL_NEW_ENTRY")
+                    .unwrap()
+                    .parse::<i64>()
+                    .unwrap();
+
+                let time_frame = instrument.time_frame();
+
+                let current_date = match execution_mode.is_back_test() {
+                    true => instrument.data().get(index).unwrap().date(),
+                    false => Local::now(),
+                };
+
+                match trades_out.last() {
+                    Some(trade_out) => {
+                        let next_entry_date = match instrument.time_frame().is_minutely_time_frame()
+                        {
+                            true => {
+                                date::from_dbtime(&trade_out.date_out)
+                                    + date::Duration::minutes(
+                                        candles_until_new_entry * time_frame.to_minutes(),
+                                    )
+                            }
+                            false => {
+                                date::from_dbtime(&trade_out.date_out)
+                                    + date::Duration::hours(
+                                        candles_until_new_entry * time_frame.to_hours(),
+                                    )
+                            }
+                        };
+                        next_entry_date <= current_date
+                    }
+                    None => true,
+                }
+            }
+            false => true,
+        }
     }
 }
 

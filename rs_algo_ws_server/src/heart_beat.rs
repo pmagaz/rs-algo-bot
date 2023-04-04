@@ -3,6 +3,7 @@ use crate::handlers::{self};
 use crate::message;
 
 use rs_algo_shared::helpers::date::{DateTime, Duration as Dur, Local};
+use rs_algo_shared::ws::message::ReconnectOptions;
 
 use std::env;
 use std::net::SocketAddr;
@@ -26,7 +27,7 @@ pub async fn init2(_sessions: &mut Sessions, _addr: SocketAddr) {
     // });
 }
 
-pub async fn init(sessions: &mut Sessions, _add: &SocketAddr) {
+pub async fn init(sessions: &mut Sessions) {
     let mut sessions = sessions.clone();
 
     let last_data_timeout = env::var("LAST_DATA_TIMEOUT")
@@ -62,7 +63,11 @@ pub async fn init(sessions: &mut Sessions, _add: &SocketAddr) {
                                 tokio::spawn({
                                     let session = session.clone();
                                     async move {
-                                        message::send_reconnect(&session).await;
+                                        message::send_reconnect(
+                                            &session,
+                                            ReconnectOptions { clean_data: true },
+                                        )
+                                        .await;
                                     }
                                 });
                             }

@@ -9,6 +9,7 @@ use rs_algo_shared::broker::xtb_stream::*;
 
 use futures_channel::mpsc::unbounded;
 use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
+use rs_algo_shared::ws::message::ReconnectOptions;
 
 use std::sync::Arc;
 use std::{collections::HashMap, env, net::SocketAddr};
@@ -32,7 +33,7 @@ pub async fn run(addr: String) {
         .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
         .unwrap();
 
-    heart_beat::init(&mut sessions, &addr).await;
+    heart_beat::init(&mut sessions).await;
 
     let db_client = Arc::new(mongo_client);
 
@@ -89,7 +90,7 @@ async fn handle_connection(
                 future::select(broadcast_incoming, receive_from_others).await;
             }
             Err(err) => {
-                message::send_reconnect(&new_session).await;
+                message::send_reconnect(&new_session, ReconnectOptions { clean_data: true }).await;
                 log::error!("{:?} handling connection", err);
                 break;
             }

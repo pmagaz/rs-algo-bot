@@ -62,6 +62,10 @@ pub fn get_type(msg: &str) -> MessageType {
                     data: parse_dohlc(payload),
                 }),
             }),
+            Some("SubscribeTickPrices") => MessageType::StreamPricingResponse(ResponseBody {
+                response: ResponseType::SubscribeTickPrices,
+                payload: Some(parse_pricing_data(payload)),
+            }),
             Some("ExecuteTradeIn") => MessageType::ExecuteTradeIn(ResponseBody {
                 response: ResponseType::ExecuteTradeIn,
                 payload: Some(TradeResponse {
