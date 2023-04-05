@@ -12,8 +12,19 @@ use std::env;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
 
-pub async fn send(session: &Session, msg: Message) {
-    session.recipient.unbounded_send(msg).unwrap()
+pub async fn send(
+    session: &Session,
+    msg: Message,
+) -> Result<(), futures_channel::mpsc::TrySendError<Message>> {
+    session.recipient.unbounded_send(msg)
+    // match session.recipient.unbounded_send(msg) {
+    //     Ok(_) => (),
+    //     Err(_) => {
+    //         log::error!("Can't send message to {:?}", session.bot_name());
+    //         //send_reconnect(session, options);
+    //         //false
+    //     }
+    // }
 }
 
 pub async fn send_reconnect(session: &Session, options: ReconnectOptions) {
@@ -24,7 +35,7 @@ pub async fn send_reconnect(session: &Session, options: ReconnectOptions) {
         payload: Some(options),
     };
     let txt_msg = serde_json::to_string(&msg).unwrap();
-    send(session, Message::Text(txt_msg)).await;
+    send(session, Message::Text(txt_msg)).await.unwrap();
 }
 
 pub async fn broadcast(sessions: &mut Sessions, _addr: &SocketAddr, msg: Message) {
@@ -77,32 +88,46 @@ where
 
             let data = match command {
                 CommandType::InitSession => {
+                    let sessions_len = sessions.lock().await.len();
+                    log::info!("Active sessions {}", sessions_len);
                     let session_data = match &query.data {
                         Some(data) => {
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
                             let uuid = bot.uuid();
+                            let symbol = data["symbol"].as_str().unwrap();
+                            let time_frame = data["time_frame"].as_str().unwrap();
+                            let strategy_name = data["strategy_name"].as_str().unwrap();
+                            let id = data["_id"].as_str().unwrap();
 
                             let bot_data = match db::bot::find_by_uuid(db_client, uuid).await {
                                 Some(bot) => {
                                     log::info!(
                                         "Restoring session data for {}_{} {}",
-                                        data["symbol"].as_str().unwrap(),
-                                        data["time_frame"].as_str().unwrap(),
-                                        data["_id"].as_str().unwrap()
+                                        symbol,
+                                        time_frame,
+                                        id
                                     );
                                     bot
                                 }
                                 None => {
                                     db::bot::insert(db_client, &bot).await.unwrap();
                                     log::info!(
-                                        "Creation session data for {}_{} {}",
-                                        data["symbol"].as_str().unwrap(),
-                                        data["time_frame"].as_str().unwrap(),
-                                        data["_id"].as_str().unwrap()
+                                        "Creating session data for {}_{} {}",
+                                        symbol,
+                                        time_frame,
+                                        id
                                     );
                                     bot
                                 }
                             };
+
+                            session::find(sessions, addr, |session| {
+                                *session = session
+                                    .update_bot_name(symbol, time_frame, strategy_name)
+                                    .clone();
+                            })
+                            .await;
+
                             Some(bot_data)
                         }
                         None => None,

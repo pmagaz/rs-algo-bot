@@ -303,7 +303,6 @@ impl Bot {
 
     pub async fn run(&mut self) {
         self.init_session().await;
-        //self.is_market_open().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
         let overwrite_orders = env::var("OVERWRITE_ORDERS")

@@ -48,7 +48,16 @@ where
                                            let txt = BK::parse_stream_data(msg).await;
 
                                            match txt {
-                                               Some(txt) =>  message::send(&session, Message::Text(txt)).await,
+                                               Some(txt) =>  match message::send(&session, Message::Text(txt)).await {
+                                                    Err(_) => {
+                                                        log::error!(
+                                                            "Can't send stream data to {:?}",
+                                                            session.bot_name()
+                                                        );
+                                                        //session::destroy(&mut sessions, &addr).await;
+                                                    }
+                                                    _ => (),
+                                                }
                                                None => ()
                                           };
 

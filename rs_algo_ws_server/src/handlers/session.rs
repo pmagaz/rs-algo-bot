@@ -65,8 +65,9 @@ impl Session {
         }
     }
 
-    pub fn update_name(&mut self, symbol: &str, strategy: &str) -> &Self {
+    pub fn update_bot_name(&mut self, symbol: &str, time_frame: &str, strategy: &str) -> &Self {
         self.symbol = symbol.to_owned();
+        self.time_frame = TimeFrame::new(time_frame);
         self.strategy = strategy.to_owned();
         self
     }
@@ -81,7 +82,23 @@ impl Session {
         self
     }
 
+    pub fn bot_name(&self) -> String {
+        [
+            &self.symbol,
+            "_",
+            &self.time_frame.to_string(),
+            "_",
+            &self.strategy,
+        ]
+        .concat()
+    }
+
     pub fn update_market_hours(&mut self, market_hours: MarketHours) -> &mut Self {
+        log::info!(
+            "Updating {} market hours {:?}",
+            self.bot_name(),
+            market_hours
+        );
         self.market_hours = market_hours;
         self
     }
@@ -155,15 +172,13 @@ pub async fn update_db_session(data: &SessionData, db_client: &mongodb::Client) 
 }
 
 pub async fn destroy<'a>(sessions: &'a mut Sessions, addr: &SocketAddr) {
-    log::warn!("{} session destroyed", &addr);
-    // match sessions.lock().await.get(addr) {
-    //     Some(ses) => {
-    //         message::send_reconnect(ses).await;
-    //         sessions.lock().await.remove(addr);
-    //     }
-    //     None => {
-    //         log::warn!("Session not found!");
-    //     }
-    // };
-    sessions.lock().await.remove(addr);
+    match sessions.lock().await.get(addr) {
+        Some(session) => {
+            log::warn!("Session {:?}) destroyed", session.bot_name());
+            sessions.lock().await.remove(addr);
+        }
+        None => {
+            log::error!("Session not found!");
+        }
+    };
 }

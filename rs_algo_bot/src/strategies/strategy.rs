@@ -150,7 +150,7 @@ pub trait Strategy: DynClone {
             .parse::<bool>()
             .unwrap();
 
-        let is_next_trade = self.waits_for_next_trade(index, instrument, trades_out);
+        let is_next_trade = self.wait_for_opening_trade(index, instrument, trades_out);
 
         match trading_direction.is_long() && is_next_trade {
             true => match self.is_long_strategy() {
@@ -178,6 +178,13 @@ pub trait Strategy: DynClone {
                             },
                         };
 
+                        log::info!(
+                            "Trading Direction {:?}",
+                            &self
+                                .trading_direction(index, instrument, htf_instrument)
+                                .clone()
+                        );
+
                         PositionResult::MarketIn(trade_in_result, new_orders)
                     }
                     Position::Order(order_types) => {
@@ -198,7 +205,12 @@ pub trait Strategy: DynClone {
                                 _ => vec![],
                             },
                         };
-
+                        log::info!(
+                            "Trading Direction {:?}",
+                            &self
+                                .trading_direction(index, instrument, htf_instrument)
+                                .clone()
+                        );
                         PositionResult::PendingOrder(new_orders)
                     }
                     _ => PositionResult::None,
@@ -232,7 +244,12 @@ pub trait Strategy: DynClone {
                                 _ => None,
                             },
                         };
-
+                        log::info!(
+                            "Trading Direction {:?}",
+                            &self
+                                .trading_direction(index, instrument, htf_instrument)
+                                .clone()
+                        );
                         PositionResult::MarketIn(trade_in_result, new_orders)
                     }
                     Position::Order(order_types) => {
@@ -253,7 +270,12 @@ pub trait Strategy: DynClone {
                                 _ => vec![],
                             },
                         };
-
+                        log::info!(
+                            "Trading Direction {:?}",
+                            &self
+                                .trading_direction(index, instrument, htf_instrument)
+                                .clone()
+                        );
                         PositionResult::PendingOrder(new_orders)
                     }
                     _ => PositionResult::None,
@@ -408,13 +430,13 @@ pub trait Strategy: DynClone {
         calculate_trade_stats(trade_in, trade_out, data, pricing)
     }
 
-    fn waits_for_next_trade(
+    fn wait_for_opening_trade(
         &self,
         index: usize,
         instrument: &Instrument,
         trades_out: &Vec<TradeOut>,
     ) -> bool {
-        let wait_for_new_entry = env::var("WAIT_FOR_NEW_ENTRY")
+        let wait_for_new_entry = env::var("WAIT_FOR_NEW_OPERATION")
             .unwrap()
             .parse::<bool>()
             .unwrap();
@@ -423,7 +445,7 @@ pub trait Strategy: DynClone {
             true => {
                 let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
 
-                let candles_until_new_entry = env::var("CANDLES_UNTIL_NEW_ENTRY")
+                let candles_until_new_operation = env::var("CANDLES_UNTIL_NEXT_OPERATION")
                     .unwrap()
                     .parse::<i64>()
                     .unwrap();
@@ -442,13 +464,13 @@ pub trait Strategy: DynClone {
                             true => {
                                 date::from_dbtime(&trade_out.date_out)
                                     + date::Duration::minutes(
-                                        candles_until_new_entry * time_frame.to_minutes(),
+                                        candles_until_new_operation * time_frame.to_minutes(),
                                     )
                             }
                             false => {
                                 date::from_dbtime(&trade_out.date_out)
                                     + date::Duration::hours(
-                                        candles_until_new_entry * time_frame.to_hours(),
+                                        candles_until_new_operation * time_frame.to_hours(),
                                     )
                             }
                         };

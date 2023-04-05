@@ -78,7 +78,18 @@ async fn handle_connection(
                     let new_session = new_session.clone();
                     async move {
                         match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
-                            Some(msg) => message::send(&new_session, Message::Text(msg)).await,
+                            Some(msg) => {
+                                match message::send(&new_session, Message::Text(msg)).await {
+                                    Err(_) => {
+                                        log::error!(
+                                            "Can't send message to {:?}",
+                                            new_session.bot_name()
+                                        );
+                                        session::destroy(&mut sessions, &addr).await;
+                                    }
+                                    _ => (),
+                                }
+                            }
                             None => (),
                         }
                         Ok(())
@@ -91,6 +102,7 @@ async fn handle_connection(
             }
             Err(err) => {
                 message::send_reconnect(&new_session, ReconnectOptions { clean_data: true }).await;
+                session::destroy(&mut sessions, &addr).await;
                 log::error!("{:?} handling connection", err);
                 break;
             }
