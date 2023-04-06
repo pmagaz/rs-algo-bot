@@ -120,17 +120,17 @@ impl Session {
     }
 }
 
-pub async fn find_async<'a, C, F>(sessions: &Sessions, addr: &SocketAddr, callback: C)
-where
-    C: Fn(&mut Session) -> F,
-    F: Future<Output = ()>,
-{
-    let mut sessions = sessions.lock().await;
-    match sessions.get_mut(addr) {
-        Some(session) => callback(session),
-        None => panic!("Session not found!"),
-    };
-}
+// pub async fn find_async<'a, C, F>(sessions: &Sessions, addr: &SocketAddr, callback: C)
+// where
+//     C: Fn(&mut Session) -> F,
+//     F: Future<Output = ()>,
+// {
+//     let mut sessions = sessions.lock().await;
+//     match sessions.get_mut(addr) {
+//         Some(session) => callback(session),
+//         None => panic!("Session not found!"),
+//     };
+// }
 
 pub async fn find<'a, F>(sessions: &'a mut Sessions, addr: &SocketAddr, callback: F)
 where
@@ -138,11 +138,12 @@ where
     // F: 'static + Send + FnMut(Message) -> T,
     // T: Future<Output = Result<()>> + Send + 'static,
 {
-    let mut sessions = sessions.lock().await;
-    match sessions.get_mut(addr) {
+    let mut sessions_guard = sessions.lock().await;
+    match sessions_guard.get_mut(addr) {
         Some(session) => callback(&mut *session),
         None => panic!("Session not found!"),
     };
+    drop(sessions_guard);
 }
 
 pub async fn create<'a>(
@@ -152,7 +153,12 @@ pub async fn create<'a>(
 ) -> Session {
     let session = Session::new(recipient);
 
+    // log::warn!("Looking existing {:?} session....", addr);
+
+    // destroy(sessions, addr).await;
     sessions.lock().await.insert(*addr, session.clone());
+
+    log::warn!("Session {:?} created!", addr);
 
     let msg: ResponseBody<String> = ResponseBody {
         response: ResponseType::Connected,
@@ -167,18 +173,16 @@ pub async fn create<'a>(
     session
 }
 
-pub async fn update_db_session(data: &SessionData, db_client: &mongodb::Client) {
-    db::session::upsert(db_client, data).await.unwrap();
-}
-
 pub async fn destroy<'a>(sessions: &'a mut Sessions, addr: &SocketAddr) {
-    match sessions.lock().await.get(addr) {
+    let mut sessions_guard = sessions.lock().await;
+    match sessions_guard.get(addr) {
         Some(session) => {
-            log::warn!("Session {:?}) destroyed", session.bot_name());
-            sessions.lock().await.remove(addr);
+            log::warn!("Session {} {:?} destroyed!", addr, session.bot_name());
+            sessions_guard.remove(addr);
         }
         None => {
-            log::error!("Session not found!");
+            log::error!("Session {} not found.", addr);
         }
     };
+    drop(sessions_guard);
 }

@@ -18,12 +18,10 @@ pub async fn send(
 ) -> Result<(), futures_channel::mpsc::TrySendError<Message>> {
     session.recipient.unbounded_send(msg)
     // match session.recipient.unbounded_send(msg) {
-    //     Ok(_) => (),
     //     Err(_) => {
     //         log::error!("Can't send message to {:?}", session.bot_name());
-    //         //send_reconnect(session, options);
-    //         //false
     //     }
+    //     _ => (),
     // }
 }
 
@@ -38,17 +36,17 @@ pub async fn send_reconnect(session: &Session, options: ReconnectOptions) {
     send(session, Message::Text(txt_msg)).await.unwrap();
 }
 
-pub async fn broadcast(sessions: &mut Sessions, _addr: &SocketAddr, msg: Message) {
-    let sessions = sessions.lock().await;
-    let broadcast_recipients = sessions
-        .iter()
-        //.filter(|(peer_addr, _)| peer_addr != &addr)
-        .map(|(_, ws_sink)| ws_sink);
+// pub async fn broadcast(sessions: &mut Sessions, _addr: &SocketAddr, msg: Message) {
+//     let sessions = sessions.lock().await;
+//     let broadcast_recipients = sessions
+//         .iter()
+//         //.filter(|(peer_addr, _)| peer_addr != &addr)
+//         .map(|(_, ws_sink)| ws_sink);
 
-    for session in broadcast_recipients {
-        session.recipient.unbounded_send(msg.clone()).unwrap();
-    }
-}
+//     for session in broadcast_recipients {
+//         session.recipient.unbounded_send(msg.clone()).unwrap();
+//     }
+// }
 
 pub async fn handle<BK>(
     sessions: &mut Sessions,
@@ -88,8 +86,6 @@ where
 
             let data = match command {
                 CommandType::InitSession => {
-                    let sessions_len = sessions.lock().await.len();
-                    log::info!("Active sessions {}", sessions_len);
                     let session_data = match &query.data {
                         Some(data) => {
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
@@ -301,8 +297,11 @@ where
                     None
                 }
                 CommandType::SubscribeStream => {
+                    broker.lock().await.disconnect().await.unwrap();
+
                     session::find(sessions, addr, |session| {
-                        stream::listen(broker.clone(), session.clone(), symbol.to_owned());
+                        stream::listen(broker.clone(), session.clone());
+                        //stream::listen(session.clone());
                     })
                     .await;
                     Some("".to_string())
@@ -314,18 +313,19 @@ where
             };
             data
         }
+        Message::Close(err) => {
+            session::find(sessions, addr, |session| {
+                log::error!("{} disconnected! {:?}", session.bot_name(), err);
+            })
+            .await;
+
+            session::destroy(sessions, &addr).await;
+            None
+        }
         _ => {
             log::error!("Wrong command format {:?}", msg);
             None
         }
     };
-    //  Message::Close(msg) => {
-    //     println!("Disconected {:?}", msg);
-    // }
-    // _ => {
-    //     println!("Error {:?}", msg);
-    //     None
-    // }
-    // };
     data
 }

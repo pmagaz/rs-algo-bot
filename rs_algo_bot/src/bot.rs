@@ -243,6 +243,7 @@ impl Bot {
         self.orders = data
             .orders()
             .iter()
+            .filter(|x| !x.is_pending())
             .rev()
             .take(max_historical_positions)
             .cloned()

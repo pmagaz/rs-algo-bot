@@ -9,7 +9,6 @@ use rs_algo_shared::broker::xtb_stream::*;
 
 use futures_channel::mpsc::unbounded;
 use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
-use rs_algo_shared::ws::message::ReconnectOptions;
 
 use std::sync::Arc;
 use std::{collections::HashMap, env, net::SocketAddr};
@@ -78,18 +77,9 @@ async fn handle_connection(
                     let new_session = new_session.clone();
                     async move {
                         match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
-                            Some(msg) => {
-                                match message::send(&new_session, Message::Text(msg)).await {
-                                    Err(_) => {
-                                        log::error!(
-                                            "Can't send message to {:?}",
-                                            new_session.bot_name()
-                                        );
-                                        session::destroy(&mut sessions, &addr).await;
-                                    }
-                                    _ => (),
-                                }
-                            }
+                            Some(msg) => message::send(&new_session, Message::Text(msg))
+                                .await
+                                .unwrap(),
                             None => (),
                         }
                         Ok(())
@@ -99,15 +89,22 @@ async fn handle_connection(
                 let receive_from_others = receiver.map(Ok).forward(outgoing);
                 pin_mut!(broadcast_incoming, receive_from_others);
                 future::select(broadcast_incoming, receive_from_others).await;
+
+                session::find(&mut sessions, &addr, |session| {
+                    *session = session.update_ping().clone();
+                    log::error!("Communication with {} {} lost!", session.bot_name(), addr);
+                })
+                .await;
+
+                session::destroy(&mut sessions, &addr).await;
             }
             Err(err) => {
-                message::send_reconnect(&new_session, ReconnectOptions { clean_data: true }).await;
+                //message::send_reconnect(&new_session, ReconnectOptions { clean_data: true }).await;
+                log::error!("Error {:?} handling connection", err);
                 session::destroy(&mut sessions, &addr).await;
-                log::error!("{:?} handling connection", err);
                 break;
             }
         };
-
         session::destroy(&mut sessions, &addr).await;
     }
 }
