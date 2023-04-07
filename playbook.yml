@@ -18,7 +18,7 @@
     - { role: "rs_algo_bot/deployment/bbmb/bbmb-usdjpy-m15/roles" }
         # bbrev
     - { role: "rs_algo_bot/deployment/bbrev/bbrev-audusd-m15/roles" }
-    - { role: "rs_algo_bot/deployment/bbrev/bbrev-chfpjy-m15/roles" }
+    - { role: "rs_algo_bot/deployment/bbrev/bbrev-chfjpy-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbrev/bbrev-eurchf-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbrev/bbrev-eurusd-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbrev/bbrev-gbpusd-m15/roles" }
