@@ -436,7 +436,7 @@ pub trait Strategy: DynClone {
         instrument: &Instrument,
         trades_out: &Vec<TradeOut>,
     ) -> bool {
-        let wait_for_new_entry = env::var("WAIT_FOR_NEW_OPERATION")
+        let wait_for_new_entry = env::var("WAIT_FOR_NEW_ENTRY")
             .unwrap()
             .parse::<bool>()
             .unwrap();
@@ -489,12 +489,12 @@ pub trait Strategy: DynClone {
         instrument: &Instrument,
         trade_in: &TradeIn,
     ) -> bool {
-        let wait_for_new_entry = env::var("WAIT_FOR_NEW_OPERATION")
+        let wait_for_new_exit = env::var("WAIT_FOR_NEW_EXIT")
             .unwrap()
             .parse::<bool>()
             .unwrap();
 
-        match wait_for_new_entry {
+        match wait_for_new_exit {
             true => {
                 let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
 

@@ -153,9 +153,6 @@ pub async fn create<'a>(
 ) -> Session {
     let session = Session::new(recipient);
 
-    // log::warn!("Looking existing {:?} session....", addr);
-
-    // destroy(sessions, addr).await;
     sessions.lock().await.insert(*addr, session.clone());
 
     log::warn!("Session {:?} created!", addr);

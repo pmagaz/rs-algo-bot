@@ -297,11 +297,11 @@ where
                     None
                 }
                 CommandType::SubscribeStream => {
+                    log::info!("Disconnecting from server");
                     broker.lock().await.disconnect().await.unwrap();
 
                     session::find(sessions, addr, |session| {
                         stream::listen(broker.clone(), session.clone());
-                        //stream::listen(session.clone());
                     })
                     .await;
                     Some("".to_string())
