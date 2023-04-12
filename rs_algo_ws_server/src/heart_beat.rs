@@ -1,15 +1,17 @@
-use crate::handlers::session::Sessions;
+use crate::{handlers::session::Sessions, message};
 
-use chrono::Timelike;
-use rs_algo_shared::helpers::date::{self, DateTime, Duration as Dur, Local};
+use rs_algo_shared::{
+    helpers::date::{DateTime, Duration as Dur, Local},
+    ws::message::ReconnectOptions,
+};
 
-use std::env;
+use futures::future;
 use std::time::Duration;
-use tokio::time::{self};
+use std::{env, net::SocketAddr};
+use tokio::time;
 
 pub async fn init(sessions: &mut Sessions) {
     let sessions = sessions.clone();
-
     let heartbeat_interval = env::var("HEARTBEAT_INTERVAL")
         .unwrap()
         .parse::<u64>()
@@ -25,63 +27,62 @@ pub async fn init(sessions: &mut Sessions) {
     tokio::spawn(async move {
         loop {
             hb_interval.tick().await;
-            let mut session_guard = sessions.lock().await;
-            let len = session_guard.len();
-            log::info!("HeartBeat active sessions: {}", len);
+
+            let mut sessions_to_remove: Vec<SocketAddr> = vec![];
 
             let hb_timeout: DateTime<Local> =
                 Local::now() - Dur::seconds((last_data_timeout) as i64);
 
-            for (_addr, session) in session_guard.iter_mut() {
-                let last_data = session.last_data;
-                let bot_name = session.bot_name();
+            let mut futures = vec![];
 
-                log::info!(
-                    "HeartBeat {:?}  {:?} -> {:?}",
-                    &bot_name,
-                    last_data,
-                    hb_timeout
-                );
+            {
+                let mut session_guard = sessions.lock().await;
+                let len = session_guard.len();
+                log::info!("Active sessions: {:?}", len);
 
-                if last_data < hb_timeout {
-                    let is_open = session.market_hours.is_open();
-                    let current_date = Local::now();
-                    let current_hours = current_date.hour();
-                    let week_day = date::get_week_day(current_date) as u32;
+                for (addr, session) in session_guard.iter_mut() {
+                    let last_data = session.last_data;
+                    let bot_name = session.bot_name();
 
-                    log::warn!("Session {:?} last  {:?} ", len, session.clone(),);
+                    if last_data < hb_timeout && session.symbol() != "init" {
+                        let is_open = session.market_hours.is_open();
 
-                    log::warn!(
-                        "Market {:?}",
-                        (
-                            is_open,
-                            current_hours,
-                            week_day,
-                            session.market_hours.clone()
-                        )
-                    );
+                        match is_open {
+                            true => {
+                                log::info!("{:?} session KO while market is open.", &bot_name);
 
-                    match is_open {
-                        true => {
-                            log::info!("{:?} session KO. Market open.", &bot_name);
-                            tokio::spawn({
-                                let session = session.clone();
-                                async move {
-                                    // message::send_reconnect(
-                                    //     &session,
-                                    //     ReconnectOptions { clean_data: true },
-                                    // )
-                                    // .await;
-                                }
-                            });
-                        }
-                        false => {
-                            log::info!("{:?} session Ok. Market not open.", &bot_name);
+                                let session_clone = session.clone();
+                                sessions_to_remove.push(addr.clone());
+
+                                let future = async move {
+                                    message::send_reconnect(
+                                        &session_clone,
+                                        ReconnectOptions { clean_data: true },
+                                    )
+                                    .await;
+                                };
+
+                                futures.push(future);
+                            }
+                            false => {}
                         }
                     }
                 }
             }
-            drop(session_guard);
+
+            future::join_all(futures).await;
+
+            {
+                let mut session_guard = sessions.lock().await;
+
+                for addr in sessions_to_remove.iter() {
+                    if let Some(session) = session_guard.remove(addr) {
+                        log::warn!("Session {:?} {} destroyed!", session.bot_name(), addr);
+                    } else {
+                        log::error!("Session {} not found.", addr);
+                    }
+                }
+            }
         }
     });
 }

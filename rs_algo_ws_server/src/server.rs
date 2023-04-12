@@ -52,23 +52,21 @@ async fn handle_connection(
     addr: SocketAddr,
     db_client: Arc<mongodb::Client>,
 ) {
-    log::info!("Incoming TCP connection from: {addr}");
-
-    let username = &env::var("BROKER_USERNAME").unwrap();
-    let password = &env::var("BROKER_PASSWORD").unwrap();
-    let mut broker = Xtb::new().await;
-    broker.login(username, password).await.unwrap();
-
-    let broker = Arc::new(Mutex::new(broker));
-
     loop {
         let (recipient, receiver) = unbounded();
-        let new_session = session::create(&mut sessions, &addr, recipient).await;
 
         match accept_async(&mut *raw_stream).await {
             Ok(msg) => {
+                log::info!("New connection from: {addr}");
+
+                let username = &env::var("BROKER_USERNAME").unwrap();
+                let password = &env::var("BROKER_PASSWORD").unwrap();
+                let mut broker = Xtb::new().await;
+                broker.login(username, password).await.unwrap();
+
+                let broker = Arc::new(Mutex::new(broker));
+                let new_session = session::create(&mut sessions, &addr, recipient).await;
                 let (outgoing, incoming) = msg.split();
-                let broker = Arc::clone(&broker);
 
                 let broadcast_incoming = incoming.try_for_each(|msg| {
                     let broker = Arc::clone(&broker);
@@ -89,22 +87,20 @@ async fn handle_connection(
                 let receive_from_others = receiver.map(Ok).forward(outgoing);
                 pin_mut!(broadcast_incoming, receive_from_others);
                 future::select(broadcast_incoming, receive_from_others).await;
+            }
+            Err(err) => {
+                log::error!("Client connection error: {:?}", err);
 
                 session::find(&mut sessions, &addr, |session| {
-                    *session = session.update_ping().clone();
+                    //*session = session.update_ping().clone();
                     log::error!("Communication with {} {} lost!", session.bot_name(), addr);
                 })
                 .await;
 
                 session::destroy(&mut sessions, &addr).await;
-            }
-            Err(err) => {
-                //message::send_reconnect(&new_session, ReconnectOptions { clean_data: true }).await;
-                log::error!("Error {:?} handling connection", err);
-                session::destroy(&mut sessions, &addr).await;
+
                 break;
             }
         };
-        session::destroy(&mut sessions, &addr).await;
     }
 }

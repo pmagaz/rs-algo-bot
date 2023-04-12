@@ -48,8 +48,8 @@ pub async fn send_reconnect(session: &Session, options: ReconnectOptions) {
 //     }
 // }
 
-pub async fn handle<BK>(
-    sessions: &mut Sessions,
+pub async fn handle<'a, BK>(
+    sessions: &'a mut Sessions,
     addr: &SocketAddr,
     msg: Message,
     broker: Arc<Mutex<BK>>,
@@ -274,17 +274,6 @@ where
                 CommandType::UpdateBotData => {
                     match &query.data {
                         Some(data) => {
-                            // let instrument = [
-                            //     data["strategy_name"].as_str().unwrap(),
-                            //     "-",
-                            //     data["strategy_type"].as_str().unwrap(),
-                            //     "_",
-                            //     data["symbol"].as_str().unwrap(),
-                            //     "_",
-                            //     data["time_frame"].as_str().unwrap(),
-                            // ]
-                            // .concat();
-
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
                             db::bot::upsert(db_client, &bot).await.unwrap();
                             session::find(sessions, addr, |session| {
@@ -297,9 +286,6 @@ where
                     None
                 }
                 CommandType::SubscribeStream => {
-                    log::info!("Disconnecting from server");
-                    broker.lock().await.disconnect().await.unwrap();
-
                     session::find(sessions, addr, |session| {
                         stream::listen(broker.clone(), session.clone());
                     })

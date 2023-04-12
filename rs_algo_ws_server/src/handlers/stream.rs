@@ -82,11 +82,11 @@ where
                     }
                     _ = interval.tick() => {
                         broker_stream.keepalive_ping().await.unwrap();
-                        //let mut guard = broker.lock().await;
-                        //guard.keepalive_ping().await.unwrap();
+                        let mut guard = broker.lock().await;
+                        guard.keepalive_ping().await.unwrap();
                     }
                      _ = rx.recv() => {
-                        println!("Stream {} cancelled!", session.bot_name());
+                        log::warn!("Stream {} cancelled!", session.bot_name());
                         break;
                     }
 

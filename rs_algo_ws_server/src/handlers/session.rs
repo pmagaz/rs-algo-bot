@@ -82,6 +82,10 @@ impl Session {
         self
     }
 
+    pub fn symbol(&self) -> &String {
+        &self.symbol
+    }
+
     pub fn bot_name(&self) -> String {
         [
             &self.symbol,
@@ -94,11 +98,11 @@ impl Session {
     }
 
     pub fn update_market_hours(&mut self, market_hours: MarketHours) -> &mut Self {
-        log::info!(
-            "Updating {} market hours {:?}",
-            self.bot_name(),
-            market_hours
-        );
+        // log::info!(
+        //     "Updating {} market hours {:?}",
+        //     self.bot_name(),
+        //     market_hours
+        // );
         self.market_hours = market_hours;
         self
     }
@@ -143,7 +147,6 @@ where
         Some(session) => callback(&mut *session),
         None => panic!("Session not found!"),
     };
-    drop(sessions_guard);
 }
 
 pub async fn create<'a>(
@@ -153,9 +156,11 @@ pub async fn create<'a>(
 ) -> Session {
     let session = Session::new(recipient);
 
-    sessions.lock().await.insert(*addr, session.clone());
+    {
+        sessions.lock().await.insert(*addr, session.clone());
+    }
 
-    log::warn!("Session {:?} created!", addr);
+    log::warn!("Session {:?} created!", (addr, session.bot_name()));
 
     let msg: ResponseBody<String> = ResponseBody {
         response: ResponseType::Connected,
@@ -174,12 +179,13 @@ pub async fn destroy<'a>(sessions: &'a mut Sessions, addr: &SocketAddr) {
     let mut sessions_guard = sessions.lock().await;
     match sessions_guard.get(addr) {
         Some(session) => {
-            log::warn!("Session {} {:?} destroyed!", addr, session.bot_name());
-            sessions_guard.remove(addr);
+            if session.symbol() != "init" {
+                log::warn!("Session {} {:?} destroyed!", addr, session.bot_name());
+                sessions_guard.remove(addr);
+            }
         }
         None => {
             log::error!("Session {} not found.", addr);
         }
     };
-    drop(sessions_guard);
 }

@@ -487,6 +487,7 @@ impl Bot {
 
                                     match new_candle.is_closed() {
                                         true => {
+                                            log::info!("Candle closed {:?}", higher_candle.date());
                                             self.instrument
                                                 .init_candle(data, &Some(self.time_frame.clone()));
                                         }

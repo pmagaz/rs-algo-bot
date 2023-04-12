@@ -379,6 +379,7 @@ pub trait Strategy: DynClone {
                     TradeResult::TradeIn(trade_in) => trade_in.id,
                     _ => 0,
                 };
+                log::info!("Order: Entry");
 
                 order.set_trade_id(trade_id);
                 PositionResult::MarketInOrder(trade_in_result, order)
@@ -397,7 +398,8 @@ pub trait Strategy: DynClone {
                     None => TradeResult::None,
                 };
 
-                log::info!("exit_orderrrrrrr");
+                log::info!("Order: Exit");
+
                 PositionResult::MarketOutOrder(trade_out_result, order)
             }
             _ => PositionResult::None,
@@ -445,7 +447,7 @@ pub trait Strategy: DynClone {
             true => {
                 let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
 
-                let candles_until_new_operation = env::var("CANDLES_UNTIL_NEXT_OPERATION")
+                let candles_until_new_operation = env::var("CANDLES_UNTIL_NEW_ENTRY")
                     .unwrap()
                     .parse::<i64>()
                     .unwrap();
@@ -498,7 +500,7 @@ pub trait Strategy: DynClone {
             true => {
                 let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
 
-                let candles_until_new_operation = env::var("CANDLES_UNTIL_NEXT_OPERATION")
+                let candles_until_new_operation = env::var("CANDLES_UNTIL_NEW_ENTRY")
                     .unwrap()
                     .parse::<i64>()
                     .unwrap();
