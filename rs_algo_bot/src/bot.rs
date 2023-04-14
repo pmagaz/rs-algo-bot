@@ -485,6 +485,11 @@ impl Bot {
                                         )
                                         .await;
 
+                                    log::info!(
+                                        "POSITION RESULT {:?}",
+                                        (&position_result, &orders_position_result)
+                                    );
+
                                     match new_candle.is_closed() {
                                         true => {
                                             log::info!("Candle closed {:?}", higher_candle.date());
@@ -561,11 +566,6 @@ impl Bot {
                                                     &mut self.orders,
                                                     &self.instrument,
                                                 );
-
-                                                // order::cancel_trade_pending_orders(
-                                                //     trade_out,
-                                                //     &mut self.orders,
-                                                // );
                                             }
                                         }
                                         _ => (),
