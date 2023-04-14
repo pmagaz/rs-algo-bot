@@ -358,7 +358,9 @@ impl Bot {
                                         .cloned()
                                         .collect();
 
-                                    match active_stop_losses.len().cmp(&0) {
+                                    let num_active_stop_losses = active_stop_losses.len();
+
+                                    match num_active_stop_losses.cmp(&0) {
                                         Ordering::Greater => {
                                             log::info!(
                                                 "{} active stop losses found",
@@ -372,8 +374,12 @@ impl Bot {
                                         }
                                     };
 
-                                    self.restore_values(bot_data).await;
-                                    self.is_market_open().await;
+                                    if num_active_trades != num_active_stop_losses {
+                                        log::error!("Active trades ({}) does not match active stop losses ({}) !", num_active_trades, num_active_stop_losses);
+                                    } else {
+                                        self.restore_values(bot_data).await;
+                                        self.is_market_open().await;
+                                    }
                                 }
                                 MessageType::MarketHours(res) => {
                                     let market_hours = res.payload.unwrap();
@@ -485,11 +491,6 @@ impl Bot {
                                         )
                                         .await;
 
-                                    log::info!(
-                                        "POSITION RESULT {:?}",
-                                        (&position_result, &orders_position_result)
-                                    );
-
                                     match new_candle.is_closed() {
                                         true => {
                                             log::info!("Candle closed {:?}", higher_candle.date());
@@ -527,8 +528,13 @@ impl Bot {
                                             TradeResult::TradeIn(trade_in),
                                             order,
                                         ) => {
+                                            log::info!(
+                                                "Order Result MarketInOrder. Open positions: {}",
+                                                open_positions
+                                            );
+
                                             if !open_positions {
-                                                log::info!("Position Result MarketInOrder");
+                                                log::info!("Sending MarketInOrder...");
                                                 self.send_position::<PositionResult>(
                                                     &orders_position_result,
                                                     self.symbol.clone(),
@@ -550,8 +556,12 @@ impl Bot {
                                             TradeResult::TradeOut(trade_out),
                                             order,
                                         ) => {
+                                            log::info!(
+                                                "Order Result MarketOutOrder. Open positions: {}",
+                                                open_positions
+                                            );
                                             if open_positions {
-                                                log::info!("Position Result MarketOutOrder");
+                                                log::info!("Sending MarketOutOrder...");
 
                                                 self.send_position::<PositionResult>(
                                                     &orders_position_result,
@@ -576,9 +586,13 @@ impl Bot {
                                             TradeResult::TradeIn(_trade_in),
                                             new_orders,
                                         ) => {
-                                            if !open_positions {
-                                                log::info!("Position Result TradeIn");
+                                            log::info!(
+                                                "Position Result TradeIn. Open positions: {}",
+                                                open_positions
+                                            );
 
+                                            if !open_positions {
+                                                log::info!("Sending TradeIn...");
                                                 self.send_position::<PositionResult>(
                                                     &position_result,
                                                     self.symbol.clone(),
@@ -597,11 +611,14 @@ impl Bot {
                                                 }
                                             }
                                         }
-                                        PositionResult::MarketOut(TradeResult::TradeOut(
-                                            trade_out,
-                                        )) => {
+                                        PositionResult::MarketOut(TradeResult::TradeOut(_)) => {
+                                            log::info!(
+                                                "Position Result TradeOut. Open positions: {}",
+                                                open_positions
+                                            );
+
                                             if open_positions {
-                                                log::info!("Position Result TradeOut");
+                                                log::info!("Sending TradeOut...");
                                                 self.send_position::<PositionResult>(
                                                     &position_result,
                                                     self.symbol.clone(),
