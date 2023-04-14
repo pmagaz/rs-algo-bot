@@ -82,8 +82,6 @@ where
                 None => "",
             };
 
-            log::info!("Client {:?} msg received from {addr}", command);
-
             let data = match command {
                 CommandType::InitSession => {
                     let session_data = match &query.data {
@@ -250,18 +248,21 @@ where
                                 }
                                 PositionResult::MarketOutOrder(
                                     TradeResult::TradeOut(trade_out),
-                                    _,
+                                    order,
                                 ) => {
                                     log::info!("MarketOutOrder position received");
+                                    let trade_data =
+                                        TradeData::new(symbol, trade_out, options.clone());
 
-                                    let trade_data = TradeData::new(symbol, trade_out, options);
-                                    let trade_response =
-                                        broker_guard.close_trade(trade_data).await.unwrap();
+                                    let order_data = TradeData::new(symbol, order, options);
+                                    let trade_response = broker_guard
+                                        .order_out(trade_data, order_data)
+                                        .await
+                                        .unwrap();
                                     serde_json::to_string(&trade_response).unwrap()
                                 }
                                 _ => {
                                     todo!();
-                                    "".to_string()
                                 }
                             };
 

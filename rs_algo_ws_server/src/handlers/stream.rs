@@ -39,6 +39,7 @@ where
                 .unwrap();
             broker_stream.subscribe_stream(&symbol).await.unwrap();
             broker_stream.subscribe_tick_prices(&symbol).await.unwrap();
+
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
             loop {
                 tokio::select! {

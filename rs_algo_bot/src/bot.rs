@@ -711,7 +711,6 @@ impl Bot {
                                                 &payload.data.bid,
                                             );
 
-                                            log::info!("TRADE OUT {:?}", (payload.data));
                                             let trade_response = payload;
 
                                             let updated_trade_out =
