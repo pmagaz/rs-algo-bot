@@ -162,8 +162,6 @@ impl Bot {
     }
 
     pub async fn get_pricing_data(&mut self) {
-        //log::info!("Requesting {} pricing data", &self.symbol,);
-
         let instrument_pricing_data = Command {
             command: CommandType::GetInstrumentPricing,
             data: Some(Symbol {
@@ -224,26 +222,27 @@ impl Bot {
 
         self.strategy_stats = data.strategy_stats().clone();
 
-        self.trades_in = data
-            .trades_in()
+        let trades_in = data.trades_in();
+        let trades_out = data.trades_out();
+        let orders = data.orders();
+
+        self.trades_in = trades_in
             .iter()
-            .rev()
+            .skip(trades_in.len().saturating_sub(max_historical_positions))
             .take(max_historical_positions)
             .cloned()
             .collect();
 
-        self.trades_out = data
-            .trades_out()
+        self.trades_out = trades_out
             .iter()
-            .rev()
+            .skip(trades_out.len().saturating_sub(max_historical_positions))
             .take(max_historical_positions)
             .cloned()
             .collect();
 
-        self.orders = data
-            .orders()
+        self.orders = orders
             .iter()
-            .rev()
+            .skip(orders.len().saturating_sub(max_historical_positions))
             .take(max_historical_positions)
             .cloned()
             .collect();
@@ -253,7 +252,6 @@ impl Bot {
     where
         for<'de> T: Serialize + Deserialize<'de>,
     {
-        log::info!("Sending position {}_{}", symbol, time_frame);
         let execute_trade = Command {
             command: CommandType::ExecutePosition,
             data: Some(TradeData {
@@ -338,12 +336,11 @@ impl Bot {
                                     let num_active_trades = trades_in - trades_out;
                                     match trades_in.cmp(&trades_out) {
                                         Ordering::Greater => {
-                                            log::info!("{} trades found", num_active_trades);
+                                            log::info!("{} active trades found", num_active_trades);
                                             open_positions = true
                                         }
                                         _ => {
-                                            log::info!("No trades found");
-                                            //open_positions = false
+                                            log::info!("No active trades found");
                                         }
                                     };
 
@@ -375,7 +372,11 @@ impl Bot {
                                     };
 
                                     if num_active_trades != num_active_stop_losses {
-                                        log::error!("Active trades ({}) does not match active stop losses ({}) !", num_active_trades, num_active_stop_losses);
+                                        log::error!(
+                                            "Active trades {} do not match active stop losses {} !",
+                                            num_active_trades,
+                                            num_active_stop_losses
+                                        );
                                     } else {
                                         self.restore_values(bot_data).await;
                                         self.is_market_open().await;
@@ -384,7 +385,6 @@ impl Bot {
                                 MessageType::MarketHours(res) => {
                                     let market_hours = res.payload.unwrap();
                                     let open = market_hours.open();
-
                                     match market_hours.open() {
                                         true => {
                                             log::info!("{} market open: {}", self.symbol, open);
@@ -548,8 +548,6 @@ impl Bot {
                                                     &mut self.orders,
                                                     &self.instrument,
                                                 );
-
-                                                order::extend_all_pending_orders(&mut self.orders);
                                             }
                                         }
                                         PositionResult::MarketOutOrder(
@@ -625,32 +623,11 @@ impl Bot {
                                                     self.time_frame.clone(),
                                                 )
                                                 .await;
-
-                                                // order::cancel_trade_pending_orders(
-                                                //     trade_out,
-                                                //     &mut self.orders,
-                                                // );
                                             }
                                         }
                                         PositionResult::PendingOrder(new_orders) => {
                                             log::info!("OPEN POSITIONS {:?}", &open_positions);
                                             if !open_positions {
-                                                match overwrite_orders {
-                                                    true => {
-                                                        log::info!(
-                                                            "OVERWRITING ORDERS {:?}",
-                                                            &self.orders.len()
-                                                        );
-
-                                                        // order::cancel_pending_expired_orders(
-                                                        //     0,
-                                                        //     &self.instrument,
-                                                        //     &mut self.orders,
-                                                        // );
-                                                    }
-                                                    false => (),
-                                                }
-
                                                 self.orders = order::add_pending(
                                                     self.orders.clone(),
                                                     new_orders.clone(),
@@ -660,12 +637,14 @@ impl Bot {
                                         _ => (),
                                     };
 
-                                    self.orders = order::cancel_pending_expired_orders(
-                                        index,
-                                        &self.instrument,
-                                        &mut self.orders,
-                                    );
-                                    //self.get_pricing_data().await;
+                                    if !open_positions {
+                                        self.orders = order::cancel_pending_expired_orders(
+                                            index,
+                                            &self.instrument,
+                                            &mut self.orders,
+                                        );
+                                    }
+
                                     self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::StreamPricingResponse(res) => {
@@ -681,7 +660,7 @@ impl Bot {
                                         current_percentage,
                                     );
                                 }
-                                MessageType::ExecuteTradeIn(res) => {
+                                MessageType::TradeInAccepted(res) => {
                                     let payload = res.payload.unwrap();
                                     let accepted = &payload.accepted;
 
@@ -703,6 +682,7 @@ impl Bot {
                                             );
 
                                             open_positions = true;
+                                            order::extend_all_pending_orders(&mut self.orders);
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
@@ -714,7 +694,7 @@ impl Bot {
                                         }
                                     }
                                 }
-                                MessageType::ExecuteTradeOut(res) => {
+                                MessageType::TradeOutAccepted(res) => {
                                     let payload = res.payload.unwrap();
                                     let accepted = &payload.accepted;
 

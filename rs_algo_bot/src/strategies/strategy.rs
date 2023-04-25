@@ -95,7 +95,6 @@ pub trait Strategy: DynClone {
         pricing: &Pricing,
     ) -> (PositionResult, PositionResult) {
         let index = &instrument.data.len() - 1;
-
         let mut position_result = PositionResult::None;
         let mut order_position_result = PositionResult::None;
         let pending_orders = order::get_pending(orders);

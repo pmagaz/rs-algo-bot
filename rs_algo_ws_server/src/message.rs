@@ -211,6 +211,7 @@ where
                             let symbol = value["symbol"].as_str().unwrap();
                             let options: TradeOptions =
                                 serde_json::from_value(value["options"].clone()).unwrap();
+
                             let position_result: PositionResult =
                                 serde_json::from_value(value["data"].clone()).unwrap();
 
@@ -243,7 +244,7 @@ where
 
                                     let trade_data = TradeData::new(symbol, order, options);
                                     let trade_response =
-                                        broker_guard.order_in(trade_data).await.unwrap();
+                                        broker_guard.open_order(trade_data).await.unwrap();
                                     serde_json::to_string(&trade_response).unwrap()
                                 }
                                 PositionResult::MarketOutOrder(
@@ -256,7 +257,7 @@ where
 
                                     let order_data = TradeData::new(symbol, order, options);
                                     let trade_response = broker_guard
-                                        .order_out(trade_data, order_data)
+                                        .close_order(trade_data, order_data)
                                         .await
                                         .unwrap();
                                     serde_json::to_string(&trade_response).unwrap()

@@ -92,7 +92,6 @@ async fn handle_connection(
                 log::error!("Client connection error: {:?}", err);
 
                 session::find(&mut sessions, &addr, |session| {
-                    //*session = session.update_ping().clone();
                     log::error!("Communication with {} {} lost!", session.bot_name(), addr);
                 })
                 .await;

@@ -87,7 +87,7 @@ where
                         guard.keepalive_ping().await.unwrap();
                     }
                      _ = rx.recv() => {
-                        log::warn!("Stream {} cancelled!", session.bot_name());
+                        log::warn!("Stream {} stopped!", session.bot_name());
                         break;
                     }
 

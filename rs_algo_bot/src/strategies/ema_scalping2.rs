@@ -112,11 +112,11 @@ impl<'a> Strategy for EmaScalping2<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_13 = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
+                let htf_ema_b = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
 
-                let is_long = htf_ema_5 > htf_ema_13 && close_price > htf_ema_13;
-                let is_short = htf_ema_5 < htf_ema_13 && close_price < htf_ema_13;
+                let is_long = htf_ema_a > htf_ema_b && close_price > htf_ema_b;
+                let is_short = htf_ema_a < htf_ema_b && close_price < htf_ema_b;
 
                 if is_long {
                     TradeDirection::Long
@@ -145,9 +145,9 @@ impl<'a> Strategy for EmaScalping2<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_13 = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
-                htf_ema_5 > htf_ema_13 && close_price > htf_ema_13
+                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
+                let htf_ema_b = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                htf_ema_a > htf_ema_b && close_price > htf_ema_b
             },
         );
 
@@ -158,10 +158,10 @@ impl<'a> Strategy for EmaScalping2<'a> {
         let _low_price = &candle.low();
         let _prev_close_price = &data.get(prev_index).unwrap().close();
 
-        let ema_5 = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
-        let ema_8 = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
+        let ema_b = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
+        let ema_c = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
         let ema_13 = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
-        let prev_ema_5 = instrument
+        let prev_ema_b = instrument
             .indicators
             .ema_a
             .get_data_a()
@@ -181,7 +181,7 @@ impl<'a> Strategy for EmaScalping2<'a> {
             .unwrap();
 
         let entry_condition =
-            anchor_htf && (ema_5 > ema_13 && ema_8 > ema_13 && prev_ema_5 < prev_ema_13);
+            anchor_htf && (ema_b > ema_13 && ema_c > ema_13 && prev_ema_b < prev_ema_13);
 
         let pips_margin = 5.;
         let previous_bars = 5;
@@ -223,22 +223,22 @@ impl<'a> Strategy for EmaScalping2<'a> {
         //     instrument,
         //     htf_instrument,
         //     |(idx, _prev_idx, htf_inst)| {
-        //         let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-        //         let htf_ema_8 = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-        //         htf_ema_5 < htf_ema_8
+        //         let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
+        //         let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+        //         htf_ema_a < htf_ema_b
         //     },
         // );
 
-        // let ema_5 = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
-        // let ema_8 = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
+        // let ema_b = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
+        // let ema_c = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
         // let ema_13 = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
-        // let prev_ema_5 = instrument
+        // let prev_ema_b = instrument
         //     .indicators
         //     .ema_a
         //     .get_data_a()
         //     .get(prev_index)
         //     .unwrap();
-        // let prev_ema_8 = instrument
+        // let prev_ema_c = instrument
         //     .indicators
         //     .ema_b
         //     .get_data_a()
@@ -252,7 +252,7 @@ impl<'a> Strategy for EmaScalping2<'a> {
         //     .unwrap();
 
         // let exit_condition =
-        //     anchor_htf || (ema_5 < ema_13 && ema_8 < ema_13 && prev_ema_5 > prev_ema_13);
+        //     anchor_htf || (ema_b < ema_13 && ema_c < ema_13 && prev_ema_b > prev_ema_13);
         // match exit_condition {
         //     true => Position::MarketOut(None),
         //     false => Position::None,
@@ -275,9 +275,9 @@ impl<'a> Strategy for EmaScalping2<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_5 = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_13 = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
-                htf_ema_5 < htf_ema_13 && close_price < htf_ema_13
+                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
+                let htf_ema_b = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                htf_ema_a < htf_ema_b && close_price < htf_ema_b
             },
         );
 
@@ -288,10 +288,10 @@ impl<'a> Strategy for EmaScalping2<'a> {
         let _low_price = &candle.low();
         let _prev_close_price = &data.get(prev_index).unwrap().close();
 
-        let ema_5 = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
-        let ema_8 = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
+        let ema_b = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
+        let ema_c = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
         let ema_13 = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
-        let prev_ema_5 = instrument
+        let prev_ema_b = instrument
             .indicators
             .ema_a
             .get_data_a()
@@ -311,7 +311,7 @@ impl<'a> Strategy for EmaScalping2<'a> {
             .unwrap();
 
         let entry_condition =
-            anchor_htf && (ema_5 < ema_13 && ema_8 < ema_13 && prev_ema_5 > prev_ema_13);
+            anchor_htf && (ema_b < ema_13 && ema_c < ema_13 && prev_ema_b > prev_ema_13);
 
         let pips_margin = 5.;
         let previous_bars = 5;

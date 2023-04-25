@@ -23,8 +23,6 @@ pub fn calculate_trade_stats(
     let quantity = trade_in.quantity;
 
     let profit = calculate_trade_profit(quantity, price_in, price_out, trade_type);
-    log::info!("STATS {:?}", (trade_type, price_in, price_out, profit));
-
     let profit_per = calculate_trade_profit_per(price_in, price_out, trade_type);
 
     let run_up = calculate_trade_runup(data, price_in, trade_type);
