@@ -241,7 +241,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_high = &prev_candle.high();
         let is_closed = candle.is_closed();
 
-        let pips_margin = 0.5;
+        let pips_margin = 0.1;
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
         let prev_top_band = instrument
             .indicators

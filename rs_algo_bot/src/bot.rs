@@ -626,7 +626,6 @@ impl Bot {
                                             }
                                         }
                                         PositionResult::PendingOrder(new_orders) => {
-                                            log::info!("OPEN POSITIONS {:?}", &open_positions);
                                             if !open_positions {
                                                 self.orders = order::add_pending(
                                                     self.orders.clone(),
