@@ -113,13 +113,14 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             |(idx, _prev_idx, htf_inst)| {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
 
-                let is_long = htf_ema_a > htf_ema_b;
-                let is_short = htf_ema_a < htf_ema_b;
+                let is_long = htf_ema_a > htf_ema_b && htf_ema_b > htf_ema_c;
+                let is_short = htf_ema_a < htf_ema_b && htf_ema_b < htf_ema_c;
 
-                if is_long && !is_short {
+                if is_long {
                     TradeDirection::Long
-                } else if is_short && !is_long {
+                } else if is_short {
                     TradeDirection::Short
                 } else {
                     TradeDirection::None
@@ -157,14 +158,14 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .get(prev_index)
             .unwrap();
 
-        let pips_margin = 0.1;
+        let pips_margin = 0.5;
 
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
             && close_price > middle_band
             && (prev_close <= prev_middle_band);
 
-        let buy_price = candle.high() + calc::to_pips(pips_margin, pricing);
+        let buy_price = candle.close() + calc::to_pips(pips_margin, pricing);
 
         match entry_condition {
             true => Position::Order(vec![
@@ -236,14 +237,14 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .get_data_c()
             .get(prev_index)
             .unwrap();
-        let pips_margin = 0.1;
+        let pips_margin = 0.5;
 
         let entry_condition = self.trading_direction == TradeDirection::Short
             && is_closed
             && close_price < middle_band
             && (prev_close >= prev_middle_band);
 
-        let buy_price = candle.low() - calc::to_pips(pips_margin, pricing);
+        let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
 
         match entry_condition {
             true => Position::Order(vec![
