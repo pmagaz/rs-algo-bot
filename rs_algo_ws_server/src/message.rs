@@ -2,8 +2,12 @@ use crate::db;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 
+use chrono::DateTime;
+use chrono::Local;
+use rs_algo_shared::helpers::date;
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode;
+use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::ws::message::*;
@@ -168,6 +172,9 @@ where
                     Some(serde_json::to_string(&res).unwrap())
                 }
                 CommandType::GetInstrumentData => {
+                    let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
+                    let num_bars = env::var("NUM_BARS").unwrap().parse::<i64>().unwrap();
+
                     let time_frame = match &query.data {
                         Some(data) => TimeFrame::new(data["time_frame"].as_str().unwrap()),
                         None => TimeFrameType::ERR,
@@ -175,10 +182,8 @@ where
 
                     let num_bars = match &query.data {
                         Some(data) => data["num_bars"].as_i64().unwrap(),
-                        None => env::var("NUM_BARS").unwrap().parse::<i64>().unwrap(),
+                        None => num_bars,
                     };
-
-                    let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
 
                     let time_frame_number = time_frame.to_number();
                     let time_frame_from =
@@ -191,16 +196,47 @@ where
                         (num_bars)
                     );
 
+                    // let res = broker
+                    //     .lock()
+                    //     .await
+                    //     .get_instrument_data(
+                    //         symbol,
+                    //         time_frame_number as usize,
+                    //         time_frame_from.timestamp(),
+                    //     )
+                    //     .await
+                    //     .unwrap();
+
+                    let time_frame_from =
+                        TimeFrame::get_starting_bar(num_bars, &time_frame, &ExecutionMode::Bot)
+                            .timestamp();
                     let res = broker
                         .lock()
                         .await
-                        .get_instrument_data(
-                            symbol,
-                            time_frame_number as usize,
-                            time_frame_from.timestamp(),
-                        )
+                        .get_instrument_data(symbol, time_frame_number as usize, time_frame_from)
                         .await
                         .unwrap();
+
+                    //LECHES
+                    let last_5 = res
+                        .payload
+                        .unwrap()
+                        .data
+                        .iter()
+                        .map(|x| *x)
+                        .take(2)
+                        .collect();
+
+                    let res: ResponseBody<
+                        InstrumentData<Vec<(DateTime<Local>, f64, f64, f64, f64, f64)>>,
+                    > = ResponseBody {
+                        response: ResponseType::GetInstrumentData,
+                        payload: Some(InstrumentData {
+                            symbol: symbol.to_string(),
+                            time_frame: time_frame,
+                            data: last_5,
+                        }),
+                    };
 
                     Some(serde_json::to_string(&res).unwrap())
                 }

@@ -1,3 +1,4 @@
+use core::panic;
 use std::cmp::Ordering;
 use std::env;
 
@@ -411,6 +412,8 @@ impl Bot {
                                 MessageType::PricingData(res) => {
                                     let pricing = res.payload.unwrap();
                                     self.pricing = pricing;
+                                    //LECHES
+                                    self.pricing.set_spread(0.00001);
                                 }
                                 MessageType::InstrumentData(res) => {
                                     let payload = res.payload.unwrap();
@@ -464,10 +467,12 @@ impl Bot {
                                 MessageType::StreamResponse(res) => {
                                     let payload = res.payload.unwrap();
                                     let data = payload.data;
-                                    let index = &self.instrument.data.len() - 1;
+                                    let index = match self.instrument.data.len() {
+                                        0 => 0,
+                                        len => len - 1,
+                                    };
                                     let new_candle = self.instrument.next(data).unwrap();
                                     let mut higher_candle: Candle = new_candle.clone();
-
                                     if is_mtf_strategy(&self.strategy_type) {
                                         match self.htf_instrument {
                                             HTFInstrument::HTFInstrument(
@@ -662,7 +667,6 @@ impl Bot {
                                 MessageType::TradeInAccepted(res) => {
                                     let payload = res.payload.unwrap();
                                     let accepted = &payload.accepted;
-
                                     match accepted {
                                         true => {
                                             log::info!(
@@ -707,9 +711,10 @@ impl Bot {
                                                 &payload.data.bid,
                                             );
 
+                                            let date_out = payload.data.date_out;
                                             let trade_response = payload;
 
-                                            let updated_trade_out =
+                                            let mut updated_trade_out =
                                                 self.strategy.update_trade_stats(
                                                     self.trades_in.last().unwrap(),
                                                     &trade_response.data,
@@ -717,6 +722,15 @@ impl Bot {
                                                     &self.pricing,
                                                 );
 
+                                            //LECHES
+                                            updated_trade_out.date_out = to_dbtime(
+                                                self.instrument.data.last().unwrap().date(),
+                                            );
+
+                                            // panic!(
+                                            //     "444444 {:?}",
+                                            //     (date_out, updated_trade_out.date_out)
+                                            // );
                                             order::cancel_trade_pending_orders(
                                                 &updated_trade_out,
                                                 &mut self.orders,
