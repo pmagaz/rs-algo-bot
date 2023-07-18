@@ -132,7 +132,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
                 let is_long = htf_ema_a > htf_ema_b && htf_ema_b > htf_ema_c;
                 let is_short = htf_ema_a < htf_ema_b && htf_ema_b < htf_ema_c;
-
+                let candle = instrument.data.get(index).unwrap();
+                if instrument.symbol == "CADCHF" {
+                    log::info!(
+                        "000000000 {:?}",
+                        (index, idx, candle.date(), htf_ema_a, htf_ema_b, htf_ema_c,)
+                    );
+                }
                 if is_long {
                     TradeDirection::Long
                 } else if is_short {
@@ -181,7 +187,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close >= prev_low_band);
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, pricing);
-
+        if instrument.symbol == "CADCHF" {
+            log::info!("22222222 long {:?}", (index, candle));
+        }
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
@@ -272,6 +280,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_high >= prev_top_band);
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
+
+        if instrument.symbol == "CADCHF" {
+            log::info!("22222222 short {:?}", (index, candle));
+        }
+
+        if entry_condition {
+            log::info!("33333333 short {:?}", (index, candle));
+        }
 
         match entry_condition {
             true => Position::Order(vec![

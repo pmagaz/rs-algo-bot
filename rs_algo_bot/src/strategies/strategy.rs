@@ -165,8 +165,11 @@ pub trait Strategy: DynClone {
             .parse::<bool>()
             .unwrap();
 
+        //LECHES OJO
+
         let wait_for_opening_trade = self.wait_for_opening_trade(index, instrument, trades_out);
-        if !instrument.data.is_empty() {
+        //CONTINUE HERE
+        if !instrument.data.is_empty() && index > 5 {
             match wait_for_opening_trade {
                 true => match trading_direction.is_long() {
                     true => match self.is_long_strategy() {
@@ -382,7 +385,7 @@ pub trait Strategy: DynClone {
         pending_orders: &Vec<Order>,
         trades_in: &Vec<TradeIn>,
     ) -> PositionResult {
-        match order::resolve_active_orders(index, instrument, pending_orders, pricing) {
+        match order::resolve_active_orders(index, instrument, pending_orders, trades_in) {
             Position::MarketInOrder(mut order) => {
                 let order_size = order.size();
                 let trade_type = order.to_trade_type();

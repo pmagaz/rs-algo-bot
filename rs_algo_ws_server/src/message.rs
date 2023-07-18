@@ -273,10 +273,11 @@ where
                                     serde_json::to_string(&trade_response).unwrap()
                                 }
                                 PositionResult::MarketInOrder(
-                                    TradeResult::TradeIn(_trade_in),
+                                    TradeResult::TradeIn(trade_in),
                                     order,
                                 ) => {
                                     log::info!("MarketInOrder position received");
+                                    log::info!("2leches {:?}", (&order, trade_in));
 
                                     let trade_data = TradeData::new(symbol, order, options);
                                     let trade_response =
