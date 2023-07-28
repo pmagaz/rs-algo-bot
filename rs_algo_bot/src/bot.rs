@@ -471,6 +471,7 @@ impl Bot {
                                         0 => 0,
                                         len => len - 1,
                                     };
+
                                     let new_candle = self.instrument.next(data).unwrap();
                                     let mut higher_candle: Candle = new_candle.clone();
                                     if is_mtf_strategy(&self.strategy_type) {

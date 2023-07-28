@@ -98,7 +98,7 @@ pub trait Strategy: DynClone {
             0 => 0,
             len => len - 1,
         };
-
+        log::info!("Tick {:?}", (index, instrument.data.last().unwrap().date()));
         if index > 0 {
             let mut position_result = PositionResult::None;
             let mut order_position_result = PositionResult::None;
