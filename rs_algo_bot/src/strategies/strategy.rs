@@ -555,6 +555,14 @@ pub fn set_strategy(
             )
             .unwrap(),
         ),
+        Box::new(
+            strategies::ema_scalping::EmaScalping::new(
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
     ];
 
     let mut strategy = strategies[0].clone();
