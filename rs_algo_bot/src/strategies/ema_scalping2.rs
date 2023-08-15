@@ -1,14 +1,15 @@
 use super::strategy::*;
+
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
-use rs_algo_shared::models::order::{OrderDirection, OrderType};
+use rs_algo_shared::models::order::{Order, OrderDirection, OrderType};
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
-use rs_algo_shared::models::time_frame;
 use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
-use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn};
+use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn, TradeOut};
+use rs_algo_shared::models::{backtest_instrument::*, time_frame};
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
@@ -75,9 +76,9 @@ impl<'a> Strategy for EmaScalping2<'a> {
             name: "Ema_Scalping_2",
             time_frame,
             higher_time_frame,
-            order_size,
             strategy_type,
             trading_direction,
+            order_size,
             risk_reward_ratio,
             profit_target,
         })
@@ -113,10 +114,13 @@ impl<'a> Strategy for EmaScalping2<'a> {
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_b = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                let high_price = &htf_inst.data().get(idx).unwrap().high();
+                let low_price = &htf_inst.data().get(idx).unwrap().low();
 
-                let is_long = htf_ema_a > htf_ema_b && close_price > htf_ema_b;
-                let is_short = htf_ema_a < htf_ema_b && close_price < htf_ema_b;
+                let is_long = htf_ema_a > htf_ema_c && low_price > htf_ema_c;
+                let is_short = htf_ema_a < htf_ema_c && high_price < htf_ema_c;
 
                 if is_long {
                     TradeDirection::Long
@@ -138,64 +142,55 @@ impl<'a> Strategy for EmaScalping2<'a> {
         pricing: &Pricing,
     ) -> Position {
         let close_price = &instrument.data.get(index).unwrap().close();
-        let spread = 0.;
-
-        let anchor_htf = time_frame::get_htf_data(
-            index,
-            instrument,
-            htf_instrument,
-            |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_b = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
-                htf_ema_a > htf_ema_b && close_price > htf_ema_b
-            },
-        );
+        let spread = pricing.spread();
 
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
         let candle = data.get(index).unwrap();
-        let _trigger_price = &candle.low();
-        let _low_price = &candle.low();
-        let _prev_close_price = &data.get(prev_index).unwrap().close();
+        let trigger_price = &candle.low();
+        let low_price = &candle.low();
+        let prev_close_price = &data.get(prev_index).unwrap().close();
 
-        let ema_b = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
-        let ema_c = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
-        let ema_13 = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
-        let prev_ema_b = instrument
+        let ema_a = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
+        let ema_b = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
+        let ema_c = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
+
+        let prev_ema_a = instrument
             .indicators
             .ema_a
             .get_data_a()
             .get(prev_index)
             .unwrap();
-        let _prev_ema_8 = instrument
+
+        let prev_ema_b = instrument
             .indicators
             .ema_b
             .get_data_a()
             .get(prev_index)
             .unwrap();
-        let prev_ema_13 = instrument
+
+        let prev_ema_c = instrument
             .indicators
             .ema_c
             .get_data_a()
             .get(prev_index)
             .unwrap();
 
-        let entry_condition =
-            anchor_htf && (ema_b > ema_13 && ema_c > ema_13 && prev_ema_b < prev_ema_13);
-
-        let pips_margin = 5.;
+        let entry_condition = trigger_price < ema_a && close_price > ema_c;
+        let pips_margin = 3.;
+        let pips_profit = 5.;
         let previous_bars = 5;
 
-        let lowest_bar = data[index - previous_bars..index + 1]
+        let highest_bar = data[index - previous_bars..index + 1]
             .iter()
-            .min_by(|x, y| x.low().partial_cmp(&y.low()).unwrap())
-            .map(|x| x.low())
+            .max_by(|x, y| x.high().partial_cmp(&y.high()).unwrap())
+            .map(|x| x.high())
             .unwrap();
 
-        let buy_price = candle.close() + calc::to_pips(pips_margin, pricing);
-        let stop_loss_price = lowest_bar - calc::to_pips(pips_margin, pricing);
+        let buy_price = highest_bar + calc::to_pips(pips_margin, pricing);
+        let stop_loss_price = trigger_price - calc::to_pips(pips_margin, pricing);
         let risk = buy_price + spread - stop_loss_price;
-        let sell_price = buy_price + (risk * self.risk_reward_ratio);
+        let sell_price = buy_price + calc::to_pips(pips_profit, pricing);
 
         match entry_condition {
             true => Position::Order(vec![
@@ -216,47 +211,6 @@ impl<'a> Strategy for EmaScalping2<'a> {
         _trade_in: &TradeIn,
         _pricing: &Pricing,
     ) -> Position {
-        // let prev_index = calc::get_prev_index(index);
-        // let close_price = &instrument.data.get(index).unwrap().close();
-        // let anchor_htf = time_frame::get_htf_data(
-        //     index,
-        //     instrument,
-        //     htf_instrument,
-        //     |(idx, _prev_idx, htf_inst)| {
-        //         let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-        //         let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-        //         htf_ema_a < htf_ema_b
-        //     },
-        // );
-
-        // let ema_b = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
-        // let ema_c = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
-        // let ema_13 = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
-        // let prev_ema_b = instrument
-        //     .indicators
-        //     .ema_a
-        //     .get_data_a()
-        //     .get(prev_index)
-        //     .unwrap();
-        // let prev_ema_c = instrument
-        //     .indicators
-        //     .ema_b
-        //     .get_data_a()
-        //     .get(prev_index)
-        //     .unwrap();
-        // let prev_ema_13 = instrument
-        //     .indicators
-        //     .ema_c
-        //     .get_data_a()
-        //     .get(prev_index)
-        //     .unwrap();
-
-        // let exit_condition =
-        //     anchor_htf || (ema_b < ema_13 && ema_c < ema_13 && prev_ema_b > prev_ema_13);
-        // match exit_condition {
-        //     true => Position::MarketOut(None),
-        //     false => Position::None,
-        // };
         Position::None
     }
 
@@ -268,64 +222,55 @@ impl<'a> Strategy for EmaScalping2<'a> {
         pricing: &Pricing,
     ) -> Position {
         let close_price = &instrument.data.get(index).unwrap().close();
-        let spread = 0.;
-
-        let anchor_htf = time_frame::get_htf_data(
-            index,
-            instrument,
-            htf_instrument,
-            |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_b = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
-                htf_ema_a < htf_ema_b && close_price < htf_ema_b
-            },
-        );
+        let spread = pricing.spread();
 
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
-        let candle = data.get(index).unwrap();
-        let _trigger_price = &candle.low();
-        let _low_price = &candle.low();
-        let _prev_close_price = &data.get(prev_index).unwrap().close();
+        let candle = &data.get(index).unwrap();
+        let prev_candle = &data.get(prev_index).unwrap();
+        let trigger_price = &candle.high();
+        let close_price = &candle.close();
+        let prev_close_price = &prev_candle.close();
+        let ema_a = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
+        let ema_b = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
+        let ema_c = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
 
-        let ema_b = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
-        let ema_c = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
-        let ema_13 = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
-        let prev_ema_b = instrument
+        let prev_ema_a = instrument
             .indicators
             .ema_a
             .get_data_a()
             .get(prev_index)
             .unwrap();
-        let _prev_ema_8 = instrument
+
+        let prev_ema_b = instrument
             .indicators
             .ema_b
             .get_data_a()
             .get(prev_index)
             .unwrap();
-        let prev_ema_13 = instrument
+
+        let prev_ema_c = instrument
             .indicators
             .ema_c
             .get_data_a()
             .get(prev_index)
             .unwrap();
 
-        let entry_condition =
-            anchor_htf && (ema_b < ema_13 && ema_c < ema_13 && prev_ema_b > prev_ema_13);
-
-        let pips_margin = 5.;
+        let entry_condition = trigger_price > ema_a && close_price < ema_c;
+        let pips_margin = 3.;
+        let pips_profit = 5.;
         let previous_bars = 5;
 
-        let highest_bar = data[index - previous_bars..index + 1]
+        let lowest_bar = data[index - previous_bars..index + 1]
             .iter()
-            .max_by(|x, y| x.high().partial_cmp(&y.high()).unwrap())
-            .map(|x| x.high())
+            .min_by(|x, y| x.low().partial_cmp(&y.low()).unwrap())
+            .map(|x| x.low())
             .unwrap();
 
-        let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
-        let stop_loss_price = highest_bar + calc::to_pips(pips_margin, pricing);
+        let buy_price = lowest_bar - calc::to_pips(pips_margin, pricing);
+        let stop_loss_price = trigger_price + calc::to_pips(pips_margin, pricing);
         let risk = stop_loss_price + spread - buy_price;
-        let sell_price = buy_price - (risk * self.risk_reward_ratio);
+        let sell_price = buy_price - calc::to_pips(pips_profit, pricing);
 
         match entry_condition {
             true => Position::Order(vec![
