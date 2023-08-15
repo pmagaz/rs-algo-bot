@@ -115,8 +115,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
                 let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
 
-                let high_price = &instrument.data().get(index).unwrap().high();
-                let low_price = &instrument.data().get(index).unwrap().low();
+                let high_price = &htf_inst.data().get(idx).unwrap().high();
+                let low_price = &htf_inst.data().get(idx).unwrap().low();
 
                 let is_long = htf_ema_a > htf_ema_c && low_price > htf_ema_c;
                 let is_short = htf_ema_a < htf_ema_c && high_price < htf_ema_c;
