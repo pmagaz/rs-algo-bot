@@ -142,7 +142,7 @@ impl<'a> Strategy for EmaScalping2<'a> {
         pricing: &Pricing,
     ) -> Position {
         let close_price = &instrument.data.get(index).unwrap().close();
-        let spread = pricing.spread();
+        let spread = 0.; //pricing.spread();
 
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
