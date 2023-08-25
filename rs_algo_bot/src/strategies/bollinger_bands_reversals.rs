@@ -113,17 +113,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             |(idx, _prev_idx, htf_inst)| {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
 
-                let high_price = &htf_inst.data().get(idx).unwrap().high();
-                let low_price = &htf_inst.data().get(idx).unwrap().low();
+                let is_long = htf_ema_a > htf_ema_b;
+                let is_short = htf_ema_a < htf_ema_b;
 
-                let is_long = htf_ema_a > htf_ema_c && low_price > htf_ema_c;
-                let is_short = htf_ema_a < htf_ema_c && high_price < htf_ema_c;
-
-                if is_long {
+                if is_long && !is_short {
                     TradeDirection::Long
-                } else if is_short {
+                } else if is_short && !is_long {
                     TradeDirection::Short
                 } else {
                     TradeDirection::None
@@ -204,18 +200,18 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let num_ridding_bars = 3;
-        let mut ridding_bars = 0;
-        let previous_bars = num_ridding_bars;
-        for candle in data[index - previous_bars..index].iter() {
-            if candle.close() > *top_band {
-                ridding_bars += 1;
-            }
-        }
+        // let num_ridding_bars = 3;
+        // let mut ridding_bars = 0;
+        // let previous_bars = num_ridding_bars;
+        // for candle in data[index - previous_bars..index].iter() {
+        //     if candle.close() > *top_band {
+        //         ridding_bars += 1;
+        //     }
+        // }
 
         let exit_condition = self.trading_direction == TradeDirection::Short
             || (is_closed
-                && ridding_bars < num_ridding_bars
+                //&& ridding_bars < num_ridding_bars
                 && close_price < top_band
                 && (prev_high > prev_top_band));
 
@@ -295,18 +291,18 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let num_ridding_bars = 3;
-        let mut ridding_bars = 0;
-        let previous_bars = num_ridding_bars;
+        // let num_ridding_bars = 3;
+        // let mut ridding_bars = 0;
+        // let previous_bars = num_ridding_bars;
 
-        for candle in data[index - previous_bars..index].iter() {
-            if candle.close() < *low_band {
-                ridding_bars += 1;
-            }
-        }
+        // for candle in data[index - previous_bars..index].iter() {
+        //     if candle.close() < *low_band {
+        //         ridding_bars += 1;
+        //     }
+        // }
         let exit_condition = self.trading_direction == TradeDirection::Long
             || (is_closed
-                && ridding_bars < num_ridding_bars
+               // && ridding_bars < num_ridding_bars
                 && close_price < low_band
                 && (prev_close >= prev_low_band));
 
