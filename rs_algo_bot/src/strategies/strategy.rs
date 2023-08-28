@@ -558,6 +558,15 @@ pub fn set_strategy(
             )
             .unwrap(),
         ),
+        Box::new(
+            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+                Some("Bollinger_Bands_Reversals_cryp"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
         // Box::new(
         //     strategies::ema_scalping::EmaScalping::new(
         //         Some(time_frame),
