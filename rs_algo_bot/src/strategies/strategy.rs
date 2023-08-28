@@ -21,6 +21,7 @@ use std::env;
 #[async_trait(?Send)]
 pub trait Strategy: DynClone {
     fn new(
+        name: Option<&'static str>,
         time_frame: Option<&str>,
         higher_time_frame: Option<&str>,
         strategy_type: Option<StrategyType>,
@@ -541,6 +542,7 @@ pub fn set_strategy(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
             strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+                Some("Bollinger_Bands_Reversals"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -549,28 +551,31 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::bollinger_bands_middle_band::BollingerBandsMiddleBand::new(
-                Some(time_frame),
+                Some("Bollinger_Bands_Reversals_hl"),
+                None,
                 higher_time_frame,
                 Some(strategy_type.clone()),
             )
             .unwrap(),
         ),
-        Box::new(
-            strategies::ema_scalping::EmaScalping::new(
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::ema_scalping2::EmaScalping2::new(
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
+        // Box::new(
+        //     strategies::ema_scalping::EmaScalping::new(
+        //         Some(time_frame),
+        //         None,
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
+        // Box::new(
+        //     strategies::ema_scalping2::EmaScalping2::new(
+        //         Some(time_frame),
+        //         None,
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
     ];
 
     let mut strategy = strategies[0].clone();

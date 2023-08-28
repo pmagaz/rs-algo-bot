@@ -26,6 +26,7 @@ pub struct EmaScalping<'a> {
 
 impl<'a> Strategy for EmaScalping<'a> {
     fn new(
+        name: Option<&str>,
         time_frame: Option<&str>,
         higher_time_frame: Option<&str>,
         strategy_type: Option<StrategyType>,

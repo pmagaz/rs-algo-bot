@@ -26,6 +26,7 @@ pub struct BollingerBandsMiddleBand<'a> {
 
 impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
     fn new(
+        name: Option<&'static str>,
         time_frame: Option<&str>,
         higher_time_frame: Option<&str>,
         strategy_type: Option<StrategyType>,
@@ -46,6 +47,11 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .unwrap();
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
+
+        let name = match name {
+            Some(n) => n,
+            None => "Bollinger_Bands_MiddleBand",
+        };
 
         let strategy_type = match strategy_type {
             Some(stype) => stype,
@@ -73,7 +79,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let trading_direction = TradeDirection::Long;
 
         Ok(Self {
-            name: "Bollinger_Bands_MiddleBand",
+            name,
             time_frame,
             higher_time_frame,
             order_size,
