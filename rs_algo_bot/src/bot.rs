@@ -248,8 +248,12 @@ impl Bot {
             .collect();
     }
 
-    pub async fn send_position<T>(&mut self, trade: &T, symbol: String, time_frame: TimeFrameType)
-    where
+    pub async fn execute_position<T>(
+        &mut self,
+        trade: &T,
+        symbol: String,
+        time_frame: TimeFrameType,
+    ) where
         for<'de> T: Serialize + Deserialize<'de>,
     {
         let execute_trade = Command {
@@ -270,6 +274,23 @@ impl Bot {
             .send(&serde_json::to_string(&execute_trade).unwrap())
             .await
             .unwrap();
+    }
+
+    pub async fn send_trade_position<T: Trade>(
+        &mut self,
+        orders_position_result: &PositionResult,
+        trade_in: &T,
+        order: &Order,
+    ) {
+        self.execute_position::<PositionResult>(
+            &orders_position_result,
+            self.symbol.clone(),
+            self.time_frame.clone(),
+        )
+        .await;
+
+        log::info!("FulFilling Bot Order...");
+        order::fulfill_bot_order::<T>(trade_in, &order, &mut self.orders, &self.instrument);
     }
 
     pub async fn send_bot_status(&mut self, _bot_str: &str) {
@@ -411,6 +432,17 @@ impl Bot {
                                 MessageType::PricingData(res) => {
                                     let pricing = res.payload.unwrap();
                                     self.pricing = pricing;
+                                    // let index = &self.instrument.data.len() - 1;
+                                    // let mut order_position_result = PositionResult::None;
+                                    // let pending_orders = order::get_pending(&self.orders);
+                                    // /* ORDERS */
+                                    // order_position_result = self.strategy.resolve_pending_orders(
+                                    //     index,
+                                    //     &self.instrument,
+                                    //     &self.pricing,
+                                    //     &pending_orders,
+                                    //     &self.trades_in,
+                                    // )
                                 }
                                 MessageType::InstrumentData(res) => {
                                     let payload = res.payload.unwrap();
@@ -535,20 +567,29 @@ impl Bot {
 
                                             if !open_positions {
                                                 log::info!("Sending MarketInOrder...");
-                                                self.send_position::<PositionResult>(
+
+                                                self.send_trade_position::<TradeIn>(
                                                     &orders_position_result,
-                                                    self.symbol.clone(),
-                                                    self.time_frame.clone(),
+                                                    &trade_in,
+                                                    order,
                                                 )
                                                 .await;
-
-                                                order::fulfill_bot_order::<TradeIn>(
-                                                    trade_in,
-                                                    order,
-                                                    &mut self.orders,
-                                                    &self.instrument,
-                                                );
                                             }
+                                            //     log::info!("Sending MarketInOrder...");
+                                            //     self.execute_position::<PositionResult>(
+                                            //         &orders_position_result,
+                                            //         self.symbol.clone(),
+                                            //         self.time_frame.clone(),
+                                            //     )
+                                            //     .await;
+
+                                            //     order::fulfill_bot_order::<TradeIn>(
+                                            //         trade_in,
+                                            //         order,
+                                            //         &mut self.orders,
+                                            //         &self.instrument,
+                                            //     );
+                                            // }
                                         }
                                         PositionResult::MarketOutOrder(
                                             TradeResult::TradeOut(trade_out),
@@ -558,22 +599,30 @@ impl Bot {
                                                 "Order Result MarketOutOrder. Open positions: {}",
                                                 open_positions
                                             );
+
                                             if open_positions {
                                                 log::info!("Sending MarketOutOrder...");
 
-                                                self.send_position::<PositionResult>(
+                                                self.send_trade_position::<TradeOut>(
                                                     &orders_position_result,
-                                                    self.symbol.clone(),
-                                                    self.time_frame.clone(),
+                                                    &trade_out,
+                                                    order,
                                                 )
                                                 .await;
 
-                                                order::fulfill_bot_order::<TradeOut>(
-                                                    trade_out,
-                                                    order,
-                                                    &mut self.orders,
-                                                    &self.instrument,
-                                                );
+                                                // self.execute_position::<PositionResult>(
+                                                //     &orders_position_result,
+                                                //     self.symbol.clone(),
+                                                //     self.time_frame.clone(),
+                                                // )
+                                                // .await;
+
+                                                // order::fulfill_bot_order::<TradeOut>(
+                                                //     trade_out,
+                                                //     order,
+                                                //     &mut self.orders,
+                                                //     &self.instrument,
+                                                // );
                                             }
                                         }
                                         _ => (),
@@ -591,7 +640,7 @@ impl Bot {
 
                                             if !open_positions {
                                                 log::info!("Sending TradeIn...");
-                                                self.send_position::<PositionResult>(
+                                                self.execute_position::<PositionResult>(
                                                     &position_result,
                                                     self.symbol.clone(),
                                                     self.time_frame.clone(),
@@ -617,7 +666,7 @@ impl Bot {
 
                                             if open_positions {
                                                 log::info!("Sending TradeOut...");
-                                                self.send_position::<PositionResult>(
+                                                self.execute_position::<PositionResult>(
                                                     &position_result,
                                                     self.symbol.clone(),
                                                     self.time_frame.clone(),
