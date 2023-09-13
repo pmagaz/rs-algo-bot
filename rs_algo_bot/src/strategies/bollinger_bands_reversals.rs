@@ -167,7 +167,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let pips_margin = 0.2;
+        let pips_margin = 0.1;
 
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
@@ -242,7 +242,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let prev_high = &prev_candle.high();
 
-        let pips_margin = 0.2;
+        let pips_margin = 0.1;
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
         let mid_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
 
