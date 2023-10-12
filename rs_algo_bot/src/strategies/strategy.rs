@@ -569,7 +569,7 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("Bollinger_Bands_Reversals_cryp"),
+                Some("Num_Bars_3"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
