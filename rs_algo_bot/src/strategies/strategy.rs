@@ -98,8 +98,12 @@ pub trait Strategy: DynClone {
         let index = &instrument.data.len() - 1;
         let mut position_result = PositionResult::None;
         let mut order_position_result = PositionResult::None;
+        let trading_direction = env::var("TRADING_DIRECTION")
+            .unwrap()
+            .parse::<bool>()
+            .unwrap();
         let pending_orders = order::get_pending(orders);
-        let trading_direction = &self
+        let trade_direction = &self
             .trading_direction(index, instrument, htf_instrument)
             .clone();
 
@@ -125,7 +129,7 @@ pub trait Strategy: DynClone {
                 pricing,
                 orders,
                 trades_out,
-                trading_direction,
+                trade_direction,
             );
         }
 
@@ -140,7 +144,7 @@ pub trait Strategy: DynClone {
         pricing: &Pricing,
         orders: &Vec<Order>,
         trades_out: &Vec<TradeOut>,
-        trading_direction: &TradeDirection,
+        trade_direction: &TradeDirection,
     ) -> PositionResult {
         let pending_orders = order::get_pending(orders);
         let trade_size = env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
@@ -150,10 +154,15 @@ pub trait Strategy: DynClone {
             .parse::<bool>()
             .unwrap();
 
+        let trading_direction = env::var("TRADING_DIRECTION")
+            .unwrap()
+            .parse::<bool>()
+            .unwrap();
+
         let wait_for_opening_trade = self.wait_for_opening_trade(index, instrument, trades_out);
 
         match wait_for_opening_trade {
-            true => match trading_direction.is_long() {
+            true => match trade_direction.is_long() || !trading_direction {
                 true => match self.is_long_strategy() {
                     true => match self.entry_long(index, instrument, htf_instrument, pricing) {
                         Position::MarketIn(order_types) => {
