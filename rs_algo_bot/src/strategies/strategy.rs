@@ -98,10 +98,6 @@ pub trait Strategy: DynClone {
         let index = &instrument.data.len() - 1;
         let mut position_result = PositionResult::None;
         let mut order_position_result = PositionResult::None;
-        let trading_direction = env::var("TRADING_DIRECTION")
-            .unwrap()
-            .parse::<bool>()
-            .unwrap();
         let pending_orders = order::get_pending(orders);
         let trade_direction = &self
             .trading_direction(index, instrument, htf_instrument)
@@ -159,10 +155,10 @@ pub trait Strategy: DynClone {
             .parse::<bool>()
             .unwrap();
 
-        let wait_for_opening_trade = self.wait_for_opening_trade(index, instrument, trades_out);
+        let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
 
-        match wait_for_opening_trade {
-            true => match trade_direction.is_long() || !trading_direction {
+        match wait_for_new_trade {
+            false => match trade_direction.is_long() || !trading_direction {
                 true => match self.is_long_strategy() {
                     true => match self.entry_long(index, instrument, htf_instrument, pricing) {
                         Position::MarketIn(order_types) => {
@@ -285,7 +281,7 @@ pub trait Strategy: DynClone {
                 },
                 false => PositionResult::None,
             },
-            false => PositionResult::None,
+            true => PositionResult::None,
         }
     }
 
@@ -297,7 +293,7 @@ pub trait Strategy: DynClone {
         pricing: &Pricing,
         trade_in: &TradeIn,
     ) -> PositionResult {
-        let wait_for_closing_trade = self.wait_for_closing_trade(index, instrument, trade_in);
+        let wait_for_closing_trade = trade::wait_for_closing_trade(index, instrument, trade_in);
 
         match wait_for_closing_trade {
             true => match trade_in.trade_type.is_long_entry() {
@@ -440,106 +436,6 @@ pub trait Strategy: DynClone {
     ) -> TradeOut {
         calculate_trade_stats(trade_in, trade_out, data, pricing)
     }
-
-    fn wait_for_opening_trade(
-        &self,
-        index: usize,
-        instrument: &Instrument,
-        trades_out: &Vec<TradeOut>,
-    ) -> bool {
-        let wait_for_new_entry = env::var("WAIT_FOR_NEW_ENTRY")
-            .unwrap()
-            .parse::<bool>()
-            .unwrap();
-
-        match wait_for_new_entry {
-            true => {
-                let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
-
-                let candles_until_new_operation = env::var("CANDLES_UNTIL_NEW_ENTRY")
-                    .unwrap()
-                    .parse::<i64>()
-                    .unwrap();
-
-                let time_frame = instrument.time_frame();
-
-                let current_date = match execution_mode.is_back_test() {
-                    true => instrument.data().get(index).unwrap().date(),
-                    false => Local::now(),
-                };
-
-                match trades_out.last() {
-                    Some(trade_out) => {
-                        let next_entry_date = match instrument.time_frame().is_minutely_time_frame()
-                        {
-                            true => {
-                                date::from_dbtime(&trade_out.date_out)
-                                    + date::Duration::minutes(
-                                        candles_until_new_operation * time_frame.to_minutes(),
-                                    )
-                            }
-                            false => {
-                                date::from_dbtime(&trade_out.date_out)
-                                    + date::Duration::hours(
-                                        candles_until_new_operation * time_frame.to_hours(),
-                                    )
-                            }
-                        };
-                        next_entry_date <= current_date
-                    }
-                    None => true,
-                }
-            }
-            false => true,
-        }
-    }
-
-    fn wait_for_closing_trade(
-        &self,
-        index: usize,
-        instrument: &Instrument,
-        trade_in: &TradeIn,
-    ) -> bool {
-        let wait_for_new_exit = env::var("WAIT_FOR_NEW_EXIT")
-            .unwrap()
-            .parse::<bool>()
-            .unwrap();
-
-        match wait_for_new_exit {
-            true => {
-                let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
-
-                let candles_until_new_operation = env::var("CANDLES_UNTIL_NEW_ENTRY")
-                    .unwrap()
-                    .parse::<i64>()
-                    .unwrap();
-
-                let time_frame = instrument.time_frame();
-
-                let current_date = match execution_mode.is_back_test() {
-                    true => instrument.data().get(index).unwrap().date(),
-                    false => Local::now(),
-                };
-
-                let next_entry_date = match instrument.time_frame().is_minutely_time_frame() {
-                    true => {
-                        date::from_dbtime(&trade_in.date_in)
-                            + date::Duration::minutes(
-                                candles_until_new_operation * time_frame.to_minutes(),
-                            )
-                    }
-                    false => {
-                        date::from_dbtime(&trade_in.date_in)
-                            + date::Duration::hours(
-                                candles_until_new_operation * time_frame.to_hours(),
-                            )
-                    }
-                };
-                next_entry_date <= current_date
-            }
-            false => true,
-        }
-    }
 }
 
 pub fn set_strategy(
@@ -558,42 +454,42 @@ pub fn set_strategy(
             )
             .unwrap(),
         ),
-        Box::new(
-            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("Bollinger_Bands_Reversals"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_middle_band::BollingerBandsMiddleBand::new(
-                Some("Bollinger_Bands_Reversals_hl"),
-                None,
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("Num_Bars_3"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("Bollinger_Bands_Reversals_atr1"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
+        // Box::new(
+        //     strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+        //         Some("Bollinger_Bands_Reversals"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
+        // Box::new(
+        //     strategies::bollinger_bands_middle_band::BollingerBandsMiddleBand::new(
+        //         Some("Bollinger_Bands_Reversals_hl"),
+        //         None,
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
+        // Box::new(
+        //     strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+        //         Some("Num_Bars_3"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
+        // Box::new(
+        //     strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+        //         Some("Bollinger_Bands_Reversals_atr1"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
         // Box::new(
         //     strategies::ema_scalping::EmaScalping::new(
         //         Some(time_frame),

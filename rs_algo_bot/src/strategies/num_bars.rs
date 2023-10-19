@@ -160,6 +160,12 @@ impl<'a> Strategy for NumBars<'a> {
         let buy_price = candle.high() + calc::to_pips(pips_margin, pricing);
         let sell_price = buy_price + pricing.spread() + calc::to_pips(pips_profit, pricing);
 
+        log::info!("1111 {:?}", (is_closed, candle.candle_type(), candle.date()));
+
+        if entry_condition {
+            log::info!("Entry Long {:?}", candle.candle_type());
+        }
+
         match entry_condition {
             true => Position::MarketIn(Some(vec![
                 OrderType::SellOrderLong(OrderDirection::Up, self.order_size, sell_price),
@@ -208,6 +214,12 @@ impl<'a> Strategy for NumBars<'a> {
         let entry_condition = candle.candle_type() == &CandleType::ThreeInRow && is_closed;
         let buy_price = candle.low() - calc::to_pips(pips_margin, pricing);
         let sell_price = buy_price - pricing.spread() - calc::to_pips(pips_profit, pricing);
+
+        log::info!("3333333 {:?}", (is_closed, candle.candle_type(), candle.date()));
+
+        if entry_condition {
+            log::info!("Entry Short {:?}", candle.candle_type());
+        }
 
         match entry_condition {
             true => Position::MarketIn(Some(vec![
