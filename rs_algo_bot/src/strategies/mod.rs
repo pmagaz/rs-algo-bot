@@ -7,5 +7,6 @@ pub mod bollinger_bands_reversals;
 pub mod ema_scalping;
 pub mod ema_scalping2;
 pub mod num_bars;
+pub mod num_bars_atr;
 pub mod stats;
 pub mod strategy;

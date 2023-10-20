@@ -145,20 +145,20 @@ impl<'a> Strategy for NumBars<'a> {
         _htf_instrument: &HTFInstrument,
         pricing: &Pricing,
     ) -> Position {
+
+        let data = &instrument.data();
+        let candle = data.get(index).unwrap();
+        let is_closed: bool = candle.is_closed();
         
         let pips_profit = std::env::var("PIPS_PROFIT_TARGET")
             .unwrap()
             .parse::<f64>()
             .unwrap();
-        
         let pips_stop_loss = std::env::var("PIPS_STOP_LOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
-        
-        let data = &instrument.data();
-        let candle = data.get(index).unwrap();
-        let is_closed: bool = candle.is_closed();
+
 
         let buy_price = candle.close() + pricing.spread();
         let sell_price = buy_price + calc::to_pips(pips_profit, pricing);
@@ -196,20 +196,19 @@ impl<'a> Strategy for NumBars<'a> {
         _htf_instrument: &HTFInstrument,
         pricing: &Pricing,
     ) -> Position {
+
+        let data = &instrument.data();
+        let candle = data.get(index).unwrap();
+        let is_closed: bool = candle.is_closed();
         
         let pips_profit = std::env::var("PIPS_PROFIT_TARGET")
             .unwrap()
             .parse::<f64>()
             .unwrap();
-        
         let pips_stop_loss = std::env::var("PIPS_STOP_LOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
-
-        let data = &instrument.data();
-        let candle = data.get(index).unwrap();
-        let is_closed: bool = candle.is_closed();
 
         let buy_price = candle.close() - pricing.spread();
         let sell_price = buy_price - calc::to_pips(pips_profit, pricing);
