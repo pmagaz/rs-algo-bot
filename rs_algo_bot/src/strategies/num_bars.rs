@@ -120,8 +120,6 @@ impl<'a> Strategy for NumBars<'a> {
             |(idx, _prev_idx, htf_inst)| {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-                let high_price = &htf_inst.data().get(idx).unwrap().high();
-                let low_price = &htf_inst.data().get(idx).unwrap().low();
 
                 let is_long = htf_ema_a > htf_ema_b;
                 let is_short = htf_ema_a < htf_ema_b;

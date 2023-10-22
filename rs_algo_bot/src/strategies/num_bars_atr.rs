@@ -107,7 +107,7 @@ impl<'a> Strategy for NumBars<'a> {
         &self.higher_time_frame
     }
 
-  fn trading_direction(
+    fn trading_direction(
         &mut self,
         index: usize,
         instrument: &Instrument,
@@ -120,8 +120,6 @@ impl<'a> Strategy for NumBars<'a> {
             |(idx, _prev_idx, htf_inst)| {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-                let high_price = &htf_inst.data().get(idx).unwrap().high();
-                let low_price = &htf_inst.data().get(idx).unwrap().low();
 
                 let is_long = htf_ema_a > htf_ema_b;
                 let is_short = htf_ema_a < htf_ema_b;
@@ -145,29 +143,30 @@ impl<'a> Strategy for NumBars<'a> {
         _htf_instrument: &HTFInstrument,
         pricing: &Pricing,
     ) -> Position {
+        let atr_stop_value = std::env::var("ATR_STOP_LOSS")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+
+        let atr_profit_value = std::env::var("ATR_PROFIT_TARGET")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
 
         let data = &instrument.data();
         let candle = data.get(index).unwrap();
         let is_closed: bool = candle.is_closed();
-        
-        let pips_profit = std::env::var("PIPS_PROFIT_TARGET")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
-        let pips_stop_loss = std::env::var("PIPS_STOP_LOSS")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
-
 
         let buy_price = candle.close() + pricing.spread();
-        let sell_price = buy_price + calc::to_pips(pips_profit, pricing);
+        let sell_price = buy_price + (atr_profit_value * atr_value);
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
 
         match entry_condition {
             true => Position::MarketIn(Some(vec![
                 OrderType::SellOrderLong(OrderDirection::Up, self.order_size, sell_price),
-                OrderType::StopLossLong(OrderDirection::Down, StopLossType::Pips(pips_stop_loss)),
+                OrderType::StopLossLong(OrderDirection::Down, StopLossType::Atr(atr_stop_value)),
             ])),
             false => Position::None,
         }
@@ -196,28 +195,30 @@ impl<'a> Strategy for NumBars<'a> {
         _htf_instrument: &HTFInstrument,
         pricing: &Pricing,
     ) -> Position {
+        let atr_stop_value = std::env::var("ATR_STOP_LOSS")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
 
-        let data = &instrument.data();
+        let atr_profit_value = std::env::var("ATR_PROFIT_TARGET")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+
+        let data = instrument.data();
         let candle = data.get(index).unwrap();
         let is_closed: bool = candle.is_closed();
-        
-        let pips_profit = std::env::var("PIPS_PROFIT_TARGET")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
-        let pips_stop_loss = std::env::var("PIPS_STOP_LOSS")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
 
         let buy_price = candle.close() - pricing.spread();
-        let sell_price = buy_price - calc::to_pips(pips_profit, pricing);
+        let sell_price = buy_price - (atr_profit_value * atr_value);
         let entry_condition = candle.candle_type() == &CandleType::ThreeInRow && is_closed;
 
         match entry_condition {
             true => Position::MarketIn(Some(vec![
                 OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
-                OrderType::StopLossShort(OrderDirection::Up, StopLossType::Pips(pips_stop_loss)),
+                OrderType::StopLossLong(OrderDirection::Up, StopLossType::Atr(atr_stop_value)),
             ])),
             false => Position::None,
         }
