@@ -1,6 +1,6 @@
 use rs_algo_shared::helpers::calc::*;
-use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::trade::*;
 
 use rs_algo_shared::scanner::candle::Candle;
@@ -10,7 +10,7 @@ pub fn calculate_trade_stats(
     trade_in: &TradeIn,
     trade_out: &TradeOut,
     data: &Vec<Candle>,
-    _pricing: &Pricing,
+    _tick: &InstrumentTick,
 ) -> TradeOut {
     let trade_type = &trade_in.trade_type;
     // let (price_in, price_out) = match trade_type.is_long() {

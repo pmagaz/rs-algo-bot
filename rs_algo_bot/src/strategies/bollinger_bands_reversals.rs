@@ -4,9 +4,9 @@ use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::order::{OrderDirection, OrderType};
-use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
+use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame;
 use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
 use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn};
@@ -140,7 +140,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let atr_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -175,7 +175,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && high_price < mid_band
             && (prev_close >= prev_low_band);
 
-        let buy_price = candle.close() + calc::to_pips(pips_margin, pricing);
+        let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
@@ -193,7 +193,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
@@ -225,7 +225,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let atr_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -259,7 +259,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && low_price > mid_band
             && (prev_high >= prev_top_band);
 
-        let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
+        let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
@@ -277,7 +277,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();

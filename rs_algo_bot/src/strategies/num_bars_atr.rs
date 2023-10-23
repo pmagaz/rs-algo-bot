@@ -4,9 +4,9 @@ use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::order::{OrderDirection, OrderType};
-use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
+use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame;
 use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
 use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn};
@@ -141,7 +141,7 @@ impl<'a> Strategy for NumBars<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let atr_stop_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -159,7 +159,7 @@ impl<'a> Strategy for NumBars<'a> {
         let candle = data.get(index).unwrap();
         let is_closed: bool = candle.is_closed();
 
-        let buy_price = candle.close() + pricing.spread();
+        let buy_price = candle.close() + tick.spread();
         let sell_price = buy_price + (atr_profit_value * atr_value);
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
 
@@ -178,7 +178,7 @@ impl<'a> Strategy for NumBars<'a> {
         _instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         let exit_condition = self.trading_direction == TradeDirection::Short;
 
@@ -193,7 +193,7 @@ impl<'a> Strategy for NumBars<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let atr_stop_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -211,7 +211,7 @@ impl<'a> Strategy for NumBars<'a> {
         let candle = data.get(index).unwrap();
         let is_closed: bool = candle.is_closed();
 
-        let buy_price = candle.close() - pricing.spread();
+        let buy_price = candle.close() - tick.spread();
         let sell_price = buy_price - (atr_profit_value * atr_value);
         let entry_condition = candle.candle_type() == &CandleType::ThreeInRow && is_closed;
 
@@ -230,7 +230,7 @@ impl<'a> Strategy for NumBars<'a> {
         _instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         let exit_condition = self.trading_direction == TradeDirection::Long;
 

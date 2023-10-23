@@ -39,30 +39,34 @@ where
                 .unwrap();
             broker_stream.subscribe_stream(&symbol).await.unwrap();
             broker_stream.subscribe_tick_prices(&symbol).await.unwrap();
-
+            let mut msg_sent: String = "".to_owned();
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
             loop {
                 tokio::select! {
-                stream = broker_stream.get_stream().await.next() => {
-                        match stream {
+                stream= broker_stream.get_stream().await.next() => {
+                        match stream{
                             Some(data) => {
                                  match data {
                                     Ok(msg) => {
                                    if msg.is_text() {
                                            let txt = BK::parse_stream_data(msg).await;
                                            match txt {
-                                               Some(txt) =>  match message::send(&session, Message::Text(txt)).await{
-                                                    Err(_) => {
-                                                        log::error!("Can't send stream data to {:?}", session.bot_name());
-                                                        tx.send(()).await.unwrap();
+                                               Some(txt) =>  {
+                                                    if &msg_sent != &txt {
+                                                    match message::send(&session, Message::Text(txt.clone())).await{
+                                                        Ok(_) => msg_sent = txt,
+                                                        Err(_) => {
+                                                            log::error!("Can't send stream data to {:?}", session.bot_name());
+                                                            tx.send(()).await.unwrap();
+                                                        }
                                                     }
-                                                    _ => (),
                                                 }
+                                            }
                                                None => ()
                                           };
 
                                     } else if msg.is_close() {
-                                        log::warn!("Stream closed by broker");
+                                        log::error!("Stream closed by broker");
                                         message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
                                         tx.send(()).await.unwrap();
                                     }

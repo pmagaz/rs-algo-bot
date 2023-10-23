@@ -155,15 +155,15 @@ where
                         Err(_) => None,
                     }
                 }
-                CommandType::GetInstrumentPricing => {
+                CommandType::GetInstrumentTick => {
                     let res = broker
                         .lock()
                         .await
-                        .get_instrument_pricing(symbol)
+                        .get_instrument_tick(symbol)
                         .await
                         .unwrap();
 
-                    log::info!("Requesting {} pricing data", symbol);
+                    log::info!("Requesting {} tick data", symbol);
 
                     Some(serde_json::to_string(&res).unwrap())
                 }

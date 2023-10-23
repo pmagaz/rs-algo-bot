@@ -8,15 +8,15 @@ use crate::message;
 use crate::strategies::strategy::*;
 
 use futures::Future;
-use rs_algo_shared::helpers::date::Local;
+use rs_algo_shared::helpers::date::{self, Local};
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::order::{Order, OrderStatus};
-use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::models::{market::*, order};
@@ -37,7 +37,7 @@ pub struct Bot {
     symbol: String,
     market: Market,
     #[serde(skip_serializing)]
-    pricing: Pricing,
+    tick: InstrumentTick,
     strategy_name: String,
     strategy_type: StrategyType,
     time_frame: TimeFrameType,
@@ -161,16 +161,16 @@ impl Bot {
         }
     }
 
-    pub async fn get_pricing_data(&mut self) {
-        let instrument_pricing_data = Command {
-            command: CommandType::GetInstrumentPricing,
+    pub async fn get_tick_data(&mut self) {
+        let instrument_tick_data = Command {
+            command: CommandType::GetInstrumentTick,
             data: Some(Symbol {
                 symbol: self.symbol.to_owned(),
             }),
         };
 
         self.websocket
-            .send(&serde_json::to_string(&instrument_pricing_data).unwrap())
+            .send(&serde_json::to_string(&instrument_tick_data).unwrap())
             .await
             .unwrap();
     }
@@ -178,7 +178,7 @@ impl Bot {
     pub async fn is_market_open(&mut self) {
         log::info!("Checking {} market is open...", &self.symbol,);
 
-        let instrument_pricing_data = Command {
+        let instrument_tick_data = Command {
             command: CommandType::GetMarketHours,
             data: Some(Symbol {
                 symbol: self.symbol.to_owned(),
@@ -186,7 +186,7 @@ impl Bot {
         };
 
         self.websocket
-            .send(&serde_json::to_string(&instrument_pricing_data).unwrap())
+            .send(&serde_json::to_string(&instrument_tick_data).unwrap())
             .await
             .unwrap();
     }
@@ -410,7 +410,7 @@ impl Bot {
                                         true => {
                                             log::info!("{} market open: {}", self.symbol, open);
                                             self.get_instrument_data().await;
-                                            self.get_pricing_data().await;
+                                            self.get_tick_data().await;
                                         }
                                         false => {
                                             let secs_to_retry = env::var("MARKET_CLOSED_RETRY")
@@ -429,20 +429,9 @@ impl Bot {
                                         }
                                     }
                                 }
-                                MessageType::PricingData(res) => {
-                                    let pricing = res.payload.unwrap();
-                                    self.pricing = pricing;
-                                    // let index = &self.instrument.data.len() - 1;
-                                    // let mut order_position_result = PositionResult::None;
-                                    // let pending_orders = order::get_pending(&self.orders);
-                                    // /* ORDERS */
-                                    // order_position_result = self.strategy.resolve_pending_orders(
-                                    //     index,
-                                    //     &self.instrument,
-                                    //     &self.pricing,
-                                    //     &pending_orders,
-                                    //     &self.trades_in,
-                                    // )
+                                MessageType::InstrumentTick(res) => {
+                                    let tick = res.payload.unwrap();
+                                    self.tick = tick;
                                 }
                                 MessageType::InstrumentData(res) => {
                                     let payload = res.payload.unwrap();
@@ -500,7 +489,6 @@ impl Bot {
                                     let new_candle = self.instrument.next(data).unwrap();
                                     let mut higher_candle: Candle = new_candle.clone();
 
-                                    log::info!("000000 {:?}", (data, new_candle.date()));
                                     if is_mtf_strategy(&self.strategy_type) {
                                         match self.htf_instrument {
                                             HTFInstrument::HTFInstrument(
@@ -514,13 +502,13 @@ impl Bot {
 
                                     let (position_result, orders_position_result) = self
                                         .strategy
-                                        .tick(
+                                        .next(
                                             &self.instrument,
                                             &self.htf_instrument,
                                             &self.trades_in,
                                             &self.trades_out,
                                             &self.orders,
-                                            &self.pricing,
+                                            &self.tick,
                                         )
                                         .await;
 
@@ -532,8 +520,6 @@ impl Bot {
                                         }
                                         false => (),
                                     };
-
-                                    
 
                                     if higher_candle.is_closed()
                                         && is_mtf_strategy(&self.strategy_type)
@@ -698,18 +684,46 @@ impl Bot {
 
                                     self.send_bot_status(&bot_str).await;
                                 }
-                                MessageType::StreamPricingResponse(res) => {
-                                    let current_pip_size = self.pricing.pip_size();
-                                    let current_percentage = self.pricing.percentage();
-                                    let pricing = res.payload.unwrap();
-                                    self.pricing = Pricing::new(
-                                        pricing.symbol(),
-                                        pricing.ask(),
-                                        pricing.bid(),
-                                        pricing.spread(),
-                                        current_pip_size,
-                                        current_percentage,
-                                    );
+                                MessageType::StreamTickResponse(res) => {
+                                    let current_pip_size = self.tick.pip_size();
+                                    let tick = res.payload.unwrap();
+                                    let bid = tick.bid();
+                                    if let Some(current_candle) = self.instrument.data.last_mut() {
+                                        // log::info!(
+                                        //     "1111 {:?}",
+                                        //     (
+                                        //         &current_candle,
+                                        //         current_candle.date(),
+                                        //         parse_time(tick.time())
+                                        //     )
+                                        // );
+                                        // CONTINUE HERE DATA IS ASIGNED TO THE WRONG CANDLE SINCE
+                                        // IT DOESNT REALLY DETECT IF THE CANDLE IS CLOSED OR NO
+                                        // if !current_candle.is_closed() {
+                                        //     current_candle.set_close(bid);
+                                        //     if bid > current_candle.high() {
+                                        //         current_candle.set_high(bid);
+                                        //     }
+                                        //     if bid < current_candle.low() {
+                                        //         current_candle.set_low(bid);
+                                        //     }
+                                        // }
+                                    }
+
+                                    let tick = InstrumentTick::new()
+                                        .symbol(tick.symbol())
+                                        .ask(tick.ask())
+                                        .bid(tick.bid())
+                                        .high(tick.high())
+                                        .low(tick.low())
+                                        .spread(tick.spread())
+                                        .pip_size(current_pip_size)
+                                        .time(tick.time())
+                                        .build()
+                                        .unwrap();
+
+                                    self.tick = tick;
+                                    //self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::TradeInAccepted(res) => {
                                     let payload = res.payload.unwrap();
@@ -766,7 +780,7 @@ impl Bot {
                                                     self.trades_in.last().unwrap(),
                                                     &trade_response.data,
                                                     &self.instrument.data,
-                                                    &self.pricing,
+                                                    &self.tick,
                                                 );
 
                                             order::cancel_trade_pending_orders(
@@ -936,7 +950,7 @@ impl BotBuilder {
                 uuid: uuid::Uuid::new(),
                 symbol,
                 market,
-                pricing: Pricing::default(),
+                tick: InstrumentTick::default(),
                 time_frame,
                 higher_time_frame: self.higher_time_frame,
                 date_start: to_dbtime(Local::now()),
