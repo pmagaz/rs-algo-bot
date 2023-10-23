@@ -3,13 +3,13 @@ use super::strategy::*;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
-use rs_algo_shared::models::order::{Order, OrderDirection, OrderType};
+use rs_algo_shared::models::order::{OrderDirection, OrderType};
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
 use rs_algo_shared::models::tick::InstrumentTick;
+use rs_algo_shared::models::time_frame;
 use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
-use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn, TradeOut};
-use rs_algo_shared::models::{backtest_instrument::*, time_frame};
+use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn};
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
@@ -48,10 +48,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
-        let name = match name {
-            Some(n) => n,
-            None => "Bollinger_Bands_MiddleBand",
-        };
+        let name = name.unwrap_or("Bollinger_Bands_MiddleBand");
 
         let strategy_type = match strategy_type {
             Some(stype) => stype,
@@ -118,7 +115,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let _htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
                 let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
 
                 let high_price = &htf_inst.data().get(idx).unwrap().high();

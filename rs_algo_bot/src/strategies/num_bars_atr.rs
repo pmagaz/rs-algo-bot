@@ -1,7 +1,7 @@
 use super::strategy::*;
 
 use rs_algo_shared::error::Result;
-use rs_algo_shared::helpers::calc;
+
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::order::{OrderDirection, OrderType};
 use rs_algo_shared::models::stop_loss::*;
@@ -49,10 +49,7 @@ impl<'a> Strategy for NumBars<'a> {
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
-        let name = match name {
-            Some(n) => n,
-            None => "Num_Bars",
-        };
+        let name = name.unwrap_or("Num_Bars");
 
         let strategy_type = match strategy_type {
             Some(stype) => stype,

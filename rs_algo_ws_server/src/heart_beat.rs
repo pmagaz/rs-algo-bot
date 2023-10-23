@@ -52,7 +52,7 @@ pub async fn init(sessions: &mut Sessions) {
                                 log::info!("{:?} session KO while market is open.", &bot_name);
 
                                 let session_clone = session.clone();
-                                sessions_to_remove.push(addr.clone());
+                                sessions_to_remove.push(*addr);
 
                                 let future = async move {
                                     message::send_reconnect(

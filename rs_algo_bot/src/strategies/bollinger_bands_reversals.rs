@@ -48,10 +48,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
-        let name = match name {
-            Some(n) => n,
-            None => "Bollinger_Bands_Reversals",
-        };
+        let name = name.unwrap_or("Bollinger_Bands_Reversals");
 
         let strategy_type = match strategy_type {
             Some(stype) => stype,
@@ -150,7 +147,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
         let candle = data.get(index).unwrap();
-        let prev_candle = &data.get(prev_index).unwrap();
+        let _prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
         let high_price = &candle.high();
         let is_closed = candle.is_closed();

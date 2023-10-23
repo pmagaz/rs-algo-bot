@@ -1,5 +1,3 @@
-use crate::db;
-
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::models::market::MarketHours;
@@ -7,7 +5,6 @@ use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::ws::message::*;
 
-use futures::Future;
 use futures_channel::mpsc::UnboundedSender;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};

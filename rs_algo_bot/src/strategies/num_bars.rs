@@ -49,10 +49,7 @@ impl<'a> Strategy for NumBars<'a> {
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
-        let name = match name {
-            Some(n) => n,
-            None => "Num_Bars",
-        };
+        let name = name.unwrap_or("Num_Bars");
 
         let strategy_type = match strategy_type {
             Some(stype) => stype,

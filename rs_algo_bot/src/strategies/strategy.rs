@@ -112,7 +112,7 @@ pub trait Strategy: DynClone {
         if open_positions {
             let trade_in = trades_in.last().unwrap();
             position_result =
-                self.resolve_exit_position(index, instrument, htf_instrument, tick, &trade_in);
+                self.resolve_exit_position(index, instrument, htf_instrument, tick, trade_in);
         }
 
         if !open_positions && self.there_are_funds(trades_out) {

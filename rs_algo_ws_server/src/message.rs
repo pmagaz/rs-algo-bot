@@ -307,7 +307,7 @@ where
             })
             .await;
 
-            session::destroy(sessions, &addr).await;
+            session::destroy(sessions, addr).await;
             None
         }
         _ => {

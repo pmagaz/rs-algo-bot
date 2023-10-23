@@ -30,8 +30,6 @@ pub async fn find_by_uuid(client: &Client, uuid: &Uuid) -> Option<BotData> {
         .database(db_name)
         .collection::<BotData>(collection_name);
 
-    
-
     collection
         .find_one(doc! { "_id": uuid}, FindOneOptions::builder().build())
         .await

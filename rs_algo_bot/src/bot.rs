@@ -8,7 +8,7 @@ use crate::message;
 use crate::strategies::strategy::*;
 
 use futures::Future;
-use rs_algo_shared::helpers::date::{self, Local};
+use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
@@ -252,7 +252,7 @@ impl Bot {
         &mut self,
         trade: &T,
         symbol: String,
-        time_frame: TimeFrameType,
+        _time_frame: TimeFrameType,
     ) where
         for<'de> T: Serialize + Deserialize<'de>,
     {
@@ -283,14 +283,14 @@ impl Bot {
         order: &Order,
     ) {
         self.execute_position::<PositionResult>(
-            &orders_position_result,
+            orders_position_result,
             self.symbol.clone(),
             self.time_frame.clone(),
         )
         .await;
 
         log::info!("FulFilling Bot Order...");
-        order::fulfill_bot_order::<T>(trade_in, &order, &mut self.orders, &self.instrument);
+        order::fulfill_bot_order::<T>(trade_in, order, &mut self.orders, &self.instrument);
     }
 
     pub async fn send_bot_status(&mut self, _bot_str: &str) {
@@ -324,7 +324,7 @@ impl Bot {
         self.init_session().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
-        let overwrite_orders = env::var("OVERWRITE_ORDERS")
+        let _overwrite_orders = env::var("OVERWRITE_ORDERS")
             .unwrap()
             .parse::<bool>()
             .unwrap();
@@ -559,7 +559,7 @@ impl Bot {
 
                                                 self.send_trade_position::<TradeIn>(
                                                     &orders_position_result,
-                                                    &trade_in,
+                                                    trade_in,
                                                     order,
                                                 )
                                                 .await;
@@ -594,7 +594,7 @@ impl Bot {
 
                                                 self.send_trade_position::<TradeOut>(
                                                     &orders_position_result,
-                                                    &trade_out,
+                                                    trade_out,
                                                     order,
                                                 )
                                                 .await;
@@ -687,8 +687,8 @@ impl Bot {
                                 MessageType::StreamTickResponse(res) => {
                                     let current_pip_size = self.tick.pip_size();
                                     let tick = res.payload.unwrap();
-                                    let bid = tick.bid();
-                                    if let Some(current_candle) = self.instrument.data.last_mut() {
+                                    let _bid = tick.bid();
+                                    if let Some(_current_candle) = self.instrument.data.last_mut() {
                                         // log::info!(
                                         //     "1111 {:?}",
                                         //     (
