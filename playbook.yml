@@ -4,8 +4,8 @@
   roles:
     - { role: "deployment/git/roles" }
     # - { role: "deployment/mongodb-bot/roles/" }
-    - { role: "rs_algo_bot/deployment/bbmb/bbmb-bitcoin-m15/roles" }
-    - { role: "rs_algo_bot/deployment/bbmb/bbmb-ethereum-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/bbmb/bbmb-bitcoin-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/bbmb/bbmb-ethereum-m15/roles" }
     #- { role: "rs_algo_bot/deployment/bbmb/bbmb-xrp-m15/roles" }
     # bbmb
     - { role: "rs_algo_bot/deployment/bbmb/bbmb-audusd-m15/roles" }
@@ -19,7 +19,6 @@
     #- { role: "rs_algo_bot/deployment/bbmb/bbmb-chfjpy-m15/roles" }
     # bbrev
     - { role: "rs_algo_bot/deployment/bbrev/bbrev-audusd-m15/roles" }
-
     - { role: "rs_algo_bot/deployment/bbrev/bbrev-eurchf-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbrev/bbrev-eurusd-m15/roles" }
     - { role: "rs_algo_bot/deployment/bbrev/bbrev-gbpusd-m15/roles" }

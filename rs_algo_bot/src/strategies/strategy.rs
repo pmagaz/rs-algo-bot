@@ -429,7 +429,7 @@ pub fn set_strategy(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
             strategies::num_bars::NumBars::new(
-                Some("Num_Bars_3"),
+                Some("Num_Bars_3_Atr_ac"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -445,60 +445,6 @@ pub fn set_strategy(
             )
             .unwrap(),
         ),
-        // Box::new(
-        //     strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-        //         Some("Bollinger_Bands_Reversals"),
-        //         Some(time_frame),
-        //         higher_time_frame,
-        //         Some(strategy_type.clone()),
-        //     )
-        //     .unwrap(),
-        // ),
-        // Box::new(
-        //     strategies::bollinger_bands_middle_band::BollingerBandsMiddleBand::new(
-        //         Some("Bollinger_Bands_Reversals_hl"),
-        //         None,
-        //         higher_time_frame,
-        //         Some(strategy_type.clone()),
-        //     )
-        //     .unwrap(),
-        // ),
-        // Box::new(
-        //     strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-        //         Some("Num_Bars_3"),
-        //         Some(time_frame),
-        //         higher_time_frame,
-        //         Some(strategy_type.clone()),
-        //     )
-        //     .unwrap(),
-        // ),
-        // Box::new(
-        //     strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-        //         Some("Bollinger_Bands_Reversals_atr1"),
-        //         Some(time_frame),
-        //         higher_time_frame,
-        //         Some(strategy_type.clone()),
-        //     )
-        //     .unwrap(),
-        // ),
-        // Box::new(
-        //     strategies::ema_scalping::EmaScalping::new(
-        //         Some(time_frame),
-        //         None,
-        //         higher_time_frame,
-        //         Some(strategy_type.clone()),
-        //     )
-        //     .unwrap(),
-        // ),
-        // Box::new(
-        //     strategies::ema_scalping2::EmaScalping2::new(
-        //         Some(time_frame),
-        //         None,
-        //         higher_time_frame,
-        //         Some(strategy_type.clone()),
-        //     )
-        //     .unwrap(),
-        // ),
     ];
 
     let mut strategy = strategies[0].clone();
