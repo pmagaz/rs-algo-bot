@@ -428,8 +428,8 @@ pub fn set_strategy(
 ) -> Box<dyn Strategy> {
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
-            strategies::num_bars::NumBars::new(
-                Some("Num_Bars_3_Atr_ac"),
+            strategies::num_bars_atr::NumBars::new(
+                Some("Num_Bars_3_Atr68"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
