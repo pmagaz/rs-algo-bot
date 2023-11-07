@@ -45,11 +45,14 @@ pub async fn init(sessions: &mut Sessions) {
                     let bot_name = session.bot_name();
 
                     if last_data < hb_timeout && session.symbol() != "init" {
-                        let is_open = session.market_hours.is_open();
+                        let is_trading_time = session.market_hours.is_trading_time();
 
-                        match is_open {
+                        match is_trading_time {
                             true => {
-                                log::info!("{:?} session KO while market is open.", &bot_name);
+                                log::info!(
+                                    "{:?} session KO while market its trading time.",
+                                    &bot_name
+                                );
 
                                 let session_clone = session.clone();
                                 sessions_to_remove.push(*addr);

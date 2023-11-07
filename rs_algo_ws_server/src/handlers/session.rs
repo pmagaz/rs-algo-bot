@@ -53,7 +53,7 @@ impl Session {
             symbol: "init".to_string(),
             strategy: "init".to_string(),
             time_frame: TimeFrameType::M1,
-            market_hours: MarketHours::new(false, "init".to_string(), vec![]),
+            market_hours: MarketHours::new("init".to_string(), vec![]),
             strategy_type: StrategyType::OnlyLong,
             started: Local::now(),
             last_ping: Local::now(),

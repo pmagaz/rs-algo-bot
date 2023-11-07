@@ -42,6 +42,10 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::GetMarketHours,
                 payload: Some(parse_market_hours(payload)),
             }),
+            Some("IsMarketOpen") => MessageType::IsMarketOpen(ResponseBody {
+                response: ResponseType::GetMarketHours,
+                payload: Some(parse_market_open(payload)),
+            }),
             Some("GetInstrumentTick") => MessageType::InstrumentTick(ResponseBody {
                 response: ResponseType::GetInstrumentTick,
                 payload: Some(parse_tick_data(payload)),
@@ -139,6 +143,11 @@ pub fn parse_market_hours(data: &Value) -> MarketHours {
     market_hours
 }
 
+pub fn parse_market_open(data: &Value) -> bool {
+    let market_open: bool = serde_json::from_value(data.clone()).unwrap();
+    market_open
+}
+
 pub fn parse_stream(data: &Value) -> LECHES {
     let arr = data.as_array().unwrap();
     let ask = arr[0].as_f64().unwrap();
@@ -147,7 +156,7 @@ pub fn parse_stream(data: &Value) -> LECHES {
     let low = arr[3].as_f64().unwrap();
     let volume = arr[4].as_f64().unwrap();
     let timestamp = arr[5].as_f64().unwrap();
-    let _date = parse_time(timestamp as i64);
+    let _date = parse_time_seconds(timestamp as i64);
     let _spread = arr[6].as_f64().unwrap();
     (ask, ask, bid, high, low, volume)
 }

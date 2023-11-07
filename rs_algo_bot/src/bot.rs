@@ -8,6 +8,7 @@ use crate::message;
 use crate::strategies::strategy::*;
 
 use futures::Future;
+use rs_algo_shared::broker::DOHLC;
 use rs_algo_shared::helpers::date::Local;
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
@@ -175,10 +176,10 @@ impl Bot {
             .unwrap();
     }
 
-    pub async fn is_market_open(&mut self) {
-        log::info!("Checking {} market is open...", &self.symbol,);
-
-        let instrument_tick_data = Command {
+    pub async fn get_market_hours(&mut self) {
+        log::info!("Checking {} trading hours...", &self.symbol,);
+        //sleep(Duration::from_millis(200)).await;
+        let data = Command {
             command: CommandType::GetMarketHours,
             data: Some(Symbol {
                 symbol: self.symbol.to_owned(),
@@ -186,7 +187,23 @@ impl Bot {
         };
 
         self.websocket
-            .send(&serde_json::to_string(&instrument_tick_data).unwrap())
+            .send(&serde_json::to_string(&data).unwrap())
+            .await
+            .unwrap();
+    }
+
+    pub async fn is_market_open(&mut self) {
+        log::info!("Checking {} market is open...", &self.symbol,);
+        //sleep(Duration::from_millis(200)).await;
+        let data = Command {
+            command: CommandType::IsMarketOpen,
+            data: Some(Symbol {
+                symbol: self.symbol.to_owned(),
+            }),
+        };
+
+        self.websocket
+            .send(&serde_json::to_string(&data).unwrap())
             .await
             .unwrap();
     }
@@ -400,15 +417,37 @@ impl Bot {
                                         );
                                     } else {
                                         self.restore_values(bot_data).await;
-                                        self.is_market_open().await;
+                                        self.get_market_hours().await;
                                     }
                                 }
                                 MessageType::MarketHours(res) => {
+                                    log::info!("Trading hours received!");
                                     let market_hours = res.payload.unwrap();
-                                    let open = market_hours.open();
-                                    match market_hours.open() {
+                                    match market_hours.is_trading_time() {
+                                        true => self.is_market_open().await,
+                                        false => {
+                                            let will_open_at = market_hours.wait_until();
+
+                                            let wait_until = will_open_at
+                                                .signed_duration_since(Local::now())
+                                                .num_seconds()
+                                                as u64;
+
+                                            log::info!(
+                                                "Not in trading hours. Trading available at {}. Waiting {} secs / {} days",
+                                                will_open_at, wait_until, wait_until / 86400
+                                            );
+
+                                            sleep(Duration::from_secs(wait_until)).await;
+                                            self.get_market_hours().await;
+                                        }
+                                    };
+                                }
+                                MessageType::IsMarketOpen(res) => {
+                                    let is_market_open = res.payload.unwrap();
+                                    match is_market_open {
                                         true => {
-                                            log::info!("{} market open: {}", self.symbol, open);
+                                            log::info!("{} Market open!", self.symbol);
                                             self.get_instrument_data().await;
                                             self.get_tick_data().await;
                                         }
@@ -419,7 +458,7 @@ impl Bot {
                                                 .unwrap();
 
                                             log::warn!(
-                                                "{} market closed!. Retrying after {} secs...",
+                                                "{} Market closed!. Retrying after {} secs...",
                                                 self.symbol,
                                                 secs_to_retry
                                             );
@@ -429,6 +468,7 @@ impl Bot {
                                         }
                                     }
                                 }
+
                                 MessageType::InstrumentTick(res) => {
                                     let tick = res.payload.unwrap();
                                     self.tick = tick;
@@ -685,18 +725,25 @@ impl Bot {
                                     self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::StreamTickResponse(res) => {
-                                    let current_pip_size = self.tick.pip_size();
-                                    let tick = res.payload.unwrap();
-                                    let _bid = tick.bid();
-                                    if let Some(_current_candle) = self.instrument.data.last_mut() {
-                                        // log::info!(
-                                        //     "1111 {:?}",
-                                        //     (
-                                        //         &current_candle,
-                                        //         current_candle.date(),
-                                        //         parse_time(tick.time())
-                                        //     )
-                                        // );
+                                    // let current_pip_size = self.tick.pip_size();
+                                    // let tick = res.payload.unwrap();
+
+                                    // if let Some(current_candle) = self.instrument.data.last_mut() {
+                                    //     let open = current_candle.open();
+                                    //     let close = tick.bid();
+                                    //     let high = current_candle.high();
+                                    //     let low = current_candle.low();
+                                    //     let date = parse_time_milliseconds(tick.time());
+                                    //     let dohcl = (date, open, high, low, close, close);
+
+                                    //     log::info!(
+                                    //         "1111 {:?}",
+                                    //         (
+                                    //             get_open_until(dohcl, &self.time_frame, false),
+                                    //             parse_time_milliseconds(tick.time()),
+                                    //             tick.time()
+                                    //         )
+                                    //     );
                                         // CONTINUE HERE DATA IS ASIGNED TO THE WRONG CANDLE SINCE
                                         // IT DOESNT REALLY DETECT IF THE CANDLE IS CLOSED OR NO
                                         // if !current_candle.is_closed() {
