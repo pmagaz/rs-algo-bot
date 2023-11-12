@@ -8,9 +8,7 @@ use crate::message;
 use crate::strategies::strategy::*;
 
 use futures::Future;
-use rs_algo_shared::broker::DOHLC;
-use rs_algo_shared::helpers::date::Local;
-use rs_algo_shared::helpers::uuid::*;
+use rs_algo_shared::helpers::{date, uuid::*};
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode::ExecutionMode;
@@ -604,21 +602,6 @@ impl Bot {
                                                 )
                                                 .await;
                                             }
-                                            //     log::info!("Sending MarketInOrder...");
-                                            //     self.execute_position::<PositionResult>(
-                                            //         &orders_position_result,
-                                            //         self.symbol.clone(),
-                                            //         self.time_frame.clone(),
-                                            //     )
-                                            //     .await;
-
-                                            //     order::fulfill_bot_order::<TradeIn>(
-                                            //         trade_in,
-                                            //         order,
-                                            //         &mut self.orders,
-                                            //         &self.instrument,
-                                            //     );
-                                            // }
                                         }
                                         PositionResult::MarketOutOrder(
                                             TradeResult::TradeOut(trade_out),
@@ -638,20 +621,6 @@ impl Bot {
                                                     order,
                                                 )
                                                 .await;
-
-                                                // self.execute_position::<PositionResult>(
-                                                //     &orders_position_result,
-                                                //     self.symbol.clone(),
-                                                //     self.time_frame.clone(),
-                                                // )
-                                                // .await;
-
-                                                // order::fulfill_bot_order::<TradeOut>(
-                                                //     trade_out,
-                                                //     order,
-                                                //     &mut self.orders,
-                                                //     &self.instrument,
-                                                // );
                                             }
                                         }
                                         _ => (),
@@ -725,36 +694,39 @@ impl Bot {
                                     self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::StreamTickResponse(res) => {
-                                    // let current_pip_size = self.tick.pip_size();
-                                    // let tick = res.payload.unwrap();
+                                    let orders = &self.orders;
+                                    let pending_orders = order::get_pending(orders);
+                                    let current_pip_size = self.tick.pip_size();
+                                    let tick = res.payload.unwrap();
 
-                                    // if let Some(current_candle) = self.instrument.data.last_mut() {
-                                    //     let open = current_candle.open();
-                                    //     let close = tick.bid();
-                                    //     let high = current_candle.high();
-                                    //     let low = current_candle.low();
-                                    //     let date = parse_time_milliseconds(tick.time());
-                                    //     let dohcl = (date, open, high, low, close, close);
+                                    if let Some(current_candle) = self.instrument.data.last_mut() {
+                                        let bid = tick.bid();
+                                        let tick_date = parse_time_milliseconds(tick.time());
+                                        let tf_minutes = self.time_frame.to_minutes();
+                                        log::info!("tick {:?}", (tick_date));
 
-                                    //     log::info!(
-                                    //         "1111 {:?}",
-                                    //         (
-                                    //             get_open_until(dohcl, &self.time_frame, false),
-                                    //             parse_time_milliseconds(tick.time()),
-                                    //             tick.time()
-                                    //         )
-                                    //     );
-                                        // CONTINUE HERE DATA IS ASIGNED TO THE WRONG CANDLE SINCE
-                                        // IT DOESNT REALLY DETECT IF THE CANDLE IS CLOSED OR NO
-                                        // if !current_candle.is_closed() {
-                                        //     current_candle.set_close(bid);
-                                        //     if bid > current_candle.high() {
-                                        //         current_candle.set_high(bid);
-                                        //     }
-                                        //     if bid < current_candle.low() {
-                                        //         current_candle.set_low(bid);
-                                        //     }
-                                        // }
+                                        let open_until = get_open_until_tick(tick_date, tf_minutes)
+                                            - date::Duration::seconds(5);
+
+                                        if !current_candle.is_closed() && tick_date <= open_until {
+                                            log::info!(
+                                                "updateeeeee {:?}",
+                                                (current_candle.date(), tick_date, open_until)
+                                            );
+
+                                            current_candle.set_close(bid);
+                                            if bid > current_candle.high() {
+                                                current_candle.set_high(bid);
+                                            }
+                                            if bid < current_candle.low() {
+                                                current_candle.set_low(bid);
+                                            }
+                                        } else {
+                                            log::info!(
+                                                "nooooooo updateeeeee {:?}",
+                                                (current_candle.date(), tick_date, open_until)
+                                            );
+                                        }
                                     }
 
                                     let tick = InstrumentTick::new()
@@ -770,7 +742,7 @@ impl Bot {
                                         .unwrap();
 
                                     self.tick = tick;
-                                    //self.send_bot_status(&bot_str).await;
+                                    self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::TradeInAccepted(res) => {
                                     let payload = res.payload.unwrap();
