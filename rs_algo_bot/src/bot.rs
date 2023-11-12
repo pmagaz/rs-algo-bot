@@ -432,8 +432,8 @@ impl Bot {
                                                 as u64;
 
                                             log::info!(
-                                                "Not in trading hours. Trading available at {}. Waiting {} secs / {} days",
-                                                will_open_at, wait_until, wait_until / 86400
+                                                "Not in trading hours. Trading available at {}. Waiting {} secs / {} hours",
+                                                will_open_at, wait_until, wait_until / 3600
                                             );
 
                                             sleep(Duration::from_secs(wait_until)).await;
