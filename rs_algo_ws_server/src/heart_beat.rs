@@ -45,10 +45,10 @@ pub async fn init(sessions: &mut Sessions) {
                     let bot_name = session.bot_name();
 
                     if last_data < hb_timeout && session.symbol() != "init" {
-                        let is_trading_time = session.market_hours.is_trading_time();
+                        //let is_trading_time = session.market_hours.is_trading_time();
 
-                        match is_trading_time {
-                            true => {
+                        // match is_trading_time {
+                        //     true => {
                                 log::info!(
                                     "{:?} session KO while market its trading time.",
                                     &bot_name
@@ -67,8 +67,8 @@ pub async fn init(sessions: &mut Sessions) {
 
                                 futures.push(future);
                             }
-                            false => {}
-                        }
+                        //     false => {}
+                        // }
                     }
                 }
             }

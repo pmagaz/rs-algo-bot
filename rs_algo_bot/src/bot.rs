@@ -437,7 +437,8 @@ impl Bot {
                                             );
 
                                             sleep(Duration::from_secs(wait_until)).await;
-                                            self.get_market_hours().await;
+                                            log::info!("{} Reconnecting", bot_str);
+                                            self.reconnect().await;
                                         }
                                     };
                                 }
