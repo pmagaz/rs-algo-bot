@@ -1,4 +1,4 @@
 package_name: rs_algo_bot
 release_name: bot-numbarsdis-eurusd-m15
 local_path: /home/dev/rs-algo-bot
-chart_path: deployment/numbarsdis/numbarsdis-eurusd-m15/chart
+chart_path: deployment/numbarsdis/numbars-eurusd-m15/chart

@@ -1,4 +1,4 @@
 package_name: rs_algo_bot
 release_name: bot-numbarsdis-usdchf-m15
 local_path: /home/dev/rs-algo-bot
-chart_path: deployment/numbarsdis/numbarsdis-usdchf-m15/chart
+chart_path: deployment/numbarsdis/numbars-usdchf-m15/chart
