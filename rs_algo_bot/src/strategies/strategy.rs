@@ -112,11 +112,11 @@ pub trait Strategy: DynClone {
         if open_positions {
             let trade_in = trades_in.last().unwrap();
             position_result =
-                self.resolve_exit_position(index, instrument, htf_instrument, tick, trade_in);
+                self.should_exit_position(index, instrument, htf_instrument, tick, trade_in);
         }
 
         if !open_positions && self.there_are_funds(trades_out) {
-            position_result = self.resolve_entry_position(
+            position_result = self.should_open_position(
                 index,
                 instrument,
                 htf_instrument,
@@ -130,7 +130,7 @@ pub trait Strategy: DynClone {
         (position_result, order_position_result)
     }
 
-    fn resolve_entry_position(
+    fn should_open_position(
         &mut self,
         index: usize,
         instrument: &Instrument,
@@ -271,7 +271,7 @@ pub trait Strategy: DynClone {
         }
     }
 
-    fn resolve_exit_position(
+    fn should_exit_position(
         &mut self,
         index: usize,
         instrument: &Instrument,

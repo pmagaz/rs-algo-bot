@@ -45,30 +45,24 @@ pub async fn init(sessions: &mut Sessions) {
                     let bot_name = session.bot_name();
 
                     if last_data < hb_timeout && session.symbol() != "init" {
-                        //let is_trading_time = session.market_hours.is_trading_time();
+                        log::info!(
+                            "No HB received from {:?} since {}. Sending Reconnect!.",
+                            &bot_name,
+                            &last_data
+                        );
 
-                        // match is_trading_time {
-                        //     true => {
-                                log::info!(
-                                    "{:?} session KO while market its trading time.",
-                                    &bot_name
-                                );
+                        let session_clone = session.clone();
+                        sessions_to_remove.push(*addr);
 
-                                let session_clone = session.clone();
-                                sessions_to_remove.push(*addr);
+                        let future = async move {
+                            message::send_reconnect(
+                                &session_clone,
+                                ReconnectOptions { clean_data: true },
+                            )
+                            .await;
+                        };
 
-                                let future = async move {
-                                    message::send_reconnect(
-                                        &session_clone,
-                                        ReconnectOptions { clean_data: true },
-                                    )
-                                    .await;
-                                };
-
-                                futures.push(future);
-                            }
-                        //     false => {}
-                        // }
+                        futures.push(future);
                     }
                 }
             }

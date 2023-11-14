@@ -700,35 +700,35 @@ impl Bot {
                                     let current_pip_size = self.tick.pip_size();
                                     let tick = res.payload.unwrap();
 
-                                    if let Some(current_candle) = self.instrument.data.last_mut() {
-                                        let bid = tick.bid();
-                                        let tick_date = parse_time_milliseconds(tick.time());
-                                        let tf_minutes = self.time_frame.to_minutes();
-                                        log::info!("tick {:?}", (tick_date));
+                                    // if let Some(current_candle) = self.instrument.data.last_mut() {
+                                    //     let bid = tick.bid();
+                                    //     let tick_date = parse_time_milliseconds(tick.time());
+                                    //     let tf_minutes = self.time_frame.to_minutes();
+                                    // log::info!("tick {:?}", (tick_date));
 
-                                        let open_until = get_open_until_tick(tick_date, tf_minutes)
-                                            - date::Duration::seconds(5);
+                                    // let open_until = get_open_until_tick(tick_date, tf_minutes)
+                                    //     - date::Duration::seconds(5);
 
-                                        if !current_candle.is_closed() && tick_date <= open_until {
-                                            log::info!(
-                                                "updateeeeee {:?}",
-                                                (current_candle.date(), tick_date, open_until)
-                                            );
+                                    // if !current_candle.is_closed() && tick_date <= open_until {
+                                    //     log::info!(
+                                    //         "updateeeeee {:?}",
+                                    //         (current_candle.date(), tick_date, open_until)
+                                    //     );
 
-                                            current_candle.set_close(bid);
-                                            if bid > current_candle.high() {
-                                                current_candle.set_high(bid);
-                                            }
-                                            if bid < current_candle.low() {
-                                                current_candle.set_low(bid);
-                                            }
-                                        } else {
-                                            log::info!(
-                                                "nooooooo updateeeeee {:?}",
-                                                (current_candle.date(), tick_date, open_until)
-                                            );
-                                        }
-                                    }
+                                    //     current_candle.set_close(bid);
+                                    //     if bid > current_candle.high() {
+                                    //         current_candle.set_high(bid);
+                                    //     }
+                                    //     if bid < current_candle.low() {
+                                    //         current_candle.set_low(bid);
+                                    //     }
+                                    // } else {
+                                    //     log::info!(
+                                    //         "nooooooo updateeeeee {:?}",
+                                    //         (current_candle.date(), tick_date, open_until)
+                                    //     );
+                                    // }
+                                    //}
 
                                     let tick = InstrumentTick::new()
                                         .symbol(tick.symbol())

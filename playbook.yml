@@ -6,19 +6,19 @@
     # - { role: "deployment/mongodb-bot/roles/" }
 
     # numbars
-    # - { role: "rs_algo_bot/deployment/numbars/numbars-eurchf-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbars/numbars-eurusd-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbars/numbars-gbpeur-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbars/numbars-usdcad-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbars/numbars-usdchf-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbars/numbars-usdjpy-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbars/numbars-eurchf-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbars/numbars-eurusd-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbars/numbars-gbpeur-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbars/numbars-usdcad-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbars/numbars-usdchf-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbars/numbars-usdjpy-m15/roles" }
     # # numbarsdis
-    # - { role: "rs_algo_bot/deployment/numbarsdis/numbars-eurchf-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbarsdis/numbars-eurusd-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbarsdis/numbars-gbpeur-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbarsdis/numbars-usdcad-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbarsdis/numbars-usdchf-m15/roles" }
-    # - { role: "rs_algo_bot/deployment/numbarsdis/numbars-usdjpy-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbarsdis/numbars-eurchf-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbarsdis/numbars-eurusd-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbarsdis/numbars-gbpeur-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbarsdis/numbars-usdcad-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbarsdis/numbars-usdchf-m15/roles" }
+    - { role: "rs_algo_bot/deployment/numbarsdis/numbars-usdjpy-m15/roles" }
     # numbarsdis_b
     - { role: "rs_algo_bot/deployment/numbarsdis_b/numbars-eurchf-m15/roles" }
     - { role: "rs_algo_bot/deployment/numbarsdis_b/numbars-eurusd-m15/roles" }
