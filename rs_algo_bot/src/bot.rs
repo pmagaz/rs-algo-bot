@@ -573,6 +573,8 @@ impl Bot {
                                                     }
                                                     None => (),
                                                 }
+
+                                                open_positions = true;
                                             }
                                         }
                                         PositionResult::MarketOut(TradeResult::TradeOut(_)) => {
@@ -589,6 +591,8 @@ impl Bot {
                                                     self.time_frame.clone(),
                                                 )
                                                 .await;
+
+                                                open_positions = false;
                                             }
                                         }
                                         PositionResult::PendingOrder(new_orders) => {
@@ -612,26 +616,6 @@ impl Bot {
 
                                     self.send_bot_status(&bot_str).await;
                                 }
-                                // MessageType::StreamTickResponse(res) => {
-                                //     panic!();
-                                //     let orders = &self.orders;
-                                //     let pending_orders = order::get_pending(orders);
-                                //     let current_pip_size = self.tick.pip_size();
-                                //     let tick = res.payload.unwrap();
-                                //     let tick = InstrumentTick::new()
-                                //         .symbol(tick.symbol())
-                                //         .ask(tick.ask())
-                                //         .bid(tick.bid())
-                                //         .high(tick.high())
-                                //         .low(tick.low())
-                                //         .spread(tick.spread())
-                                //         .pip_size(current_pip_size)
-                                //         .time(tick.time())
-                                //         .build()
-                                //         .unwrap();
-
-                                //     self.tick = tick;
-                                // }
                                 MessageType::TradeInAccepted(res) => {
                                     let payload = res.payload.unwrap();
                                     let accepted = &payload.accepted;
@@ -652,7 +636,6 @@ impl Bot {
                                                 &self.trades_out,
                                             );
 
-                                            open_positions = true;
                                             order::extend_all_pending_orders(&mut self.orders);
                                             self.send_bot_status(&bot_str).await;
                                         }
@@ -662,6 +645,7 @@ impl Bot {
                                                 &payload.data.trade_type,
                                                 &payload.data.id
                                             );
+                                            open_positions = false;
                                         }
                                     }
                                 }
@@ -695,10 +679,6 @@ impl Bot {
                                                 self.instrument.data.last().unwrap().date(),
                                             );
 
-                                            // panic!(
-                                            //     "444444 {:?}",
-                                            //     (date_out, updated_trade_out.date_out)
-                                            // );
                                             order::cancel_trade_pending_orders(
                                                 &updated_trade_out,
                                                 &mut self.orders,
@@ -718,7 +698,6 @@ impl Bot {
                                                 &self.trades_out,
                                             );
 
-                                            open_positions = false;
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
@@ -729,6 +708,7 @@ impl Bot {
                                                 &payload.data.ask,
                                                 &payload.data.bid
                                             );
+                                            open_positions = true;
                                         }
                                     };
                                 }

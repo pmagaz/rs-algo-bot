@@ -224,7 +224,7 @@ where
                         .unwrap();
 
                     //LECHES
-                    let last_5 = res
+                    let last_2 = res
                         .payload
                         .unwrap()
                         .data
@@ -240,7 +240,7 @@ where
                         payload: Some(InstrumentData {
                             symbol: symbol.to_string(),
                             time_frame: time_frame,
-                            data: last_5,
+                            data: last_2,
                         }),
                     };
 
