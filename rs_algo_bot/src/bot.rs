@@ -301,30 +301,18 @@ impl Bot {
     }
 
     pub async fn set_tick(&mut self) {
-        let mut open_positions = false;
-        let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
-        let overwrite_orders = env::var("OVERWRITE_ORDERS")
+        let tick_endpoint = format!(
+            "{}{}",
+            env::var("BACKEND_BACKTEST_PRICING_ENDPOINT").unwrap(),
+            self.symbol
+        );
+
+        let tick: InstrumentTick = request(&tick_endpoint, &String::from("all"), HttpMethod::Get)
+            .await
             .unwrap()
-            .parse::<bool>()
+            .json()
+            .await
             .unwrap();
-
-        let tick_endpoint = env::var("BACKEND_BACKTEST_PRICING_ENDPOINT")
-            .unwrap()
-            .clone();
-
-        let prices: Vec<InstrumentTick> =
-            request(&tick_endpoint, &String::from("all"), HttpMethod::Get)
-                .await
-                .unwrap()
-                .json()
-                .await
-                .unwrap();
-        let mut tick = match prices.iter().position(|tick| tick.symbol() == self.symbol) {
-            Some(idx) => prices.get(idx).unwrap().clone(),
-            None => {
-                panic!("[PANIC] InstrumentTick not found for {:?}", self.symbol);
-            }
-        };
 
         self.tick = tick;
     }
@@ -334,10 +322,6 @@ impl Bot {
         self.set_tick().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
-        let overwrite_orders = env::var("OVERWRITE_ORDERS")
-            .unwrap()
-            .parse::<bool>()
-            .unwrap();
 
         loop {
             match self.websocket.read().await {
@@ -357,61 +341,7 @@ impl Bot {
                                 MessageType::InitSession(res) => {
                                     log::info!("Getting {} previous session", bot_str);
 
-                                    let now = Local::now();
-                                    let bot_data = res.payload.unwrap();
-                                    let trades_in = bot_data.trades_in().len();
-                                    let trades_out = bot_data.trades_out().len();
-                                    let orders = bot_data.orders();
-                                    let pending_orders = order::get_pending(orders);
-
-                                    let num_active_trades = trades_in - trades_out;
-                                    match trades_in.cmp(&trades_out) {
-                                        Ordering::Greater => {
-                                            log::info!("{} active trades found", num_active_trades);
-                                            open_positions = true
-                                        }
-                                        _ => {
-                                            log::info!("No active trades found");
-                                        }
-                                    };
-
-                                    let active_stop_losses: Vec<Order> = pending_orders
-                                        .iter()
-                                        .filter(|x| {
-                                            open_positions
-                                                && x.order_type.is_stop()
-                                                && x.is_still_valid(now)
-                                                && x.status == OrderStatus::Pending
-                                        })
-                                        .cloned()
-                                        .collect();
-
-                                    let num_active_stop_losses = active_stop_losses.len();
-
-                                    match num_active_stop_losses.cmp(&0) {
-                                        Ordering::Greater => {
-                                            log::info!(
-                                                "{} active stop losses found",
-                                                active_stop_losses.len()
-                                            );
-                                            open_positions = true
-                                        }
-                                        _ => {
-                                            log::info!("No active stop losses");
-                                            open_positions = false
-                                        }
-                                    };
-
-                                    if num_active_trades != num_active_stop_losses {
-                                        log::error!(
-                                            "Active trades {} do not match active stop losses {} !",
-                                            num_active_trades,
-                                            num_active_stop_losses
-                                        );
-                                    } else {
-                                        self.restore_values(bot_data).await;
-                                        self.is_market_open().await;
-                                    }
+                                    self.is_market_open().await;
                                 }
                                 MessageType::MarketHours(res) => {
                                     log::info!("Trading hours received!");
@@ -420,7 +350,7 @@ impl Bot {
                                         true => {
                                             log::info!("{} market open", self.symbol);
                                             self.get_instrument_data().await;
-                                            self.get_tick_data().await;
+                                            //self.get_tick_data().await;
                                         }
                                         false => {
                                             let secs_to_retry = env::var("MARKET_CLOSED_RETRY")

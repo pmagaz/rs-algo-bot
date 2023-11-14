@@ -172,22 +172,19 @@ where
                     //     .unwrap();
 
                     // log::info!("Requesting {} pricing data", symbol);
-                    let tick_endpoint = env::var("BACKEND_BACKTEST_PRICING_ENDPOINT")
-                        .unwrap()
-                        .clone();
-                    let prices: Vec<InstrumentTick> =
+                    let tick_endpoint = format!(
+                        "{}{}",
+                        env::var("BACKEND_BACKTEST_PRICING_ENDPOINT").unwrap(),
+                        symbol
+                    );
+
+                    let tick: InstrumentTick =
                         request(&tick_endpoint, &String::from("all"), HttpMethod::Get)
                             .await
                             .unwrap()
                             .json()
                             .await
                             .unwrap();
-                    let mut tick = match prices.iter().position(|tick| tick.symbol() == symbol) {
-                        Some(idx) => prices.get(idx).unwrap().clone(),
-                        None => {
-                            panic!("[PANIC] InstrumentTick not found for {:?}", symbol);
-                        }
-                    };
 
                     Some(serde_json::to_string(&tick).unwrap())
                 }
@@ -338,7 +335,7 @@ where
                         stream::listen(broker.clone(), session.clone());
                     })
                     .await;
-                    //broker.lock().await.disconnect().await.unwrap();
+                    broker.lock().await.disconnect().await.unwrap();
 
                     Some("".to_string())
                 }
