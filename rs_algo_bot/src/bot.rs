@@ -602,6 +602,8 @@ impl Bot {
                                                     order,
                                                 )
                                                 .await;
+
+                                                open_positions = true;
                                             }
                                         }
                                         PositionResult::MarketOutOrder(
@@ -622,6 +624,8 @@ impl Bot {
                                                     order,
                                                 )
                                                 .await;
+
+                                                open_positions = false;
                                             }
                                         }
                                         _ => (),
@@ -655,6 +659,8 @@ impl Bot {
                                                     }
                                                     None => (),
                                                 }
+
+                                                open_positions = true;
                                             }
                                         }
                                         PositionResult::MarketOut(TradeResult::TradeOut(_)) => {
@@ -671,6 +677,8 @@ impl Bot {
                                                     self.time_frame.clone(),
                                                 )
                                                 .await;
+
+                                                open_positions = false;
                                             }
                                         }
                                         PositionResult::PendingOrder(new_orders) => {
@@ -776,6 +784,7 @@ impl Bot {
                                                 &payload.data.trade_type,
                                                 &payload.data.id
                                             );
+                                            open_positions = false;
                                         }
                                     }
                                 }
@@ -833,6 +842,8 @@ impl Bot {
                                                 &payload.data.ask,
                                                 &payload.data.bid
                                             );
+
+                                            open_positions = true;
                                         }
                                     };
                                 }
