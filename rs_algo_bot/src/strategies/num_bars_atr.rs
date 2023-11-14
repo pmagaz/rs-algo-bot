@@ -1,7 +1,7 @@
 use super::strategy::*;
 
 use rs_algo_shared::error::Result;
-use rs_algo_shared::helpers::calc;
+
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::order::{OrderDirection, OrderType};
 use rs_algo_shared::models::stop_loss::*;
@@ -10,10 +10,11 @@ use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame;
 use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
 use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn};
+use rs_algo_shared::scanner::candle::CandleType;
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
-pub struct BollingerBandsReversals<'a> {
+pub struct NumBars<'a> {
     name: &'a str,
     time_frame: TimeFrameType,
     higher_time_frame: Option<TimeFrameType>,
@@ -24,7 +25,7 @@ pub struct BollingerBandsReversals<'a> {
     profit_target: f64,
 }
 
-impl<'a> Strategy for BollingerBandsReversals<'a> {
+impl<'a> Strategy for NumBars<'a> {
     fn new(
         name: Option<&'static str>,
         time_frame: Option<&str>,
@@ -48,7 +49,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
-        let name = name.unwrap_or("Bollinger_Bands_Reversals");
+        let name = name.unwrap_or("Num_Bars");
 
         let strategy_type = match strategy_type {
             Some(stype) => stype,
@@ -120,9 +121,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let is_long = htf_ema_a > htf_ema_b;
                 let is_short = htf_ema_a < htf_ema_b;
 
-                if is_long && !is_short {
+                if is_long {
                     TradeDirection::Long
-                } else if is_short && !is_long {
+                } else if is_short {
                     TradeDirection::Short
                 } else {
                     TradeDirection::None
@@ -139,77 +140,44 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_value = std::env::var("ATR_STOP_LOSS")
+        let atr_stop_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
 
-        let prev_index = calc::get_prev_index(index);
-        let data = &instrument.data();
-        let candle = data.get(index).unwrap();
-        let _prev_candle = &data.get(prev_index).unwrap();
-        let close_price = &candle.close();
-        let high_price = &candle.high();
-        let is_closed = candle.is_closed();
-
-        let prev_candle = &data.get(prev_index).unwrap();
-        let prev_close = &prev_candle.close();
-
-        let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
-        let mid_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
-        let prev_low_band = instrument
-            .indicators
-            .bb
-            .get_data_b()
-            .get(prev_index)
+        let atr_profit_value = std::env::var("ATR_PROFIT_TARGET")
+            .unwrap()
+            .parse::<f64>()
             .unwrap();
 
-        let pips_margin = 0.1;
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
 
-        let entry_condition = self.trading_direction == TradeDirection::Long
-            && is_closed
-            && close_price < low_band
-            && high_price < mid_band
-            && (prev_close >= prev_low_band);
+        let data = &instrument.data();
+        let candle = data.get(index).unwrap();
+        let is_closed: bool = candle.is_closed();
 
-        let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
+        let buy_price = candle.close() + tick.spread();
+        let sell_price = buy_price + (atr_profit_value * atr_value);
+        let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
 
         match entry_condition {
-            true => Position::Order(vec![
-                OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
-                OrderType::StopLossLong(OrderDirection::Down, StopLossType::Atr(atr_value)),
-            ]),
-
+            true => Position::MarketIn(Some(vec![
+                OrderType::SellOrderLong(OrderDirection::Up, self.order_size, sell_price),
+                OrderType::StopLossLong(OrderDirection::Down, StopLossType::Atr(atr_stop_value)),
+            ])),
             false => Position::None,
         }
     }
 
     fn exit_long(
         &mut self,
-        index: usize,
-        instrument: &Instrument,
+        _index: usize,
+        _instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
         _tick: &InstrumentTick,
     ) -> Position {
-        let prev_index = calc::get_prev_index(index);
-        let data = &instrument.data();
-        let candle = data.get(index).unwrap();
-        let prev_candle = &data.get(prev_index).unwrap();
-        let close_price = &candle.close();
-        let prev_high = &prev_candle.high();
-        let is_closed = candle.is_closed();
-
-        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
-        let prev_top_band = instrument
-            .indicators
-            .bb
-            .get_data_a()
-            .get(prev_index)
-            .unwrap();
-
-        let exit_condition = self.trading_direction == TradeDirection::Short
-            || (is_closed && close_price < top_band && (prev_high > prev_top_band));
+        let exit_condition = self.trading_direction == TradeDirection::Short;
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -224,76 +192,44 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_value = std::env::var("ATR_STOP_LOSS")
+        let atr_stop_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
 
-        let prev_index = calc::get_prev_index(index);
-        let data = &instrument.data();
-        let candle = data.get(index).unwrap();
-        let close_price = &candle.close();
-        let low_price = &candle.low();
-        let is_closed = candle.is_closed();
-
-        let prev_candle = &data.get(prev_index).unwrap();
-        let prev_high = &prev_candle.high();
-
-        let pips_margin = 0.1;
-        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
-        let mid_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
-
-        let prev_top_band = instrument
-            .indicators
-            .bb
-            .get_data_a()
-            .get(prev_index)
+        let atr_profit_value = std::env::var("ATR_PROFIT_TARGET")
+            .unwrap()
+            .parse::<f64>()
             .unwrap();
 
-        let entry_condition = self.trading_direction == TradeDirection::Short
-            && is_closed
-            && close_price < top_band
-            && low_price > mid_band
-            && (prev_high >= prev_top_band);
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
 
-        let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
+        let data = instrument.data();
+        let candle = data.get(index).unwrap();
+        let is_closed: bool = candle.is_closed();
+
+        let buy_price = candle.close() - tick.spread();
+        let sell_price = buy_price - (atr_profit_value * atr_value);
+        let entry_condition = candle.candle_type() == &CandleType::ThreeInRow && is_closed;
 
         match entry_condition {
-            true => Position::Order(vec![
-                OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
-                OrderType::StopLossShort(OrderDirection::Up, StopLossType::Atr(atr_value)),
-            ]),
-
+            true => Position::MarketIn(Some(vec![
+                OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
+                OrderType::StopLossLong(OrderDirection::Up, StopLossType::Atr(atr_stop_value)),
+            ])),
             false => Position::None,
         }
     }
 
     fn exit_short(
         &mut self,
-        index: usize,
-        instrument: &Instrument,
+        _index: usize,
+        _instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
         _tick: &InstrumentTick,
     ) -> Position {
-        let prev_index = calc::get_prev_index(index);
-        let data = &instrument.data();
-        let candle = data.get(index).unwrap();
-        let prev_candle = &data.get(prev_index).unwrap();
-        let close_price = &candle.close();
-        let prev_close = &prev_candle.close();
-        let is_closed = candle.is_closed();
-
-        let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
-        let prev_low_band = instrument
-            .indicators
-            .bb
-            .get_data_b()
-            .get(prev_index)
-            .unwrap();
-
-        let exit_condition = self.trading_direction == TradeDirection::Long
-            || (is_closed && close_price < low_band && (prev_close >= prev_low_band));
+        let exit_condition = self.trading_direction == TradeDirection::Long;
 
         match exit_condition {
             true => Position::MarketOut(None),

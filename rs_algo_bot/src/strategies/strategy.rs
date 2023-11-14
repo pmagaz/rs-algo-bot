@@ -2,16 +2,14 @@ use super::stats::*;
 
 use crate::strategies;
 use async_trait::async_trait;
-use chrono::Local;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
-use rs_algo_shared::helpers::date;
 use rs_algo_shared::models::order::{self, Order};
-use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
+use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame::TimeFrameType;
-use rs_algo_shared::models::{mode, trade::*};
+use rs_algo_shared::models::trade::*;
 use rs_algo_shared::models::{strategy::*, trade};
 use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::*;
@@ -21,6 +19,7 @@ use std::env;
 #[async_trait(?Send)]
 pub trait Strategy: DynClone {
     fn new(
+        name: Option<&'static str>,
         time_frame: Option<&str>,
         higher_time_frame: Option<&str>,
         strategy_type: Option<StrategyType>,
@@ -36,7 +35,7 @@ pub trait Strategy: DynClone {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position;
     fn exit_long(
         &mut self,
@@ -44,14 +43,14 @@ pub trait Strategy: DynClone {
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
         trade_in: &TradeIn,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position;
     fn entry_short(
         &mut self,
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position;
     fn exit_short(
         &mut self,
@@ -59,7 +58,7 @@ pub trait Strategy: DynClone {
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
         trade_in: &TradeIn,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position;
     fn trading_direction(
         &mut self,
@@ -85,77 +84,61 @@ pub trait Strategy: DynClone {
             _ => false,
         }
     }
-    async fn tick(
+    async fn next(
         &mut self,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
         trades_in: &Vec<TradeIn>,
         trades_out: &Vec<TradeOut>,
         orders: &Vec<Order>,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> (PositionResult, PositionResult) {
-        let index = match instrument.data.len() {
-            0 => 0,
-            len => len - 1,
+        let index = &instrument.data.len() - 1;
+        let mut position_result = PositionResult::None;
+        let mut order_position_result = PositionResult::None;
+        let pending_orders = order::get_pending(orders);
+        let trade_direction = &self
+            .trading_direction(index, instrument, htf_instrument)
+            .clone();
+
+        let open_positions = match trades_in.len().cmp(&trades_out.len()) {
+            Ordering::Greater => true,
+            _ => false,
         };
-        log::info!("Tick {:?}", (index, instrument.data.last().unwrap().date()));
-        if index > 0 {
-            let mut position_result = PositionResult::None;
-            let mut order_position_result = PositionResult::None;
-            let pending_orders = order::get_pending(orders);
-            let trading_direction = &self
-                .trading_direction(index, instrument, htf_instrument)
-                .clone();
 
-            let open_positions = match trades_in.len().cmp(&trades_out.len()) {
-                Ordering::Greater => true,
-                _ => false,
-            };
+        order_position_result =
+            self.resolve_pending_orders(index, instrument, tick, &pending_orders, trades_in);
 
-            order_position_result =
-                self.resolve_pending_orders(index, instrument, pricing, &pending_orders, trades_in);
-
-            if open_positions {
-                let trade_in = trades_in.last().unwrap();
-                position_result = self.resolve_exit_position(
-                    index,
-                    instrument,
-                    htf_instrument,
-                    pricing,
-                    &trade_in,
-                );
-            }
-            if !open_positions && self.there_are_funds(trades_out) {
-                position_result = self.resolve_entry_position(
-                    index,
-                    instrument,
-                    htf_instrument,
-                    pricing,
-                    orders,
-                    trades_out,
-                    trading_direction,
-                );
-            }
-
-            // log::info!(
-            //     "55555555555 {:?}",
-            //     (position_result.clone(), order_position_result.clone())
-            // );
-            (position_result, order_position_result)
-        } else {
-            (PositionResult::None, PositionResult::None)
+        if open_positions {
+            let trade_in = trades_in.last().unwrap();
+            position_result =
+                self.should_exit_position(index, instrument, htf_instrument, tick, trade_in);
         }
+
+        if !open_positions && self.there_are_funds(trades_out) {
+            position_result = self.should_open_position(
+                index,
+                instrument,
+                htf_instrument,
+                tick,
+                orders,
+                trades_out,
+                trade_direction,
+            );
+        }
+
+        (position_result, order_position_result)
     }
 
-    fn resolve_entry_position(
+    fn should_open_position(
         &mut self,
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
         orders: &Vec<Order>,
         trades_out: &Vec<TradeOut>,
-        trading_direction: &TradeDirection,
+        trade_direction: &TradeDirection,
     ) -> PositionResult {
         let pending_orders = order::get_pending(orders);
         let trade_size = env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
@@ -165,213 +148,194 @@ pub trait Strategy: DynClone {
             .parse::<bool>()
             .unwrap();
 
-        //LECHES OJO
+        let trading_direction = env::var("TRADING_DIRECTION")
+            .unwrap()
+            .parse::<bool>()
+            .unwrap();
 
-        let wait_for_opening_trade = self.wait_for_opening_trade(index, instrument, trades_out);
-        //CONTINUE HERE
-        if !instrument.data.is_empty() && index > 5 {
-            match wait_for_opening_trade {
-                true => match trading_direction.is_long() {
-                    true => match self.is_long_strategy() {
-                        true => match self.entry_long(index, instrument, htf_instrument, pricing) {
-                            Position::MarketIn(order_types) => {
-                                let trade_type = TradeType::MarketInLong;
-                                let trade_in_result = trade::resolve_trade_in(
-                                    index,
-                                    trade_size,
-                                    instrument,
-                                    pricing,
-                                    &trade_type,
-                                    None,
-                                );
+        let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
 
-                                let prepared_orders = order_types.map(|orders| {
-                                    order::prepare_orders(
-                                        index,
-                                        instrument,
-                                        pricing,
-                                        &trade_type,
-                                        &orders,
-                                    )
-                                });
+        match wait_for_new_trade {
+            false => match trade_direction.is_long() || !trading_direction {
+                true => match self.is_long_strategy() {
+                    true => match self.entry_long(index, instrument, htf_instrument, tick) {
+                        Position::MarketIn(order_types) => {
+                            let trade_type = TradeType::MarketInLong;
+                            let trade_in_result = trade::resolve_trade_in(
+                                index,
+                                trade_size,
+                                instrument,
+                                tick,
+                                &trade_type,
+                                None,
+                            );
 
-                                let new_orders = match overwrite_orders {
-                                    true => prepared_orders,
-                                    false => match pending_orders.len().cmp(&0) {
-                                        std::cmp::Ordering::Equal => prepared_orders,
-                                        _ => None,
-                                    },
-                                };
+                            let prepared_orders = order_types.map(|orders| {
+                                order::prepare_orders(index, instrument, tick, &trade_type, &orders)
+                            });
 
-                                PositionResult::MarketIn(trade_in_result, new_orders)
-                            }
-                            Position::Order(order_types) => {
-                                let trade_type = TradeType::OrderInLong;
+                            let new_orders = match overwrite_orders {
+                                true => prepared_orders,
+                                false => match pending_orders.len().cmp(&0) {
+                                    std::cmp::Ordering::Equal => prepared_orders,
+                                    _ => None,
+                                },
+                            };
 
-                                let prepared_orders = order::prepare_orders(
-                                    index,
-                                    instrument,
-                                    pricing,
-                                    &trade_type,
-                                    &order_types,
-                                );
-
-                                let new_orders = match overwrite_orders {
-                                    true => prepared_orders,
-                                    false => match pending_orders.len().cmp(&0) {
-                                        std::cmp::Ordering::Equal => prepared_orders,
-                                        _ => vec![],
-                                    },
-                                };
-
-                                PositionResult::PendingOrder(new_orders)
-                            }
-                            _ => PositionResult::None,
-                        },
-                        false => PositionResult::None,
-
-                        _ => PositionResult::None,
-                    },
-                    false => match self.is_short_strategy() {
-                        true => {
-                            match self.entry_short(index, instrument, htf_instrument, pricing) {
-                                Position::MarketIn(order_types) => {
-                                    let trade_type = TradeType::MarketInShort;
-
-                                    let trade_in_result = trade::resolve_trade_in(
-                                        index,
-                                        trade_size,
-                                        instrument,
-                                        pricing,
-                                        &trade_type,
-                                        None,
-                                    );
-
-                                    let prepared_orders = order_types.map(|orders| {
-                                        order::prepare_orders(
-                                            index,
-                                            instrument,
-                                            pricing,
-                                            &trade_type,
-                                            &orders,
-                                        )
-                                    });
-
-                                    let new_orders = match overwrite_orders {
-                                        true => prepared_orders,
-                                        false => match pending_orders.len().cmp(&0) {
-                                            std::cmp::Ordering::Equal => prepared_orders,
-                                            _ => None,
-                                        },
-                                    };
-
-                                    PositionResult::MarketIn(trade_in_result, new_orders)
-                                }
-                                Position::Order(order_types) => {
-                                    let trade_type = TradeType::OrderInShort;
-
-                                    let prepared_orders = order::prepare_orders(
-                                        index,
-                                        instrument,
-                                        pricing,
-                                        &trade_type,
-                                        &order_types,
-                                    );
-
-                                    let new_orders = match overwrite_orders {
-                                        true => prepared_orders,
-                                        false => match pending_orders.len().cmp(&0) {
-                                            std::cmp::Ordering::Equal => prepared_orders,
-                                            _ => vec![],
-                                        },
-                                    };
-
-                                    PositionResult::PendingOrder(new_orders)
-                                }
-                                _ => PositionResult::None,
-                            }
+                            PositionResult::MarketIn(trade_in_result, new_orders)
                         }
-                        false => PositionResult::None,
+                        Position::Order(order_types) => {
+                            let trade_type = TradeType::OrderInLong;
+
+                            let prepared_orders = order::prepare_orders(
+                                index,
+                                instrument,
+                                tick,
+                                &trade_type,
+                                &order_types,
+                            );
+
+                            let new_orders = match overwrite_orders {
+                                true => prepared_orders,
+                                false => match pending_orders.len().cmp(&0) {
+                                    std::cmp::Ordering::Equal => prepared_orders,
+                                    _ => vec![],
+                                },
+                            };
+
+                            PositionResult::PendingOrder(new_orders)
+                        }
                         _ => PositionResult::None,
                     },
                     false => PositionResult::None,
+
+                    _ => PositionResult::None,
+                },
+                false => match self.is_short_strategy() {
+                    true => match self.entry_short(index, instrument, htf_instrument, tick) {
+                        Position::MarketIn(order_types) => {
+                            let trade_type = TradeType::MarketInShort;
+
+                            let trade_in_result = trade::resolve_trade_in(
+                                index,
+                                trade_size,
+                                instrument,
+                                tick,
+                                &trade_type,
+                                None,
+                            );
+
+                            let prepared_orders = order_types.map(|orders| {
+                                order::prepare_orders(index, instrument, tick, &trade_type, &orders)
+                            });
+
+                            let new_orders = match overwrite_orders {
+                                true => prepared_orders,
+                                false => match pending_orders.len().cmp(&0) {
+                                    std::cmp::Ordering::Equal => prepared_orders,
+                                    _ => None,
+                                },
+                            };
+
+                            PositionResult::MarketIn(trade_in_result, new_orders)
+                        }
+                        Position::Order(order_types) => {
+                            let trade_type = TradeType::OrderInShort;
+
+                            let prepared_orders = order::prepare_orders(
+                                index,
+                                instrument,
+                                tick,
+                                &trade_type,
+                                &order_types,
+                            );
+
+                            let new_orders = match overwrite_orders {
+                                true => prepared_orders,
+                                false => match pending_orders.len().cmp(&0) {
+                                    std::cmp::Ordering::Equal => prepared_orders,
+                                    _ => vec![],
+                                },
+                            };
+
+                            PositionResult::PendingOrder(new_orders)
+                        }
+                        _ => PositionResult::None,
+                    },
+                    false => PositionResult::None,
+                    _ => PositionResult::None,
                 },
                 false => PositionResult::None,
-            }
-        } else {
-            PositionResult::None
+            },
+            true => PositionResult::None,
         }
     }
 
-    fn resolve_exit_position(
+    fn should_exit_position(
         &mut self,
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
         trade_in: &TradeIn,
     ) -> PositionResult {
-        let wait_for_closing_trade = self.wait_for_closing_trade(index, instrument, trade_in);
+        let wait_for_closing_trade = trade::wait_for_closing_trade(index, instrument, trade_in);
 
         match wait_for_closing_trade {
             true => match trade_in.trade_type.is_long_entry() {
-                true => {
-                    match self.exit_long(index, instrument, htf_instrument, trade_in, pricing) {
-                        Position::MarketOut(_) => {
-                            let trade_type = TradeType::MarketOutLong;
-                            let trade_out_result = trade::resolve_trade_out(
-                                index,
-                                instrument,
-                                pricing,
-                                trade_in,
-                                &trade_type,
-                                None,
-                            );
-                            PositionResult::MarketOut(trade_out_result)
-                        }
-                        Position::Order(order_types) => {
-                            let trade_type = TradeType::OrderOutLong;
-                            let orders = order::prepare_orders(
-                                index,
-                                instrument,
-                                pricing,
-                                &trade_type,
-                                &order_types,
-                            );
-                            PositionResult::PendingOrder(orders)
-                        }
-                        _ => PositionResult::None,
+                true => match self.exit_long(index, instrument, htf_instrument, trade_in, tick) {
+                    Position::MarketOut(_) => {
+                        let trade_type = TradeType::MarketOutLong;
+                        let trade_out_result = trade::resolve_trade_out(
+                            index,
+                            instrument,
+                            tick,
+                            trade_in,
+                            &trade_type,
+                            None,
+                        );
+                        PositionResult::MarketOut(trade_out_result)
                     }
-                }
-                false => {
-                    match self.exit_short(index, instrument, htf_instrument, trade_in, pricing) {
-                        Position::MarketOut(_) => {
-                            let trade_type = TradeType::MarketOutShort;
-                            let trade_out_result = trade::resolve_trade_out(
-                                index,
-                                instrument,
-                                pricing,
-                                trade_in,
-                                &trade_type,
-                                None,
-                            );
+                    Position::Order(order_types) => {
+                        let trade_type = TradeType::OrderOutLong;
+                        let orders = order::prepare_orders(
+                            index,
+                            instrument,
+                            tick,
+                            &trade_type,
+                            &order_types,
+                        );
+                        PositionResult::PendingOrder(orders)
+                    }
+                    _ => PositionResult::None,
+                },
+                false => match self.exit_short(index, instrument, htf_instrument, trade_in, tick) {
+                    Position::MarketOut(_) => {
+                        let trade_type = TradeType::MarketOutShort;
+                        let trade_out_result = trade::resolve_trade_out(
+                            index,
+                            instrument,
+                            tick,
+                            trade_in,
+                            &trade_type,
+                            None,
+                        );
 
-                            PositionResult::MarketOut(trade_out_result)
-                        }
-                        Position::Order(order_types) => {
-                            let trade_type = TradeType::OrderOutShort;
-                            let orders = order::prepare_orders(
-                                index,
-                                instrument,
-                                pricing,
-                                &trade_type,
-                                &order_types,
-                            );
-                            PositionResult::PendingOrder(orders)
-                        }
-                        _ => PositionResult::None,
+                        PositionResult::MarketOut(trade_out_result)
                     }
-                }
+                    Position::Order(order_types) => {
+                        let trade_type = TradeType::OrderOutShort;
+                        let orders = order::prepare_orders(
+                            index,
+                            instrument,
+                            tick,
+                            &trade_type,
+                            &order_types,
+                        );
+                        PositionResult::PendingOrder(orders)
+                    }
+                    _ => PositionResult::None,
+                },
             },
             false => PositionResult::None,
         }
@@ -381,11 +345,11 @@ pub trait Strategy: DynClone {
         &mut self,
         index: usize,
         instrument: &Instrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
         pending_orders: &Vec<Order>,
         trades_in: &Vec<TradeIn>,
     ) -> PositionResult {
-        match order::resolve_active_orders(index, instrument, pending_orders, trades_in) {
+        match order::resolve_active_orders(index, instrument, pending_orders, tick) {
             Position::MarketInOrder(mut order) => {
                 let order_size = order.size();
                 let trade_type = order.to_trade_type();
@@ -393,7 +357,7 @@ pub trait Strategy: DynClone {
                     index,
                     order_size,
                     instrument,
-                    pricing,
+                    tick,
                     &trade_type,
                     Some(&order),
                 );
@@ -413,7 +377,7 @@ pub trait Strategy: DynClone {
                     Some(trade_in) => trade::resolve_trade_out(
                         index,
                         instrument,
-                        pricing,
+                        tick,
                         trade_in,
                         &trade_type,
                         Some(&order),
@@ -450,109 +414,9 @@ pub trait Strategy: DynClone {
         trade_in: &TradeIn,
         trade_out: &TradeOut,
         data: &Vec<Candle>,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> TradeOut {
-        calculate_trade_stats(trade_in, trade_out, data, pricing)
-    }
-
-    fn wait_for_opening_trade(
-        &self,
-        index: usize,
-        instrument: &Instrument,
-        trades_out: &Vec<TradeOut>,
-    ) -> bool {
-        let wait_for_new_entry = env::var("WAIT_FOR_NEW_ENTRY")
-            .unwrap()
-            .parse::<bool>()
-            .unwrap();
-
-        match wait_for_new_entry {
-            true => {
-                let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
-
-                let candles_until_new_operation = env::var("CANDLES_UNTIL_NEW_ENTRY")
-                    .unwrap()
-                    .parse::<i64>()
-                    .unwrap();
-
-                let time_frame = instrument.time_frame();
-
-                let current_date = match execution_mode.is_back_test() {
-                    true => instrument.data().get(index).unwrap().date(),
-                    false => Local::now(),
-                };
-
-                match trades_out.last() {
-                    Some(trade_out) => {
-                        let next_entry_date = match instrument.time_frame().is_minutely_time_frame()
-                        {
-                            true => {
-                                date::from_dbtime(&trade_out.date_out)
-                                    + date::Duration::minutes(
-                                        candles_until_new_operation * time_frame.to_minutes(),
-                                    )
-                            }
-                            false => {
-                                date::from_dbtime(&trade_out.date_out)
-                                    + date::Duration::hours(
-                                        candles_until_new_operation * time_frame.to_hours(),
-                                    )
-                            }
-                        };
-                        next_entry_date <= current_date
-                    }
-                    None => true,
-                }
-            }
-            false => true,
-        }
-    }
-
-    fn wait_for_closing_trade(
-        &self,
-        index: usize,
-        instrument: &Instrument,
-        trade_in: &TradeIn,
-    ) -> bool {
-        let wait_for_new_exit = env::var("WAIT_FOR_NEW_EXIT")
-            .unwrap()
-            .parse::<bool>()
-            .unwrap();
-
-        match wait_for_new_exit {
-            true => {
-                let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
-
-                let candles_until_new_operation = env::var("CANDLES_UNTIL_NEW_ENTRY")
-                    .unwrap()
-                    .parse::<i64>()
-                    .unwrap();
-
-                let time_frame = instrument.time_frame();
-
-                let current_date = match execution_mode.is_back_test() {
-                    true => instrument.data().get(index).unwrap().date(),
-                    false => Local::now(),
-                };
-
-                let next_entry_date = match instrument.time_frame().is_minutely_time_frame() {
-                    true => {
-                        date::from_dbtime(&trade_in.date_in)
-                            + date::Duration::minutes(
-                                candles_until_new_operation * time_frame.to_minutes(),
-                            )
-                    }
-                    false => {
-                        date::from_dbtime(&trade_in.date_in)
-                            + date::Duration::hours(
-                                candles_until_new_operation * time_frame.to_hours(),
-                            )
-                    }
-                };
-                next_entry_date <= current_date
-            }
-            false => true,
-        }
+        calculate_trade_stats(trade_in, trade_out, data, tick)
     }
 }
 
@@ -564,21 +428,40 @@ pub fn set_strategy(
 ) -> Box<dyn Strategy> {
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
-            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+            strategies::num_bars_atr::NumBars::new(
+                Some("NumBars_ts"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
             )
             .unwrap(),
         ),
+        //         Box::new(
+        //     strategies::num_bars_atr::NumBars::new(
+        //         Some("NumBars_ts"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
         Box::new(
-            strategies::bollinger_bands_middle_band::BollingerBandsMiddleBand::new(
+            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+                Some("BbBars_ts"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
             )
             .unwrap(),
         ),
+        // Box::new(
+        //     strategies::bollinger_bands_middle_band::BollingerBandsMiddleBand::new(
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
     ];
 
     let mut strategy = strategies[0].clone();

@@ -9,15 +9,15 @@ use crate::message;
 use crate::strategies::strategy::*;
 
 use futures::Future;
-use rs_algo_shared::helpers::date::Local;
-use rs_algo_shared::helpers::uuid::*;
+use rs_algo_shared::helpers::http::{request, HttpMethod};
+use rs_algo_shared::helpers::{date, uuid::*};
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::order::{Order, OrderStatus};
-use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::models::{market::*, order};
@@ -38,7 +38,7 @@ pub struct Bot {
     symbol: String,
     market: Market,
     #[serde(skip_serializing)]
-    pricing: Pricing,
+    tick: InstrumentTick,
     strategy_name: String,
     strategy_type: StrategyType,
     time_frame: TimeFrameType,
@@ -162,16 +162,16 @@ impl Bot {
         }
     }
 
-    pub async fn get_pricing_data(&mut self) {
-        let instrument_pricing_data = Command {
-            command: CommandType::GetInstrumentPricing,
+    pub async fn get_tick_data(&mut self) {
+        let instrument_tick_data = Command {
+            command: CommandType::GetInstrumentTick,
             data: Some(Symbol {
                 symbol: self.symbol.to_owned(),
             }),
         };
 
         self.websocket
-            .send(&serde_json::to_string(&instrument_pricing_data).unwrap())
+            .send(&serde_json::to_string(&instrument_tick_data).unwrap())
             .await
             .unwrap();
     }
@@ -300,8 +300,38 @@ impl Bot {
         self.init_session().await;
     }
 
+    pub async fn set_tick(&mut self) {
+        let mut open_positions = false;
+        let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
+        let overwrite_orders = env::var("OVERWRITE_ORDERS")
+            .unwrap()
+            .parse::<bool>()
+            .unwrap();
+
+        let tick_endpoint = env::var("BACKEND_BACKTEST_PRICING_ENDPOINT")
+            .unwrap()
+            .clone();
+
+        let prices: Vec<InstrumentTick> =
+            request(&tick_endpoint, &String::from("all"), HttpMethod::Get)
+                .await
+                .unwrap()
+                .json()
+                .await
+                .unwrap();
+        let mut tick = match prices.iter().position(|tick| tick.symbol() == self.symbol) {
+            Some(idx) => prices.get(idx).unwrap().clone(),
+            None => {
+                panic!("[PANIC] InstrumentTick not found for {:?}", self.symbol);
+            }
+        };
+
+        self.tick = tick;
+    }
+
     pub async fn run(&mut self) {
         self.init_session().await;
+        self.set_tick().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
         let overwrite_orders = env::var("OVERWRITE_ORDERS")
@@ -310,7 +340,7 @@ impl Bot {
             .unwrap();
 
         loop {
-            match self.websocket.read_msg().await {
+            match self.websocket.read().await {
                 Ok(msg) => {
                     match msg {
                         Message::Text(txt) => {
@@ -384,13 +414,13 @@ impl Bot {
                                     }
                                 }
                                 MessageType::MarketHours(res) => {
+                                    log::info!("Trading hours received!");
                                     let market_hours = res.payload.unwrap();
-                                    let open = market_hours.open();
-                                    match market_hours.open() {
+                                    match market_hours.is_trading_time() {
                                         true => {
-                                            log::info!("{} market open: {}", self.symbol, open);
+                                            log::info!("{} market open", self.symbol);
                                             self.get_instrument_data().await;
-                                            self.get_pricing_data().await;
+                                            self.get_tick_data().await;
                                         }
                                         false => {
                                             let secs_to_retry = env::var("MARKET_CLOSED_RETRY")
@@ -409,11 +439,11 @@ impl Bot {
                                         }
                                     }
                                 }
-                                MessageType::PricingData(res) => {
-                                    let pricing = res.payload.unwrap();
-                                    self.pricing = pricing;
-                                    //LECHES
-                                    self.pricing.set_spread(0.00001);
+                                MessageType::StreamTickResponse(res)
+                                | MessageType::InstrumentTick(res) => {
+                                    // let tick = res.payload.unwrap();
+                                    // panic!();
+                                    // self.tick = tick;
                                 }
                                 MessageType::InstrumentData(res) => {
                                     let payload = res.payload.unwrap();
@@ -462,7 +492,7 @@ impl Bot {
                                     }
 
                                     //TODO REVIEW ACTIVE ORDERS FOR GAPS
-                                    self.send_bot_status(&bot_str).await;
+                                    //self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::StreamResponse(res) => {
                                     let payload = res.payload.unwrap();
@@ -487,13 +517,13 @@ impl Bot {
 
                                     let (position_result, orders_position_result) = self
                                         .strategy
-                                        .tick(
+                                        .next(
                                             &self.instrument,
                                             &self.htf_instrument,
                                             &self.trades_in,
                                             &self.trades_out,
                                             &self.orders,
-                                            &self.pricing,
+                                            &self.tick,
                                         )
                                         .await;
 
@@ -652,19 +682,26 @@ impl Bot {
 
                                     self.send_bot_status(&bot_str).await;
                                 }
-                                MessageType::StreamPricingResponse(res) => {
-                                    let current_pip_size = self.pricing.pip_size();
-                                    let current_percentage = self.pricing.percentage();
-                                    let pricing = res.payload.unwrap();
-                                    self.pricing = Pricing::new(
-                                        pricing.symbol(),
-                                        pricing.ask(),
-                                        pricing.bid(),
-                                        pricing.spread(),
-                                        current_pip_size,
-                                        current_percentage,
-                                    );
-                                }
+                                // MessageType::StreamTickResponse(res) => {
+                                //     panic!();
+                                //     let orders = &self.orders;
+                                //     let pending_orders = order::get_pending(orders);
+                                //     let current_pip_size = self.tick.pip_size();
+                                //     let tick = res.payload.unwrap();
+                                //     let tick = InstrumentTick::new()
+                                //         .symbol(tick.symbol())
+                                //         .ask(tick.ask())
+                                //         .bid(tick.bid())
+                                //         .high(tick.high())
+                                //         .low(tick.low())
+                                //         .spread(tick.spread())
+                                //         .pip_size(current_pip_size)
+                                //         .time(tick.time())
+                                //         .build()
+                                //         .unwrap();
+
+                                //     self.tick = tick;
+                                // }
                                 MessageType::TradeInAccepted(res) => {
                                     let payload = res.payload.unwrap();
                                     let accepted = &payload.accepted;
@@ -720,7 +757,7 @@ impl Bot {
                                                     self.trades_in.last().unwrap(),
                                                     &trade_response.data,
                                                     &self.instrument.data,
-                                                    &self.pricing,
+                                                    &self.tick,
                                                 );
 
                                             //LECHES
@@ -899,7 +936,7 @@ impl BotBuilder {
                 uuid: uuid::Uuid::new(),
                 symbol,
                 market,
-                pricing: Pricing::default(),
+                tick: InstrumentTick::default(),
                 time_frame,
                 higher_time_frame: self.higher_time_frame,
                 date_start: to_dbtime(Local::now()),

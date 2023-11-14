@@ -45,27 +45,20 @@ pub async fn init(sessions: &mut Sessions) {
                     let bot_name = session.bot_name();
 
                     if last_data < hb_timeout && session.symbol() != "init" {
-                        let is_open = session.market_hours.is_open();
+                        log::info!("{:?} session KO while market is open.", &bot_name);
 
-                        match is_open {
-                            true => {
-                                log::info!("{:?} session KO while market is open.", &bot_name);
+                        let session_clone = session.clone();
+                        sessions_to_remove.push(addr.clone());
 
-                                let session_clone = session.clone();
-                                sessions_to_remove.push(addr.clone());
+                        let future = async move {
+                            message::send_reconnect(
+                                &session_clone,
+                                ReconnectOptions { clean_data: true },
+                            )
+                            .await;
+                        };
 
-                                let future = async move {
-                                    message::send_reconnect(
-                                        &session_clone,
-                                        ReconnectOptions { clean_data: true },
-                                    )
-                                    .await;
-                                };
-
-                                futures.push(future);
-                            }
-                            false => {}
-                        }
+                        futures.push(future);
                     }
                 }
             }

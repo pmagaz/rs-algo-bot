@@ -4,10 +4,14 @@ use crate::handlers::{session::Session, session::Sessions};
 
 use chrono::DateTime;
 use chrono::Local;
+use futures_util::TryFutureExt;
 use rs_algo_shared::helpers::date;
+use rs_algo_shared::helpers::http::request;
+use rs_algo_shared::helpers::http::HttpMethod;
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode;
 use rs_algo_shared::models::mode::ExecutionMode;
+use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::ws::message::*;
@@ -159,17 +163,33 @@ where
                         Err(_) => None,
                     }
                 }
-                CommandType::GetInstrumentPricing => {
-                    let res = broker
-                        .lock()
-                        .await
-                        .get_instrument_pricing(symbol)
-                        .await
-                        .unwrap();
+                CommandType::GetInstrumentTick => {
+                    // let res = broker
+                    //     .lock()
+                    //     .await
+                    //     .get_instrument_tick(symbol)
+                    //     .await
+                    //     .unwrap();
 
-                    log::info!("Requesting {} pricing data", symbol);
+                    // log::info!("Requesting {} pricing data", symbol);
+                    let tick_endpoint = env::var("BACKEND_BACKTEST_PRICING_ENDPOINT")
+                        .unwrap()
+                        .clone();
+                    let prices: Vec<InstrumentTick> =
+                        request(&tick_endpoint, &String::from("all"), HttpMethod::Get)
+                            .await
+                            .unwrap()
+                            .json()
+                            .await
+                            .unwrap();
+                    let mut tick = match prices.iter().position(|tick| tick.symbol() == symbol) {
+                        Some(idx) => prices.get(idx).unwrap().clone(),
+                        None => {
+                            panic!("[PANIC] InstrumentTick not found for {:?}", symbol);
+                        }
+                    };
 
-                    Some(serde_json::to_string(&res).unwrap())
+                    Some(serde_json::to_string(&tick).unwrap())
                 }
                 CommandType::GetInstrumentData => {
                     let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
@@ -195,17 +215,6 @@ where
                         time_frame_from,
                         (num_bars)
                     );
-
-                    // let res = broker
-                    //     .lock()
-                    //     .await
-                    //     .get_instrument_data(
-                    //         symbol,
-                    //         time_frame_number as usize,
-                    //         time_frame_from.timestamp(),
-                    //     )
-                    //     .await
-                    //     .unwrap();
 
                     let time_frame_from =
                         TimeFrame::get_starting_bar(num_bars, &time_frame, &ExecutionMode::Bot)
@@ -329,6 +338,8 @@ where
                         stream::listen(broker.clone(), session.clone());
                     })
                     .await;
+                    //broker.lock().await.disconnect().await.unwrap();
+
                     Some("".to_string())
                 }
                 _ => {

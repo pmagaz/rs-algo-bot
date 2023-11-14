@@ -32,7 +32,7 @@ pub async fn run(addr: String) {
         .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
         .unwrap();
 
-    heart_beat::init(&mut sessions).await;
+    // heart_beat::init(&mut sessions).await;
 
     let db_client = Arc::new(mongo_client);
 

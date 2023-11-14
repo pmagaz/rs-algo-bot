@@ -3,7 +3,7 @@ use rs_algo_shared::helpers::date::DateTime;
 use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::market::MarketHours;
-use rs_algo_shared::models::pricing::Pricing;
+use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::ws::message::*;
@@ -42,9 +42,9 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::GetMarketHours,
                 payload: Some(parse_market_hours(payload)),
             }),
-            Some("GetInstrumentPricing") => MessageType::PricingData(ResponseBody {
-                response: ResponseType::GetInstrumentPricing,
-                payload: Some(parse_pricing_data(payload)),
+            Some("GetInstrumentTick") => MessageType::InstrumentTick(ResponseBody {
+                response: ResponseType::GetInstrumentTick,
+                payload: Some(parse_tick_data(payload)),
             }),
             Some("GetInstrumentData") => MessageType::InstrumentData(ResponseBody {
                 response: ResponseType::GetInstrumentData,
@@ -62,9 +62,9 @@ pub fn get_type(msg: &str) -> MessageType {
                     data: parse_dohlc(payload),
                 }),
             }),
-            Some("SubscribeTickPrices") => MessageType::StreamPricingResponse(ResponseBody {
+            Some("SubscribeTickPrices") => MessageType::StreamTickResponse(ResponseBody {
                 response: ResponseType::SubscribeTickPrices,
-                payload: Some(parse_pricing_data(payload)),
+                payload: Some(parse_tick_data(payload)),
             }),
             Some("TradeInAccepted") => MessageType::TradeInAccepted(ResponseBody {
                 response: ResponseType::TradeInAccepted,
@@ -129,14 +129,19 @@ pub fn parse_vec_dohlc(data: &Value) -> VEC_DOHLC {
     result
 }
 
-pub fn parse_pricing_data(data: &Value) -> Pricing {
-    let pricing: Pricing = serde_json::from_value(data.clone()).unwrap();
+pub fn parse_pricing_data(data: &Value) -> InstrumentTick {
+    let pricing: InstrumentTick = serde_json::from_value(data.clone()).unwrap();
     pricing
 }
 
 pub fn parse_market_hours(data: &Value) -> MarketHours {
     let market_hours: MarketHours = serde_json::from_value(data.clone()).unwrap();
     market_hours
+}
+
+pub fn parse_tick_data(data: &Value) -> InstrumentTick {
+    let tick: InstrumentTick = serde_json::from_value(data.clone()).unwrap();
+    tick
 }
 
 pub fn parse_stream(data: &Value) -> LECHES {
@@ -147,7 +152,7 @@ pub fn parse_stream(data: &Value) -> LECHES {
     let low = arr[3].as_f64().unwrap();
     let volume = arr[4].as_f64().unwrap();
     let timestamp = arr[5].as_f64().unwrap();
-    let _date = parse_time(timestamp as i64);
+    let _date = parse_time_seconds(timestamp as i64);
     let _spread = arr[6].as_f64().unwrap();
     (ask, ask, bid, high, low, volume)
 }
