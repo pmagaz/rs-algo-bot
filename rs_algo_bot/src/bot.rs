@@ -302,7 +302,7 @@ impl Bot {
 
     pub async fn set_tick(&mut self) {
         let tick_endpoint = format!(
-            "{}{}",
+            "{}/{}",
             env::var("BACKEND_BACKTEST_PRICING_ENDPOINT").unwrap(),
             self.symbol
         );

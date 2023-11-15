@@ -173,7 +173,7 @@ where
 
                     // log::info!("Requesting {} pricing data", symbol);
                     let tick_endpoint = format!(
-                        "{}{}",
+                        "{}/{}",
                         env::var("BACKEND_BACKTEST_PRICING_ENDPOINT").unwrap(),
                         symbol
                     );

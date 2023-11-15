@@ -447,7 +447,7 @@ pub fn set_strategy(
         // ),
         Box::new(
             strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("NumBars_Backtest"),
+                Some("x_NumBars_Backtest"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
