@@ -1,6 +1,6 @@
 apiVersion: v2
-name: rs-algo-ws-server
-description: Rust WS Server 
+name: rs-algo-ws-server-backtest
+description: Rust WS Server Backtest 
 type: application
 version: 0.1.3
 appVersion: "1.16.0"

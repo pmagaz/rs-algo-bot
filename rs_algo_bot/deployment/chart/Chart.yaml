@@ -1,6 +1,6 @@
 apiVersion: v2
-name: rs-algo-bot
-description: Rust Algo Bot
+name: rs-algo-bot-backtest
+description: Rust Algo Bot Backtest
 type: application
 version: 0.1.3
 appVersion: "1.16.0"
