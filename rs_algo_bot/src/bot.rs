@@ -459,7 +459,7 @@ impl Bot {
 
                                     match new_candle.is_closed() {
                                         true => {
-                                            log::info!("Candle closed {:?}", higher_candle.date());
+                                            log::info!("Candle closed {:?}", new_candle.date());
                                             self.instrument
                                                 .init_candle(data, &Some(self.time_frame.clone()));
                                         }
@@ -514,6 +514,8 @@ impl Bot {
                                                     &mut self.orders,
                                                     &self.instrument,
                                                 );
+
+                                                open_positions = true;
                                             }
                                         }
                                         PositionResult::MarketOutOrder(
@@ -540,6 +542,8 @@ impl Bot {
                                                     &mut self.orders,
                                                     &self.instrument,
                                                 );
+
+                                                open_positions = false;
                                             }
                                         }
                                         _ => (),

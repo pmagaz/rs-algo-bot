@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: cluster.loc:5000/rs-algo-ws-server 
+  repository: cluster.loc:5000/rs-algo-ws-server-backtest
   pullPolicy: Always
   tag: "latest"
 
@@ -17,9 +17,9 @@ service:
   port: 9000
   targetPort: 9000
   metadata:
-    name: rs-algo-ws-server
+    name: rs-algo-ws-server-backtest
     labels:
-      app: rs-algo-ws-server
+      app: rs-algo-ws-server-backtest
 
 serviceAccount: {}
 
@@ -41,9 +41,9 @@ resources:
 
 autoscaling:
   enabled: true
-  minReplicas: 2
-  maxReplicas: 2
-  targetCPUUtilizationPercentage: 40
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 90
   # targetMemoryUtilizationPercentage: 80
 
 nodeSelector:

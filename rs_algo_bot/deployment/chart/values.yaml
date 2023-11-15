@@ -1,0 +1,31 @@
+jobs:
+  - name: daily
+    image:
+      repository: cluster.loc:5000/rs-algo-bot-backtest
+      tag: latest 
+      imagePullPolicy: Always
+    schedule: "00 00 1 1 * 2030"
+    failedJobsHistoryLimit: 1
+    successfulJobsHistoryLimit: 0
+    concurrencyPolicy: Forbid
+    restartPolicy: OnFailure
+    activeDeadlineSeconds: 7200
+    envSecretName: rs-algo-screener-secrets
+    resources:
+      requests:
+        cpu: 25m
+        memory: 1Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+    nodeSelector:
+      nodeType: worker
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: nodeType
+              operator: In
+              values:
+              - worker
