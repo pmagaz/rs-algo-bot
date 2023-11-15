@@ -69,7 +69,7 @@ where
                 };
 
                 let instrument_string =
-                    serde_json::to_string(&res).expect("Failed to serialize struct to JSON");
+                    serde_json::to_string(&res).expect("Failed to serialize struct to JSON!");
 
                 let msg = Message::Text(instrument_string);
                 match message::send(&session, msg).await {
