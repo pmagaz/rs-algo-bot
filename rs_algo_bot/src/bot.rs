@@ -335,7 +335,7 @@ impl Bot {
                                     log::info!("{} connected to server", bot_str);
                                 }
                                 MessageType::Reconnect(_res) => {
-                                    log::info!("{} reconnect msg received", bot_str);
+                                    log::info!("{} reconnect msg received!", bot_str);
                                     self.reconnect().await;
                                 }
                                 MessageType::InitSession(res) => {

@@ -1,5 +1,5 @@
 jobs:
-  - name: daily
+  - name: job
     image:
       repository: cluster.loc:5000/rs-algo-bot-backtest
       tag: latest 
