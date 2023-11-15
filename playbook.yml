@@ -1,5 +1,5 @@
 ---
-- name: Deploy RS-ALGO-BOT
+- name: Deploy RS-ALGO-BOT-BACKTEST
   hosts: all
   roles:
     - { role: "deployment/git/roles" }
