@@ -5,5 +5,5 @@
     - { role: "deployment/git/roles" }
     # - { role: "deployment/mongodb-bot/roles/" }
     # backtest
-    - { role: "rs_algo_bot/deployment/roles/" }
     - { role: "rs_algo_ws_server/deployment/roles/" }
+    - { role: "rs_algo_bot/deployment/roles/" }
