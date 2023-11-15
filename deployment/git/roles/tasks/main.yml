@@ -5,4 +5,4 @@
     dest: "{{ local_path }}"
     clone: no
     update: yes
-    version: "main"
+    version: "backtest"
