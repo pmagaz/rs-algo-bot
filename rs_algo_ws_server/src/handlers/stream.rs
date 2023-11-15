@@ -55,7 +55,7 @@ where
             let mut counter: usize = 0;
             let base_sleep_time = 100;
             let increment = 100;
-            let max_sleep_time = 500;
+            let max_sleep_time = 1000;
             let batch_increment = 2000;
 
             let data = res.payload.unwrap().data;
