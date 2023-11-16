@@ -7,8 +7,6 @@ use rs_algo_shared::helpers::date::Local;
 use futures_util::StreamExt;
 use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::time_frame::TimeFrame;
-use rs_algo_shared::ws::message::InstrumentData;
-use rs_algo_shared::ws::message::ReconnectOptions;
 use rs_algo_shared::ws::message::ResponseBody;
 use rs_algo_shared::ws::message::ResponseType;
 use std::env;

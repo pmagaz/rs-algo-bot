@@ -9,7 +9,7 @@ jobs:
     successfulJobsHistoryLimit: 0
     concurrencyPolicy: Forbid
     restartPolicy: OnFailure
-    activeDeadlineSeconds: 86400
+    activeDeadlineSeconds: 43200
     envSecretName: rs-algo-screener-secrets
     resources:
       requests:
