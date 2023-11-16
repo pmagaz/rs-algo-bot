@@ -429,25 +429,16 @@ pub fn set_strategy(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
             strategies::num_bars_atr::NumBars::new(
-                Some("x_NumBars_Backtest"),
+                Some("NumBars_Backtest"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
             )
             .unwrap(),
         ),
-        //         Box::new(
-        //     strategies::num_bars_atr::NumBars::new(
-        //         Some("NumBars_ts"),
-        //         Some(time_frame),
-        //         higher_time_frame,
-        //         Some(strategy_type.clone()),
-        //     )
-        //     .unwrap(),
-        // ),
         Box::new(
             strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("x_BollingerBands_Backtest"),
+                Some("BollingerBands_Backtest"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
