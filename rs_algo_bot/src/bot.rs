@@ -345,7 +345,7 @@ impl Bot {
             .unwrap();
 
         loop {
-            match self.websocket.read_msg().await {
+            match self.websocket.read().await {
                 Ok(msg) => {
                     match msg {
                         Message::Text(txt) => {
@@ -419,9 +419,14 @@ impl Bot {
                                     }
                                 }
                                 MessageType::MarketHours(res) => {
-                                    log::info!("Trading hours received!");
                                     let market_hours = res.payload.unwrap();
-                                    match market_hours.is_trading_time() {
+                                    let is_trading_hours = market_hours.is_trading_time();
+                                    log::info!(
+                                        "Trading hours {}",
+                                        &is_trading_hours
+                                    );
+
+                                    match is_trading_hours {
                                         true => self.is_market_open().await,
                                         false => {
                                             let will_open_at = market_hours.wait_until();
