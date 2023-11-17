@@ -33,7 +33,7 @@ where
 
             //LECHES
             let num_bars = env::var("NUM_BARS_TEST").unwrap().parse::<i64>().unwrap();
-            let time_frame = TimeFrame::new("M5");
+            let time_frame = TimeFrame::new("M1");
             let time_frame_from =
                 TimeFrame::get_starting_bar(num_bars, &time_frame, &ExecutionMode::Bot);
             let time_frame_number = time_frame.to_number();
