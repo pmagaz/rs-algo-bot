@@ -32,8 +32,8 @@ where
             let password = &env::var("BROKER_PASSWORD").unwrap();
 
             //LECHES
-            let num_bars = env::var("NUM_BARS").unwrap().parse::<i64>().unwrap();
-            let time_frame = TimeFrame::new("M1");
+            let num_bars = env::var("NUM_BARS_TEST").unwrap().parse::<i64>().unwrap();
+            let time_frame = TimeFrame::new("M5");
             let time_frame_from =
                 TimeFrame::get_starting_bar(num_bars, &time_frame, &ExecutionMode::Bot);
             let time_frame_number = time_frame.to_number();
@@ -51,13 +51,11 @@ where
 
             broker_stream.disconnect().await.unwrap();
             let mut counter: usize = 0;
-            let base_sleep_time = 100;
-            let increment = 100;
-            let max_sleep_time = 1000;
-            let batch_increment = 2000;
+            let sleep_time = 100;
 
             let data = res.payload.unwrap().data;
 
+            log::error!("Total data {:?}", data.len());
             for item in data.iter().skip(4) {
                 let (date, open, high, low, close, volume) = item;
 
@@ -79,9 +77,6 @@ where
                 };
 
                 counter = counter + 1;
-                let num_increments = counter / batch_increment;
-                let sleep_time =
-                    (base_sleep_time + (num_increments * increment)).min(max_sleep_time) as u64;
                 log::info!("{:?}", (counter, sleep_time));
                 sleep(Duration::from_millis(sleep_time)).await;
             }

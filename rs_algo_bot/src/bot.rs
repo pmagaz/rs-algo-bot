@@ -420,9 +420,6 @@ impl Bot {
                                             HTFInstrument::None => {}
                                         };
                                     }
-
-                                    //TODO REVIEW ACTIVE ORDERS FOR GAPS
-                                    //self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::StreamResponse(res) => {
                                     let payload = res.payload.unwrap();
@@ -617,8 +614,6 @@ impl Bot {
                                             &mut self.orders,
                                         );
                                     }
-
-                                    self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::TradeInAccepted(res) => {
                                     let payload = res.payload.unwrap();
@@ -641,7 +636,6 @@ impl Bot {
                                             );
 
                                             order::extend_all_pending_orders(&mut self.orders);
-                                            self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
                                             log::warn!(
@@ -652,6 +646,7 @@ impl Bot {
                                             open_positions = false;
                                         }
                                     }
+                                    self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::TradeOutAccepted(res) => {
                                     let payload = res.payload.unwrap();
@@ -701,8 +696,6 @@ impl Bot {
                                                 &self.trades_in,
                                                 &self.trades_out,
                                             );
-
-                                            self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
                                             log::warn!(
@@ -715,6 +708,7 @@ impl Bot {
                                             open_positions = true;
                                         }
                                     };
+                                    self.send_bot_status(&bot_str).await;
                                 }
                                 _ => (),
                             };
