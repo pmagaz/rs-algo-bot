@@ -437,6 +437,15 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
+            strategies::num_bars_atr_dis::NumBars::new(
+                Some("NumBars_Dis_Backtest"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
             strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
                 Some("BollingerBands_Backtest"),
                 Some(time_frame),
