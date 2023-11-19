@@ -42,6 +42,10 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::GetMarketHours,
                 payload: Some(parse_market_hours(payload)),
             }),
+            Some("IsMarketOpen") => MessageType::IsMarketOpen(ResponseBody {
+                response: ResponseType::GetMarketHours,
+                payload: Some(parse_market_open(payload)),
+            }),
             Some("GetInstrumentTick") => MessageType::InstrumentTick(ResponseBody {
                 response: ResponseType::GetInstrumentTick,
                 payload: Some(parse_tick_data(payload)),
@@ -129,9 +133,9 @@ pub fn parse_vec_dohlc(data: &Value) -> VEC_DOHLC {
     result
 }
 
-pub fn parse_pricing_data(data: &Value) -> InstrumentTick {
-    let pricing: InstrumentTick = serde_json::from_value(data.clone()).unwrap();
-    pricing
+pub fn parse_tick_data(data: &Value) -> InstrumentTick {
+    let tick: InstrumentTick = serde_json::from_value(data.clone()).unwrap();
+    tick
 }
 
 pub fn parse_market_hours(data: &Value) -> MarketHours {
@@ -139,9 +143,9 @@ pub fn parse_market_hours(data: &Value) -> MarketHours {
     market_hours
 }
 
-pub fn parse_tick_data(data: &Value) -> InstrumentTick {
-    let tick: InstrumentTick = serde_json::from_value(data.clone()).unwrap();
-    tick
+pub fn parse_market_open(data: &Value) -> bool {
+    let market_open: bool = serde_json::from_value(data.clone()).unwrap();
+    market_open
 }
 
 pub fn parse_stream(data: &Value) -> LECHES {

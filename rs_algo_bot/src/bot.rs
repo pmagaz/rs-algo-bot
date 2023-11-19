@@ -180,7 +180,7 @@ impl Bot {
         log::info!("Checking {} market is open...", &self.symbol,);
 
         let instrument_pricing_data = Command {
-            command: CommandType::GetMarketHours,
+            command: CommandType::IsMarketOpen,
             data: Some(Symbol {
                 symbol: self.symbol.to_owned(),
             }),
@@ -273,6 +273,22 @@ impl Bot {
             .unwrap();
     }
 
+    pub async fn get_market_hours(&mut self) {
+        log::info!("Checking {} trading hours...", &self.symbol,);
+        //sleep(Duration::from_millis(200)).await;
+        let data = Command {
+            command: CommandType::GetMarketHours,
+            data: Some(Symbol {
+                symbol: self.symbol.to_owned(),
+            }),
+        };
+
+        self.websocket
+            .send(&serde_json::to_string(&data).unwrap())
+            .await
+            .unwrap();
+    }
+
     pub async fn send_bot_status(&mut self, _bot_str: &str) {
         self.last_update = to_dbtime(Local::now());
 
@@ -341,16 +357,41 @@ impl Bot {
                                 MessageType::InitSession(res) => {
                                     log::info!("Getting {} previous session", bot_str);
 
-                                    self.is_market_open().await;
+                                    self.get_market_hours().await;
                                 }
                                 MessageType::MarketHours(res) => {
-                                    log::info!("Trading hours received!");
                                     let market_hours = res.payload.unwrap();
-                                    match market_hours.is_trading_time() {
+                                    let is_trading_hours = true;
+                                    log::info!("Trading hours {}", &is_trading_hours);
+
+                                    match is_trading_hours {
+                                        true => self.is_market_open().await,
+                                        false => {
+                                            let will_open_at = market_hours.wait_until();
+
+                                            let wait_until = will_open_at
+                                                .signed_duration_since(Local::now())
+                                                .num_seconds()
+                                                as u64;
+
+                                            log::info!(
+                                                "Not in trading hours. Trading available at {}. Waiting {} secs / {} hours",
+                                                will_open_at, wait_until, wait_until / 3600
+                                            );
+
+                                            sleep(Duration::from_secs(wait_until)).await;
+                                            log::info!("{} Reconnecting", bot_str);
+                                            self.reconnect().await;
+                                        }
+                                    };
+                                }
+                                MessageType::IsMarketOpen(res) => {
+                                    let is_market_open = true;
+                                    match is_market_open {
                                         true => {
-                                            log::info!("{} market open", self.symbol);
+                                            log::info!("{} Market open!", self.symbol);
                                             self.get_instrument_data().await;
-                                            //self.get_tick_data().await;
+                                            self.get_tick_data().await;
                                         }
                                         false => {
                                             let secs_to_retry = env::var("MARKET_CLOSED_RETRY")
@@ -359,13 +400,13 @@ impl Bot {
                                                 .unwrap();
 
                                             log::warn!(
-                                                "{} market closed!. Retrying after {} secs...",
+                                                "{} Market closed!. Retrying after {} secs...",
                                                 self.symbol,
                                                 secs_to_retry
                                             );
 
                                             sleep(Duration::from_secs(secs_to_retry)).await;
-                                            self.is_market_open().await;
+                                            self.get_market_hours().await;
                                         }
                                     }
                                 }

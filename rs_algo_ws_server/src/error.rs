@@ -1,3 +1,5 @@
+pub use rs_algo_shared::error::RsAlgoError;
+use rs_algo_shared::ws::message::CommandType;
 use std::fmt::{self, Display};
 use thiserror::Error;
 
@@ -15,25 +17,38 @@ pub enum RsAlgoErrorKind {
     RequestError,
 }
 
-#[derive(Debug, Error)]
-pub struct RsAlgoError {
-    pub err: RsAlgoErrorKind,
+// #[derive(Debug, Error)]
+// pub struct RsAlgoError {
+//     pub err: RsAlgoErrorKind,
+// }
+
+// impl RsAlgoError {
+//     pub fn kind(&self) -> RsAlgoErrorKind {
+//         self.err
+//     }
+// }
+
+// impl From<RsAlgoErrorKind> for RsAlgoError {
+//     fn from(kind: RsAlgoErrorKind) -> RsAlgoError {
+//         RsAlgoError { err: kind }
+//     }
+// }
+
+// impl Display for RsAlgoError {
+//     fn fmt(&self, err: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         Display::fmt(&self.err, err)
+//     }
+// }
+
+pub fn serialization(err: serde_json::Error, command: &CommandType) -> String {
+    log::error!("Failed to serialize {:?} response: {:?}", command, err);
+    String::new()
 }
 
-impl RsAlgoError {
-    pub fn kind(&self) -> RsAlgoErrorKind {
-        self.err
-    }
-}
-
-impl From<RsAlgoErrorKind> for RsAlgoError {
-    fn from(kind: RsAlgoErrorKind) -> RsAlgoError {
-        RsAlgoError { err: kind }
-    }
-}
-
-impl Display for RsAlgoError {
-    fn fmt(&self, err: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(&self.err, err)
-    }
+pub fn executed_command(
+    err: rs_algo_shared::error::RsAlgoError,
+    command: &CommandType,
+) -> Option<String> {
+    log::error!("{:?} Command error {}", command, err);
+    None
 }
