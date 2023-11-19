@@ -421,10 +421,7 @@ impl Bot {
                                 MessageType::MarketHours(res) => {
                                     let market_hours = res.payload.unwrap();
                                     let is_trading_hours = market_hours.is_trading_time();
-                                    log::info!(
-                                        "Trading hours {}",
-                                        &is_trading_hours
-                                    );
+                                    log::info!("Trading hours {}", &is_trading_hours);
 
                                     match is_trading_hours {
                                         true => self.is_market_open().await,
@@ -468,7 +465,7 @@ impl Bot {
                                             );
 
                                             sleep(Duration::from_secs(secs_to_retry)).await;
-                                            self.is_market_open().await;
+                                            self.get_market_hours().await;
                                         }
                                     }
                                 }
