@@ -1,5 +1,6 @@
 use crate::db;
 use crate::error;
+use crate::handlers;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 
@@ -240,37 +241,29 @@ where
                     json_response
                 }
                 CommandType::GetHistoricData => {
-                    let time_frame = match &query.data {
-                        Some(data) => TimeFrame::new(data["time_frame"].as_str().unwrap()),
-                        None => TimeFrameType::ERR,
-                    };
-
-                    log::info!("6666666 {:?}", time_frame);
-
                     let limit = match &query.data {
                         Some(data) => data["limit"].as_i64().unwrap(),
                         None => 0,
                     };
 
-                    let historic_data_url = &format!(
-                        "{}{}/{}/{}",
-                        env::var("BACKEND_BACKTEST_HISTORIC_ENDPOINT").unwrap(),
-                        symbol,
-                        time_frame,
-                        limit
-                    );
+                    let initial_limit = env::var("INITIAL_BARS").unwrap().parse::<i64>().unwrap();
+
+                    let time_frame = match &query.data {
+                        Some(data) => match limit {
+                            initial_limit => TimeFrame::new(data["time_frame"].as_str().unwrap()),
+                            _ => TimeFrame::new("M1"),
+                        },
+                        None => TimeFrameType::ERR,
+                    };
 
                     let data: VEC_DOHLC =
-                        request(&historic_data_url, &String::from("all"), HttpMethod::Get)
-                            .await
-                            .unwrap()
-                            .json()
+                        handlers::historic::get_historic_data(symbol, &time_frame, limit)
                             .await
                             .unwrap();
 
                     log::info!(
-                        "{} Historic data {} records received",
-                        time_frame,
+                        "{:?} Historic data {} records received",
+                        time_frame.to_string(),
                         data.len()
                     );
 

@@ -1,5 +1,5 @@
 use crate::handlers::session::Session;
-use crate::message;
+use crate::{handlers, message};
 use chrono::{Datelike, TimeZone};
 pub use rs_algo_shared::broker::BrokerStream;
 use rs_algo_shared::broker::{xtb_stream::*, VEC_DOHLC};
@@ -28,38 +28,20 @@ where
     tokio::spawn({
         async move {
             /* TEMPORARY WORKARROUND */
+            let time_frame: rs_algo_shared::models::time_frame::TimeFrameType =
+                TimeFrame::new("M1");
 
-            let username = &env::var("BROKER_USERNAME").unwrap();
-            let password = &env::var("BROKER_PASSWORD").unwrap();
+            let symbol = &session.symbol;
+            let limit = 0;
 
-            //LECHES
-            let num_bars = env::var("NUM_BARS_TEST").unwrap().parse::<i64>().unwrap();
-            let time_frame = TimeFrame::new("M1");
-            let time_frame_from = Local::now() - date::Duration::days(30);
-            let time_frame_to = Local::now(); //time_frame_from + date::Duration::days(1);
-
-            let time_frame_number = time_frame.to_number();
-            let symbol = session.symbol.clone();
-            let historic_data_url = &format!(
-                "{}{}/{}/{}",
-                env::var("BACKEND_BACKTEST_HISTORIC_ENDPOINT").unwrap(),
-                symbol,
-                time_frame,
-                10000
-            );
-
-            let data: VEC_DOHLC =
-                request(&historic_data_url, &String::from("all"), HttpMethod::Get)
-                    .await
-                    .unwrap()
-                    .json()
-                    .await
-                    .unwrap();
+            let data: VEC_DOHLC = handlers::historic::get_historic_data(symbol, &time_frame, limit)
+                .await
+                .unwrap();
 
             let mut counter: usize = 0;
-            let sleep_time = 100;
+            let sleep_time = 75;
 
-            log::error!("Total data {:?}", data.len());
+            log::info!("Total Historic data {:?}", data.len());
             for item in data.iter().skip(4) {
                 let (date, open, high, low, close, volume) = item;
 

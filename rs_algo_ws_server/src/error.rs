@@ -15,6 +15,8 @@ pub enum RsAlgoErrorKind {
     InvalidPeak,
     #[error("Error on Request!")]
     RequestError,
+    #[error("Error reading file")]
+    File,
 }
 
 // #[derive(Debug, Error)]

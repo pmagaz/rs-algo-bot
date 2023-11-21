@@ -34,6 +34,10 @@ RUN apk update \
   && cp /usr/share/zoneinfo/Europe/Madrid /etc/localtime && echo Europe/Madrid > /etc/timezone \
   && rm -rf /var/cache/apk/*
 
+#MOCKED DATA
+COPY ./data ./
+ADD . ./
+
 #USER
 RUN addgroup -S $APP_USER \
   && adduser -S -g $APP_USER $APP_USER
