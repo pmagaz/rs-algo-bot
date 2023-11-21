@@ -32,7 +32,7 @@ where
                 TimeFrame::new("M1");
 
             let symbol = &session.symbol;
-            let limit = 0;
+            let limit = 100000;
 
             let data: VEC_DOHLC = handlers::historic::get_historic_data(symbol, &time_frame, limit)
                 .await
