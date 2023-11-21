@@ -1,10 +1,12 @@
 use crate::handlers::session::Session;
 use crate::message;
-use rs_algo_shared::broker::xtb_stream::*;
+use chrono::{Datelike, TimeZone};
 pub use rs_algo_shared::broker::BrokerStream;
-use rs_algo_shared::helpers::date::Local;
+use rs_algo_shared::broker::{xtb_stream::*, VEC_DOHLC};
 
 use futures_util::StreamExt;
+use rs_algo_shared::helpers::date::{self, DateTime, Local, Timelike};
+use rs_algo_shared::helpers::http::{request, HttpMethod};
 use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::time_frame::TimeFrame;
 use rs_algo_shared::ws::message::ResponseBody;
@@ -14,7 +16,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
-use tokio::time;
 use tokio::time::sleep;
 use tungstenite::Message;
 pub fn listen<BK>(broker: Arc<Mutex<BK>>, session: Session)
@@ -34,26 +35,29 @@ where
             //LECHES
             let num_bars = env::var("NUM_BARS_TEST").unwrap().parse::<i64>().unwrap();
             let time_frame = TimeFrame::new("M1");
-            let time_frame_from =
-                TimeFrame::get_starting_bar(num_bars, &time_frame, &ExecutionMode::Bot);
+            let time_frame_from = Local::now() - date::Duration::days(30);
+            let time_frame_to = Local::now(); //time_frame_from + date::Duration::days(1);
+
             let time_frame_number = time_frame.to_number();
             let symbol = session.symbol.clone();
-            let mut broker_stream = Xtb::new().await;
-            broker_stream.login(username, password).await.unwrap();
-            let res = broker_stream
-                .get_instrument_data(
-                    &symbol,
-                    time_frame_number as usize,
-                    time_frame_from.timestamp(),
-                )
-                .await
-                .unwrap();
+            let historic_data_url = &format!(
+                "{}{}/{}/{}",
+                env::var("BACKEND_BACKTEST_HISTORIC_ENDPOINT").unwrap(),
+                symbol,
+                time_frame,
+                10000
+            );
 
-            broker_stream.disconnect().await.unwrap();
+            let data: VEC_DOHLC =
+                request(&historic_data_url, &String::from("all"), HttpMethod::Get)
+                    .await
+                    .unwrap()
+                    .json()
+                    .await
+                    .unwrap();
+
             let mut counter: usize = 0;
             let sleep_time = 100;
-
-            let data = res.payload.unwrap().data;
 
             log::error!("Total data {:?}", data.len());
             for item in data.iter().skip(4) {

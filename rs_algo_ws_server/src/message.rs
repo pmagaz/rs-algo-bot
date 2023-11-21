@@ -3,16 +3,21 @@ use crate::error;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 
+use rs_algo_shared::broker::DOHLC;
+use rs_algo_shared::broker::VEC_DOHLC;
+use rs_algo_shared::helpers::http::{request, HttpMethod};
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::ws::message::*;
+use rs_algo_shared::ws::message::{
+    InstrumentData, Message, ResponseBody, ResponseType, TradeData, TradeResponse,
+};
 use serde_json::Value;
 use std::env;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::Mutex;
-
 pub async fn send(
     session: &Session,
     msg: Message,
@@ -175,21 +180,11 @@ where
                 }
                 CommandType::IsMarketOpen => {
                     log::info!("Checking {} market is open", symbol);
-                    //let response = broker.lock().await.is_market_open(symbol).await;
                     let response = Ok(ResponseBody {
                         response: ResponseType::IsMarketOpen,
                         payload: Some(true),
                     });
 
-                    // let json_response = match response {
-                    //     Ok(res) => match serde_json::to_string(&res) {
-                    //         Ok(json_res) => Some(json_res),
-                    //         Err(e) => Some(error::serialization(e, &command)),
-                    //     },
-                    //     Err(e) => error::executed_command(e, &command),
-                    // };
-
-                    // json_response
                     let json_response = match response {
                         Ok(res) => match serde_json::to_string(&res) {
                             Ok(json_res) => Some(json_res),
@@ -198,7 +193,6 @@ where
                         Err(e) => error::executed_command(e, &command),
                     };
 
-                    log::info!("1111 {:?}", json_response);
                     json_response
                 }
                 CommandType::GetInstrumentData => {
@@ -243,6 +237,59 @@ where
                         Err(e) => error::executed_command(e, &command),
                     };
 
+                    json_response
+                }
+                CommandType::GetHistoricData => {
+                    let time_frame = match &query.data {
+                        Some(data) => TimeFrame::new(data["time_frame"].as_str().unwrap()),
+                        None => TimeFrameType::ERR,
+                    };
+
+                    log::info!("6666666 {:?}", time_frame);
+
+                    let limit = match &query.data {
+                        Some(data) => data["limit"].as_i64().unwrap(),
+                        None => 0,
+                    };
+
+                    let historic_data_url = &format!(
+                        "{}{}/{}/{}",
+                        env::var("BACKEND_BACKTEST_HISTORIC_ENDPOINT").unwrap(),
+                        symbol,
+                        time_frame,
+                        limit
+                    );
+
+                    let data: VEC_DOHLC =
+                        request(&historic_data_url, &String::from("all"), HttpMethod::Get)
+                            .await
+                            .unwrap()
+                            .json()
+                            .await
+                            .unwrap();
+
+                    log::info!(
+                        "{} Historic data {} records received",
+                        time_frame,
+                        data.len()
+                    );
+
+                    let response = Ok(ResponseBody {
+                        response: ResponseType::GetInstrumentData,
+                        payload: Some(InstrumentData {
+                            symbol: "".to_owned(),
+                            time_frame: time_frame,
+                            data: data,
+                        }),
+                    });
+
+                    let json_response = match response {
+                        Ok(res) => match serde_json::to_string(&res) {
+                            Ok(json_res) => Some(json_res),
+                            Err(e) => Some(error::serialization(e, &command)),
+                        },
+                        Err(e) => error::executed_command(e, &command),
+                    };
                     json_response
                 }
                 CommandType::ExecutePosition => {
