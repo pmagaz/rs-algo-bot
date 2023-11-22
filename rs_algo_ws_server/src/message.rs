@@ -152,7 +152,6 @@ where
                 }
                 CommandType::GetMarketHours => {
                     log::info!("Requesting {} trading hours", symbol);
-
                     let response = broker.lock().await.get_market_hours(symbol).await;
 
                     let json_response = match response {
@@ -193,7 +192,6 @@ where
                         },
                         Err(e) => error::executed_command(e, &command),
                     };
-
                     json_response
                 }
                 CommandType::GetInstrumentData => {
@@ -283,6 +281,7 @@ where
                         },
                         Err(e) => error::executed_command(e, &command),
                     };
+
                     json_response
                 }
                 CommandType::ExecutePosition => {
@@ -422,6 +421,8 @@ where
                     json_response
                 }
                 CommandType::SubscribeStream => {
+                    let _ = broker.lock().await.disconnect().await.unwrap();
+
                     session::find(sessions, addr, |session| {
                         stream::listen(broker.clone(), session.clone());
                     })

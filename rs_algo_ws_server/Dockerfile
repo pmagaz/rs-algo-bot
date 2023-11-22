@@ -36,7 +36,7 @@ RUN apk update \
 
 #MOCKED DATA
 COPY ./data ./
-ADD . ./
+ADD data ${APP_DIR}/data
 
 #USER
 RUN addgroup -S $APP_USER \

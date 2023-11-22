@@ -35,11 +35,11 @@ serviceAccount: {}
 
 resources:
   requests:
-     cpu: 100m
+     cpu: 50m
   limits:
     cpu: 500m
-    ephemeral-storage: 1G
-    memory: 1G
+    ephemeral-storage: 2Gi
+    memory: 2Gi
 
 ingress: {}
 

@@ -37,7 +37,7 @@ resources:
     memory: 1Mi
   limits:
     cpu: 750m
-    memory: 512Mi
+    memory: 1024Gi
 
 autoscaling:
   enabled: false

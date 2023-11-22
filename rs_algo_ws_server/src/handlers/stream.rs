@@ -32,16 +32,16 @@ where
                 TimeFrame::new("M1");
 
             let symbol = &session.symbol;
-            let limit = 100000;
+            let limit = 0;
+            let mut counter: usize = 0;
+            let sleep_time = 50;
 
             let data: VEC_DOHLC = handlers::historic::get_historic_data(symbol, &time_frame, limit)
                 .await
                 .unwrap();
 
-            let mut counter: usize = 0;
-            let sleep_time = 75;
+            log::info!("Total historic {} data {:?}", symbol, data.len());
 
-            log::info!("Total Historic data {:?}", data.len());
             for item in data.iter().skip(4) {
                 let (date, open, high, low, close, volume) = item;
 
