@@ -117,16 +117,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
 
-                let is_long = htf_ema_a > htf_ema_b;
-                let is_short = htf_ema_a < htf_ema_b;
-
-                if is_long && !is_short {
-                    TradeDirection::Long
-                } else if is_short && !is_long {
-                    TradeDirection::Short
-                } else {
-                    TradeDirection::None
-                }
+                // let is_long = htf_ema_a > htf_ema_b;
+                // let is_short = htf_ema_a < htf_ema_b;
+                TradeDirection::Long
             },
         );
         &self.trading_direction
@@ -137,7 +130,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        tick: &InstrumentTick,
+        tick: Option<&InstrumentTick>,
     ) -> Position {
         let atr_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -174,6 +167,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
 
+        let entry_condition = true;
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
@@ -190,7 +184,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _tick: &InstrumentTick,
+        _tick: Option<&InstrumentTick>,
     ) -> Position {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
@@ -222,7 +216,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        tick: &InstrumentTick,
+        tick: Option<&InstrumentTick>,
     ) -> Position {
         let atr_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -274,7 +268,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _tick: &InstrumentTick,
+        _tick: Option<&InstrumentTick>,
     ) -> Position {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();

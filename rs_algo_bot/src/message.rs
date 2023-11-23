@@ -70,16 +70,16 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::SubscribeTickPrices,
                 payload: Some(parse_tick_data(payload)),
             }),
-            Some("TradeInAccepted") => MessageType::TradeInAccepted(ResponseBody {
-                response: ResponseType::TradeInAccepted,
+            Some("TradeInFulfilled") => MessageType::TradeInFulfilled(ResponseBody {
+                response: ResponseType::TradeInFulfilled,
                 payload: Some(TradeResponse {
                     symbol: symbol.to_owned(),
                     accepted,
                     data: parse_trade_in(data),
                 }),
             }),
-            Some("TradeOutAccepted") => MessageType::TradeOutAccepted(ResponseBody {
-                response: ResponseType::TradeOutAccepted,
+            Some("TradeOutFulfilled") => MessageType::TradeOutFulfilled(ResponseBody {
+                response: ResponseType::TradeOutFulfilled,
                 payload: Some(TradeResponse {
                     symbol: symbol.to_owned(),
                     accepted,
