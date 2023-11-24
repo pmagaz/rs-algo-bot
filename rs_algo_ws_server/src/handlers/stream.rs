@@ -32,9 +32,13 @@ where
                 TimeFrame::new("M1");
 
             let symbol = &session.symbol;
-            let limit = 0;
+            let limit = env::var("LIMIT_HISTORIC_DATA")
+                .unwrap_or_else(|_| "0".to_string())
+                .parse::<i64>()
+                .unwrap_or(0);
+
             let mut counter: usize = 0;
-            let sleep_time = 50;
+            let sleep_time = 25;
 
             let data: VEC_DOHLC = handlers::historic::get_historic_data(symbol, &time_frame, limit)
                 .await
@@ -63,7 +67,7 @@ where
                 };
 
                 counter = counter + 1;
-                log::info!("{:?}", (counter, sleep_time));
+
                 sleep(Duration::from_millis(sleep_time)).await;
             }
         }

@@ -10,7 +10,6 @@ pub fn calculate_trade_stats(
     trade_in: &TradeIn,
     trade_out: &TradeOut,
     data: &Vec<Candle>,
-    _tick: &InstrumentTick,
 ) -> TradeOut {
     let trade_type = &trade_in.trade_type;
     // let (price_in, price_out) = match trade_type.is_long() {
