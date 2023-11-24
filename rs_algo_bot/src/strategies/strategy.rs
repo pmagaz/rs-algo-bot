@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
-use rs_algo_shared::models::order::{self, Order};
+use rs_algo_shared::models::order::{self, Order, OrderType};
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame::TimeFrameType;
@@ -106,8 +106,14 @@ pub trait Strategy: DynClone {
             _ => false,
         };
 
-        order_position_result =
-            self.pending_orders_activated(index, instrument, &pending_orders, trades_in, None);
+        order_position_result = self.pending_orders_activated(
+            index,
+            instrument,
+            &pending_orders,
+            trades_in,
+            Some(tick),
+            false,
+        );
 
         if open_positions {
             let trade_in = trades_in.last().unwrap();
@@ -153,7 +159,6 @@ pub trait Strategy: DynClone {
             .unwrap();
 
         let pending_orders = order::get_pending(orders);
-        tick.unwrap();
         let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
         match wait_for_new_trade {
             false => match trade_direction.is_long() || !trading_direction {
@@ -202,6 +207,8 @@ pub trait Strategy: DynClone {
                                     _ => vec![],
                                 },
                             };
+
+                            log_created_orders(&new_orders);
 
                             PositionResult::PendingOrder(new_orders)
                         }
@@ -257,6 +264,8 @@ pub trait Strategy: DynClone {
                                     _ => vec![],
                                 },
                             };
+
+                            log_created_orders(&new_orders);
 
                             PositionResult::PendingOrder(new_orders)
                         }
@@ -348,11 +357,15 @@ pub trait Strategy: DynClone {
         pending_orders: &Vec<Order>,
         trades_in: &Vec<TradeIn>,
         tick: Option<&InstrumentTick>,
+        use_tick_in_resolve: bool,
     ) -> PositionResult {
-        match order::resolve_active_orders(index, instrument, pending_orders, tick) {
+        let resolve_tick = if use_tick_in_resolve { tick } else { None };
+
+        match order::resolve_active_orders(index, instrument, pending_orders, resolve_tick) {
             Position::MarketInOrder(mut order) => {
                 let order_size = order.size();
                 let trade_type = order.to_trade_type();
+
                 let trade_in_result = trade::resolve_trade_in(
                     index,
                     order_size,
@@ -366,7 +379,7 @@ pub trait Strategy: DynClone {
                     TradeResult::TradeIn(trade_in) => trade_in.id,
                     _ => 0,
                 };
-                log::info!("Order: Entry");
+                log::info!("Order activated: {:?} ", order.order_type);
 
                 order.set_trade_id(trade_id);
                 PositionResult::MarketInOrder(trade_in_result, order)
@@ -385,7 +398,7 @@ pub trait Strategy: DynClone {
                     None => TradeResult::None,
                 };
 
-                log::info!("Order: Exit");
+                log::info!("Order activated: {:?} ", order.order_type);
 
                 PositionResult::MarketOutOrder(trade_out_result, order)
             }
@@ -479,6 +492,23 @@ pub fn set_strategy(
     }
 
     strategy
+}
+
+fn log_created_orders(orders: &[Order]) {
+    let orders_created: Vec<&OrderType> =
+        orders
+            .iter()
+            .map(|order| &order.order_type)
+            .fold(Vec::new(), |mut acc, order_type| {
+                if !acc.contains(&order_type) {
+                    acc.push(order_type);
+                }
+                acc
+            });
+
+    if orders_created.len() > 0 {
+        log::info!("Orders created: {:?}", orders_created);
+    }
 }
 
 dyn_clone::clone_trait_object!(Strategy);

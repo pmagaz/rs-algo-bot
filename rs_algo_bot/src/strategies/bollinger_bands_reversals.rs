@@ -157,7 +157,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let pips_margin = 0.1;
+        let pips_margin = 0.00001;
 
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
@@ -166,8 +166,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close >= prev_low_band);
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
-
         let entry_condition = true;
+
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
@@ -204,6 +204,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let exit_condition = self.trading_direction == TradeDirection::Short
             || (is_closed && close_price < top_band && (prev_high > prev_top_band));
+
+        let exit_condition = true;
 
         match exit_condition {
             true => Position::MarketOut(None),

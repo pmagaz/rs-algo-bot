@@ -270,21 +270,19 @@ impl Bot {
         order: &Order,
         open_positions: &mut bool,
     ) {
-        self.send_position::<PositionResult>(
-            activated_orders_result,
-            self.symbol.clone(),
-            self.time_frame.clone(),
-        )
-        .await;
-
         let should_open = match activated_orders_result {
-            PositionResult::MarketIn(_, _) => true,
-            PositionResult::MarketOut(_) => false,
+            PositionResult::MarketInOrder(_, _) => true,
             _ => false,
         };
 
         if *open_positions != should_open {
-            log::info!("Fullfilling {:?} order ", order.order_type);
+            log::info!("Sending {:?} ...", trade_in.get_type());
+            self.send_position::<PositionResult>(
+                activated_orders_result,
+                self.symbol.clone(),
+                self.time_frame.clone(),
+            )
+            .await;
             order::fulfill_bot_order::<T>(trade_in, order, &mut self.orders, &self.instrument);
 
             *open_positions = should_open;
@@ -297,15 +295,10 @@ impl Bot {
         associated_orders: Option<&Vec<Order>>,
         open_positions: &mut bool,
     ) {
-        let should_open = match new_position_result {
-            PositionResult::MarketIn(_, _) => true,
-            PositionResult::MarketOut(_) => false,
-            _ => false,
-        };
-
         match new_position_result {
-            PositionResult::MarketIn(TradeResult::TradeIn(_trade_in), _) if !*open_positions => {
-                log::info!("Sending MarketIn...");
+            PositionResult::MarketIn(TradeResult::TradeIn(t), _) if !*open_positions => {
+                log::info!("Sending {:?} ...", t.trade_type);
+
                 self.send_position::<PositionResult>(
                     &new_position_result,
                     self.symbol.clone(),
@@ -317,8 +310,8 @@ impl Bot {
                 }
                 *open_positions = true;
             }
-            PositionResult::MarketOut(TradeResult::TradeOut(_)) if *open_positions => {
-                log::info!("Sending MarketOut...");
+            PositionResult::MarketOut(TradeResult::TradeOut(t)) if *open_positions => {
+                log::info!("Sending {:?} ...", t.trade_type);
                 self.send_position::<PositionResult>(
                     &new_position_result,
                     self.symbol.clone(),
@@ -330,7 +323,7 @@ impl Bot {
             PositionResult::PendingOrder(associated_orders) if !*open_positions => {
                 self.orders = order::add_pending(self.orders.clone(), associated_orders.clone());
             }
-            _ => (),
+            _ => todo!(),
         }
     }
 
@@ -358,7 +351,7 @@ impl Bot {
                 )
                 .await;
             }
-            _ => (),
+            _ => todo!(),
         };
     }
 
@@ -578,7 +571,6 @@ impl Bot {
 
                                 MessageType::InstrumentTick(res) => {
                                     let tick = res.payload.unwrap();
-                                    log::info!("444444 {:?}", tick);
                                     self.tick = tick;
                                 }
                                 MessageType::InstrumentData(res) => {
@@ -743,6 +735,7 @@ impl Bot {
                                             &pending_orders,
                                             &self.trades_in,
                                             Some(&tick),
+                                            true,
                                         );
 
                                     match activated_orders_result {
@@ -755,8 +748,6 @@ impl Bot {
                                             .await
                                         }
                                     };
-
-                                    self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::TradeInFulfilled(res) => {
                                     let payload = res.payload.unwrap();
@@ -765,9 +756,10 @@ impl Bot {
                                     match accepted {
                                         true => {
                                             log::info!(
-                                                "{:?} {} fulfilled!",
+                                                "{:?} {} fullfilled ask: {}",
                                                 &payload.data.trade_type,
-                                                &payload.data.id
+                                                &payload.data.id,
+                                                &payload.data.ask,
                                             );
 
                                             let trade_response = payload;
@@ -784,11 +776,13 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
-                                            log::warn!(
-                                                "{:?} {} not accepted!",
+                                            log::info!(
+                                                "{:?} {} not fullfilled ask: {}",
                                                 &payload.data.trade_type,
-                                                &payload.data.id
+                                                &payload.data.id,
+                                                &payload.data.ask,
                                             );
+
                                             open_positions = false;
                                         }
                                     }
@@ -800,7 +794,7 @@ impl Bot {
                                     match accepted {
                                         true => {
                                             log::info!(
-                                                "{:?} {} accepted ask: {} bid: {}",
+                                                "{:?} {} fullfilled ask: {} bid: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
@@ -839,12 +833,12 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
-                                            log::warn!(
-                                                "{:?} {} not accepted ask: {} bid: {}",
+                                            log::info!(
+                                                "{:?} {} not fullfilled ask: {} bid: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
-                                                &payload.data.bid
+                                                &payload.data.bid,
                                             );
 
                                             open_positions = true;
