@@ -207,39 +207,39 @@ impl Bot {
             .unwrap();
     }
 
-    pub async fn restore_values(&mut self, data: BotData) {
-        let max_historical_positions = env::var("MAX_HISTORICAL_POSITIONS")
-            .unwrap()
-            .parse::<usize>()
-            .unwrap();
+    // pub async fn restore_values(&mut self, data: BotData) {
+    //     let max_historical_positions = env::var("MAX_HISTORICAL_POSITIONS")
+    //         .unwrap()
+    //         .parse::<usize>()
+    //         .unwrap();
 
-        self.strategy_stats = data.strategy_stats().clone();
+    //     self.strategy_stats = data.strategy_stats().clone();
 
-        let trades_in = data.trades_in();
-        let trades_out = data.trades_out();
-        let orders = data.orders();
+    //     let trades_in = data.trades_in();
+    //     let trades_out = data.trades_out();
+    //     let orders = data.orders();
 
-        self.trades_in = trades_in
-            .iter()
-            .skip(trades_in.len().saturating_sub(max_historical_positions))
-            .take(max_historical_positions)
-            .cloned()
-            .collect();
+    //     self.trades_in = trades_in
+    //         .iter()
+    //         .skip(trades_in.len().saturating_sub(max_historical_positions))
+    //         .take(max_historical_positions)
+    //         .cloned()
+    //         .collect();
 
-        self.trades_out = trades_out
-            .iter()
-            .skip(trades_out.len().saturating_sub(max_historical_positions))
-            .take(max_historical_positions)
-            .cloned()
-            .collect();
+    //     self.trades_out = trades_out
+    //         .iter()
+    //         .skip(trades_out.len().saturating_sub(max_historical_positions))
+    //         .take(max_historical_positions)
+    //         .cloned()
+    //         .collect();
 
-        self.orders = orders
-            .iter()
-            .skip(orders.len().saturating_sub(max_historical_positions))
-            .take(max_historical_positions)
-            .cloned()
-            .collect();
-    }
+    //     self.orders = orders
+    //         .iter()
+    //         .skip(orders.len().saturating_sub(max_historical_positions))
+    //         .take(max_historical_positions)
+    //         .cloned()
+    //         .collect();
+    // }
 
     pub async fn fullfill_activated_order<T: Trade>(
         &mut self,
@@ -608,7 +608,12 @@ impl Bot {
                                         .await;
 
                                     if new_candle.is_closed() {
-                                        log::info!("Candle closed {:?}", new_candle.date());
+                                        log::info!(
+                                            "Candle closed {:?}. Open positions {} ",
+                                            new_candle.date(),
+                                            open_positions
+                                        );
+
                                         self.instrument
                                             .init_candle(data, &Some(self.time_frame.clone()));
                                     }
