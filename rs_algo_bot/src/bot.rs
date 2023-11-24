@@ -301,7 +301,7 @@ impl Bot {
             PositionResult::PendingOrder(associated_orders) if !*open_positions => {
                 self.orders = order::add_pending(self.orders.clone(), associated_orders.clone());
             }
-            _ => todo!(),
+            _ => (),
         }
     }
 
@@ -450,6 +450,7 @@ impl Bot {
         self.set_tick().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
+        let mut counter = 0;
 
         loop {
             match self.websocket.read().await {
@@ -582,7 +583,8 @@ impl Bot {
                                     let new_candle = self.instrument.next(data).unwrap();
                                     let mut higher_candle: Candle = new_candle.clone();
 
-                                    log::info!("Index: {}", index);
+                                    // log::info!("Counter: {}", counter);
+                                    // counter += 1;
 
                                     if is_mtf_strategy(&self.strategy_type) {
                                         if let HTFInstrument::HTFInstrument(
