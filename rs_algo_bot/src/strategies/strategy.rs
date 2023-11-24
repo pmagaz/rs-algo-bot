@@ -35,7 +35,7 @@ pub trait Strategy: DynClone {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        tick: Option<&InstrumentTick>,
+        tick: &InstrumentTick,
     ) -> Position;
     fn exit_long(
         &mut self,
@@ -43,14 +43,14 @@ pub trait Strategy: DynClone {
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
         trade_in: &TradeIn,
-        tick: Option<&InstrumentTick>,
+        tick: &InstrumentTick,
     ) -> Position;
     fn entry_short(
         &mut self,
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        tick: Option<&InstrumentTick>,
+        tick: &InstrumentTick,
     ) -> Position;
     fn exit_short(
         &mut self,
@@ -58,7 +58,7 @@ pub trait Strategy: DynClone {
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
         trade_in: &TradeIn,
-        tick: Option<&InstrumentTick>,
+        tick: &InstrumentTick,
     ) -> Position;
     fn trading_direction(
         &mut self,
@@ -118,7 +118,7 @@ pub trait Strategy: DynClone {
         if open_positions {
             let trade_in = trades_in.last().unwrap();
             position_result =
-                self.should_exit_position(index, instrument, htf_instrument, trade_in, Some(tick));
+                self.should_exit_position(index, instrument, htf_instrument, trade_in, tick);
         }
 
         if !open_positions && self.there_are_funds(trades_out) {
@@ -129,7 +129,7 @@ pub trait Strategy: DynClone {
                 orders,
                 trades_out,
                 trade_direction,
-                Some(tick),
+                tick,
             );
         }
 
@@ -144,7 +144,7 @@ pub trait Strategy: DynClone {
         orders: &Vec<Order>,
         trades_out: &Vec<TradeOut>,
         trade_direction: &TradeDirection,
-        tick: Option<&InstrumentTick>,
+        tick: &InstrumentTick,
     ) -> PositionResult {
         let trade_size = env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
@@ -186,6 +186,8 @@ pub trait Strategy: DynClone {
                                     _ => None,
                                 },
                             };
+
+                            log::info!("New Position: {:?}", trade_type);
 
                             PositionResult::MarketIn(trade_in_result, new_orders)
                         }
@@ -244,6 +246,8 @@ pub trait Strategy: DynClone {
                                 },
                             };
 
+                            log::info!("New Position: {:?}", trade_type);
+
                             PositionResult::MarketIn(trade_in_result, new_orders)
                         }
                         Position::Order(order_types) => {
@@ -286,7 +290,7 @@ pub trait Strategy: DynClone {
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
         trade_in: &TradeIn,
-        tick: Option<&InstrumentTick>,
+        tick: &InstrumentTick,
     ) -> PositionResult {
         let wait_for_closing_trade = trade::wait_for_closing_trade(index, instrument, trade_in);
 
@@ -360,6 +364,8 @@ pub trait Strategy: DynClone {
         use_tick_in_resolve: bool,
     ) -> PositionResult {
         let resolve_tick = if use_tick_in_resolve { tick } else { None };
+
+        let tick = tick.expect("Failed to unwrap Tick: None");
 
         match order::resolve_active_orders(index, instrument, pending_orders, resolve_tick) {
             Position::MarketInOrder(mut order) => {
