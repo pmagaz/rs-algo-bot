@@ -8,11 +8,12 @@ use crate::message;
 use crate::strategies::strategy::*;
 
 use futures::Future;
-use rs_algo_shared::helpers::{date, uuid::*};
+use rs_algo_shared::helpers::date::{self, DateTime, Local, Timelike};
+use rs_algo_shared::helpers::http::{request, HttpMethod};
+use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
-use rs_algo_shared::models::mode::ExecutionMode;
-use rs_algo_shared::models::order::{Order, OrderStatus, OrderType};
+use rs_algo_shared::models::order::{Order, OrderStatus};
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::tick::InstrumentTick;
@@ -25,8 +26,8 @@ use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tokio::time::sleep;
 
+use tokio::time::sleep;
 #[derive(Serialize)]
 pub struct Bot {
     #[serde(skip_serializing)]
@@ -102,30 +103,30 @@ impl Bot {
             .unwrap();
     }
 
-    pub async fn get_instrument_data(&mut self) {
-        let num_bars = env::var("NUM_BARS").unwrap().parse::<i64>().unwrap();
-        let time_frame_from =
-            TimeFrame::get_starting_bar(num_bars, &self.time_frame, &ExecutionMode::Bot);
+    pub async fn get_historic_data(&mut self) {
+        let time_frame = self.time_frame.clone();
+
+        let initial_limit = env::var("INITIAL_BARS").unwrap().parse::<i64>().unwrap();
 
         log::info!(
-            "Requesting {}_{} data from {:?}",
+            "Requesting HTF {}_{} historic data",
             &self.symbol,
-            &self.time_frame,
-            time_frame_from
+            &time_frame,
         );
-        let get_instrument_data = Command {
-            command: CommandType::GetInstrumentData,
-            data: Some(InstrumentDataPayload {
+
+        let historic_command_data = Command {
+            command: CommandType::GetHistoricData,
+            data: Some(HistoricDataPayload {
                 symbol: &self.symbol,
                 strategy: &self.strategy_name,
-                time_frame: self.time_frame.to_owned(),
+                time_frame: time_frame,
                 strategy_type: self.strategy_type.to_owned(),
-                num_bars,
+                limit: initial_limit,
             }),
         };
 
         self.websocket
-            .send(&serde_json::to_string(&get_instrument_data).unwrap())
+            .send(&serde_json::to_string(&historic_command_data).unwrap())
             .await
             .unwrap();
 
@@ -136,13 +137,13 @@ impl Bot {
 
         if is_mtf_strategy(&self.strategy_type) {
             let get_higher_instrument_data = Command {
-                command: CommandType::GetInstrumentData,
-                data: Some(InstrumentDataPayload {
+                command: CommandType::GetHistoricData,
+                data: Some(HistoricDataPayload {
                     symbol: &self.symbol,
                     strategy: &self.strategy_name,
                     strategy_type: self.strategy_type.to_owned(),
                     time_frame: higher_time_frame.to_owned(),
-                    num_bars,
+                    limit: initial_limit,
                 }),
             };
 
@@ -150,13 +151,6 @@ impl Bot {
                 .send(&serde_json::to_string(&get_higher_instrument_data).unwrap())
                 .await
                 .unwrap();
-
-            log::info!(
-                "Requesting HTF {}_{} data from {:?}",
-                &self.symbol,
-                &higher_time_frame,
-                time_frame_from
-            );
         }
     }
 
@@ -174,26 +168,10 @@ impl Bot {
             .unwrap();
     }
 
-    pub async fn get_market_hours(&mut self) {
-        log::info!("Checking {} trading hours...", &self.symbol,);
-        //sleep(Duration::from_millis(200)).await;
-        let data = Command {
-            command: CommandType::GetMarketHours,
-            data: Some(Symbol {
-                symbol: self.symbol.to_owned(),
-            }),
-        };
-
-        self.websocket
-            .send(&serde_json::to_string(&data).unwrap())
-            .await
-            .unwrap();
-    }
-
     pub async fn is_market_open(&mut self) {
         log::info!("Checking {} market is open...", &self.symbol,);
-        //sleep(Duration::from_millis(200)).await;
-        let data = Command {
+
+        let instrument_pricing_data = Command {
             command: CommandType::IsMarketOpen,
             data: Some(Symbol {
                 symbol: self.symbol.to_owned(),
@@ -201,7 +179,7 @@ impl Bot {
         };
 
         self.websocket
-            .send(&serde_json::to_string(&data).unwrap())
+            .send(&serde_json::to_string(&instrument_pricing_data).unwrap())
             .await
             .unwrap();
     }
@@ -323,7 +301,7 @@ impl Bot {
             PositionResult::PendingOrder(associated_orders) if !*open_positions => {
                 self.orders = order::add_pending(self.orders.clone(), associated_orders.clone());
             }
-            _ => todo!(),
+            _ => (),
         }
     }
 
@@ -421,6 +399,22 @@ impl Bot {
             .unwrap();
     }
 
+    pub async fn get_market_hours(&mut self) {
+        log::info!("Checking {} trading hours...", &self.symbol,);
+        //sleep(Duration::from_millis(200)).await;
+        let data = Command {
+            command: CommandType::GetMarketHours,
+            data: Some(Symbol {
+                symbol: self.symbol.to_owned(),
+            }),
+        };
+
+        self.websocket
+            .send(&serde_json::to_string(&data).unwrap())
+            .await
+            .unwrap();
+    }
+
     pub async fn reconnect(&mut self) {
         let secs = env::var("DISCONNECTED_RETRY")
             .unwrap()
@@ -434,14 +428,29 @@ impl Bot {
         self.init_session().await;
     }
 
+    pub async fn set_tick(&mut self) {
+        let tick_endpoint = format!(
+            "{}{}",
+            env::var("BACKEND_BACKTEST_PRICING_ENDPOINT").unwrap(),
+            self.symbol
+        );
+
+        let tick: InstrumentTick = request(&tick_endpoint, &String::from("all"), HttpMethod::Get)
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+
+        self.tick = tick;
+    }
+
     pub async fn run(&mut self) {
         self.init_session().await;
+        self.set_tick().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
-        let _overwrite_orders = env::var("OVERWRITE_ORDERS")
-            .unwrap()
-            .parse::<bool>()
-            .unwrap();
+        let mut counter = 0;
 
         loop {
             match self.websocket.read().await {
@@ -455,7 +464,7 @@ impl Bot {
                                     log::info!("{} connected to server", bot_str);
                                 }
                                 MessageType::Reconnect(_res) => {
-                                    log::info!("{} reconnect msg received", bot_str);
+                                    log::info!("{} reconnect msg received!", bot_str);
                                     self.reconnect().await;
                                 }
                                 MessageType::InitSession(res) => {
@@ -519,7 +528,7 @@ impl Bot {
                                 }
                                 MessageType::MarketHours(res) => {
                                     let market_hours = res.payload.unwrap();
-                                    let is_trading_hours = market_hours.is_trading_time();
+                                    let is_trading_hours = true;
                                     log::info!("Trading hours {}", &is_trading_hours);
 
                                     match is_trading_hours {
@@ -544,11 +553,11 @@ impl Bot {
                                     };
                                 }
                                 MessageType::IsMarketOpen(res) => {
-                                    let is_market_open = res.payload.unwrap();
+                                    let is_market_open = true;
                                     match is_market_open {
                                         true => {
                                             log::info!("{} Market open!", self.symbol);
-                                            self.get_instrument_data().await;
+                                            self.get_historic_data().await;
                                             self.get_tick_data().await;
                                         }
                                         false => {
@@ -568,13 +577,15 @@ impl Bot {
                                         }
                                     }
                                 }
-
-                                MessageType::InstrumentTick(res) => {
-                                    let tick = res.payload.unwrap();
-                                    self.tick = tick;
+                                MessageType::StreamTickResponse(res)
+                                | MessageType::InstrumentTick(res) => {
+                                    // let tick = res.payload.unwrap();
+                                    // panic!();
+                                    // self.tick = tick;
                                 }
                                 MessageType::InstrumentData(res) => {
                                     let payload = res.payload.unwrap();
+
                                     let time_frame = payload.time_frame;
                                     let data = payload.data;
                                     let since_date = match &data.first() {
@@ -605,7 +616,7 @@ impl Bot {
                                                     None => "".to_owned(),
                                                 };
                                                 log::info!(
-                                                    "Instrument {}_{} data received from {:?}",
+                                                    "Instrument {}_{} HTF data received from {:?}",
                                                     &self.symbol,
                                                     &htf_instrument.time_frame(),
                                                     &since_date
@@ -618,9 +629,6 @@ impl Bot {
                                             HTFInstrument::None => {}
                                         };
                                     }
-
-                                    //TODO REVIEW ACTIVE ORDERS FOR GAPS
-                                    self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::StreamResponse(res) => {
                                     let payload = res.payload.unwrap();
@@ -628,6 +636,9 @@ impl Bot {
                                     let index = self.instrument.data.len().checked_sub(1).unwrap();
                                     let new_candle = self.instrument.next(data).unwrap();
                                     let mut higher_candle: Candle = new_candle.clone();
+
+                                    // log::info!("Counter: {}", counter);
+                                    // counter += 1;
 
                                     if is_mtf_strategy(&self.strategy_type) {
                                         if let HTFInstrument::HTFInstrument(
@@ -651,7 +662,12 @@ impl Bot {
                                         .await;
 
                                     if new_candle.is_closed() {
-                                        log::info!("Candle closed {:?}", new_candle.date());
+                                        log::info!(
+                                            "Candle closed {:?}. Open positions {} ",
+                                            new_candle.date(),
+                                            open_positions
+                                        );
+
                                         self.instrument
                                             .init_candle(data, &Some(self.time_frame.clone()));
                                     }
@@ -706,48 +722,6 @@ impl Bot {
                                             &mut self.orders,
                                         );
                                     }
-
-                                    self.send_bot_status(&bot_str).await;
-                                }
-                                MessageType::StreamTickResponse(res) => {
-                                    let orders = &self.orders;
-                                    let pending_orders = order::get_pending(orders);
-                                    let current_pip_size = self.tick.pip_size();
-                                    let tick = res.payload.unwrap();
-                                    let index = self.instrument.data.len().checked_sub(1).unwrap();
-
-                                    self.tick = InstrumentTick::new()
-                                        .symbol(tick.symbol())
-                                        .ask(tick.ask())
-                                        .bid(tick.bid())
-                                        .high(tick.high())
-                                        .low(tick.low())
-                                        .spread(tick.spread())
-                                        .pip_size(current_pip_size)
-                                        .time(tick.time())
-                                        .build()
-                                        .unwrap();
-
-                                    let activated_orders_result =
-                                        self.strategy.pending_orders_activated(
-                                            index,
-                                            &self.instrument,
-                                            &pending_orders,
-                                            &self.trades_in,
-                                            Some(&tick),
-                                            true,
-                                        );
-
-                                    match activated_orders_result {
-                                        PositionResult::None => (),
-                                        _ => {
-                                            self.process_activated_orders(
-                                                &activated_orders_result,
-                                                &mut open_positions,
-                                            )
-                                            .await
-                                        }
-                                    };
                                 }
                                 MessageType::TradeInFulfilled(res) => {
                                     let payload = res.payload.unwrap();

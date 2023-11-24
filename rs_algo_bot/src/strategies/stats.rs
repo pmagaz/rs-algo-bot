@@ -1,7 +1,10 @@
+use std::env;
+
 use rs_algo_shared::helpers::calc::*;
-use rs_algo_shared::models::strategy::*;
+use rs_algo_shared::helpers::date::to_dbtime;
 use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::trade::*;
+use rs_algo_shared::models::{mode, strategy::*};
 
 use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::Instrument;
@@ -11,12 +14,15 @@ pub fn calculate_trade_stats(
     trade_out: &TradeOut,
     data: &Vec<Candle>,
 ) -> TradeOut {
-    let trade_type = &trade_in.trade_type;
-    // let (price_in, price_out) = match trade_type.is_long() {
-    //     true => (trade_in.price_in, trade_out.price_out),
-    //     false => (trade_out.price_out, trade_in.price_in),
-    // };
+    let execution_mode = mode::from_str(&env::var("EXECUTION_MODE").unwrap());
 
+    let trade_type = &trade_in.trade_type;
+    let date_out = match execution_mode {
+        mode::ExecutionMode::Bot => trade_out.date_out,
+        _ => to_dbtime(data.last().unwrap().date()),
+    };
+
+    let trade_type = &trade_in.trade_type;
     let price_in = trade_in.price_in;
     let price_out = trade_out.price_out;
     let quantity = trade_in.quantity;

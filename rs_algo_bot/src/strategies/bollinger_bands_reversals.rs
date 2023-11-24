@@ -119,7 +119,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
                 let is_long = htf_ema_a > htf_ema_b;
                 let is_short = htf_ema_a < htf_ema_b;
-                
+
                 if is_long {
                     TradeDirection::Long
                 } else if is_short {
@@ -137,7 +137,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        tick: Option<&InstrumentTick>,
+        tick: &InstrumentTick,
     ) -> Position {
         let atr_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -190,7 +190,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _tick: Option<&InstrumentTick>,
+        _tick: &InstrumentTick,
     ) -> Position {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
@@ -211,7 +211,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let exit_condition = self.trading_direction == TradeDirection::Short
             || (is_closed && close_price < top_band && (prev_high > prev_top_band));
 
-
         match exit_condition {
             true => Position::MarketOut(None),
             false => Position::None,
@@ -223,7 +222,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        tick: Option<&InstrumentTick>,
+        tick: &InstrumentTick,
     ) -> Position {
         let atr_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -275,7 +274,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _tick: Option<&InstrumentTick>,
+        _tick: &InstrumentTick,
     ) -> Position {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
