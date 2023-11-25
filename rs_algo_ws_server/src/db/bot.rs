@@ -8,10 +8,10 @@ use std::env;
 
 use bson::doc;
 
-pub struct Db {
-    pub client: Client,
-    pub name: String,
-}
+// pub struct Db {
+//     pub client: Client,
+//     pub name: String,
+// }
 
 // pub fn get_collection_name(collection: &str, time_frame: &str) -> String {
 //     let arr_str = collection.split('_').collect::<Vec<_>>();
@@ -29,8 +29,6 @@ pub async fn find_by_uuid(client: &Client, uuid: &Uuid) -> Option<BotData> {
     let collection = client
         .database(db_name)
         .collection::<BotData>(collection_name);
-
-    
 
     collection
         .find_one(doc! { "_id": uuid}, FindOneOptions::builder().build())
