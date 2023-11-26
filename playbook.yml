@@ -19,13 +19,6 @@
     - { role: "rs_algo_bot/deployment/numbarsdis/numbars-usdcad-m15/roles" }
     - { role: "rs_algo_bot/deployment/numbarsdis/numbars-usdchf-m15/roles" }
     - { role: "rs_algo_bot/deployment/numbarsdis/numbars-usdjpy-m15/roles" }
-    # numbarsdis_b
-    - { role: "rs_algo_bot/deployment/numbarsdis_b/numbars-eurchf-m15/roles" }
-    - { role: "rs_algo_bot/deployment/numbarsdis_b/numbars-eurusd-m15/roles" }
-    - { role: "rs_algo_bot/deployment/numbarsdis_b/numbars-gbpeur-m15/roles" }
-    - { role: "rs_algo_bot/deployment/numbarsdis_b/numbars-usdcad-m15/roles" }
-    - { role: "rs_algo_bot/deployment/numbarsdis_b/numbars-usdchf-m15/roles" }
-    - { role: "rs_algo_bot/deployment/numbarsdis_b/numbars-usdjpy-m15/roles" }
     # server
     - { role: "rs_algo_ws_server/deployment/roles/" }
 
