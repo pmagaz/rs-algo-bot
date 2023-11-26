@@ -4,7 +4,6 @@
   roles:
     - { role: "deployment/git/roles" }
     # - { role: "deployment/mongodb-bot/roles/" }
-
     # numbars
     - { role: "rs_algo_bot/deployment/numbars/numbars-eurchf-m15/roles" }
     - { role: "rs_algo_bot/deployment/numbars/numbars-eurusd-m15/roles" }

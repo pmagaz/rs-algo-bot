@@ -428,26 +428,8 @@ impl Bot {
         self.init_session().await;
     }
 
-    pub async fn set_tick(&mut self) {
-        let tick_endpoint = format!(
-            "{}{}",
-            env::var("BACKEND_BACKTEST_PRICING_ENDPOINT").unwrap(),
-            self.symbol
-        );
-
-        let tick: InstrumentTick = request(&tick_endpoint, &String::from("all"), HttpMethod::Get)
-            .await
-            .unwrap()
-            .json()
-            .await
-            .unwrap();
-
-        self.tick = tick;
-    }
-
     pub async fn run(&mut self) {
         self.init_session().await;
-        self.set_tick().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
         let mut counter = 0;
