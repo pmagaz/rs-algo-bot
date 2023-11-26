@@ -456,22 +456,22 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::num_bars_atr_dis::NumBars::new(
-                Some("NumBars_dis_0.01"),
+                Some("NumBars_Dis"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
             )
             .unwrap(),
         ),
-        Box::new(
-            strategies::num_bars_atr_dis::NumBars::new(
-                Some("NumBars_dis_0.005"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
+        // Box::new(
+        //     strategies::num_bars_atr_dis::NumBars::new(
+        //         Some("NumBars_dis_0.005"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
         Box::new(
             strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
                 Some("Bollinger_Bands_Reversals"),

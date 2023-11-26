@@ -528,7 +528,8 @@ impl Bot {
                                 }
                                 MessageType::MarketHours(res) => {
                                     let market_hours = res.payload.unwrap();
-                                    let is_trading_hours = true;
+                                    let is_trading_hours = market_hours.is_trading_time();
+
                                     log::info!("Trading hours {}", &is_trading_hours);
 
                                     match is_trading_hours {
@@ -552,7 +553,7 @@ impl Bot {
                                         }
                                     };
                                 }
-                                MessageType::IsMarketOpen(res) => {
+                                MessageType::IsMarketOpen(_) => {
                                     let is_market_open = true;
                                     match is_market_open {
                                         true => {
@@ -577,11 +578,9 @@ impl Bot {
                                         }
                                     }
                                 }
-                                MessageType::StreamTickResponse(res)
-                                | MessageType::InstrumentTick(res) => {
-                                    // let tick = res.payload.unwrap();
-                                    // panic!();
-                                    // self.tick = tick;
+                                MessageType::InstrumentTick(res) => {
+                                    let tick = res.payload.unwrap();
+                                    self.tick = tick;
                                 }
                                 MessageType::InstrumentData(res) => {
                                     let payload = res.payload.unwrap();
@@ -636,9 +635,6 @@ impl Bot {
                                     let index = self.instrument.data.len().checked_sub(1).unwrap();
                                     let new_candle = self.instrument.next(data).unwrap();
                                     let mut higher_candle: Candle = new_candle.clone();
-
-                                    // log::info!("Counter: {}", counter);
-                                    // counter += 1;
 
                                     if is_mtf_strategy(&self.strategy_type) {
                                         if let HTFInstrument::HTFInstrument(
@@ -722,6 +718,46 @@ impl Bot {
                                             &mut self.orders,
                                         );
                                     }
+                                }
+                                MessageType::StreamTickResponse(res) => {
+                                    let tick = res.payload.unwrap();
+                                    let tick = InstrumentTick::new()
+                                        .symbol(self.symbol.clone())
+                                        .ask(tick.ask())
+                                        .bid(tick.bid())
+                                        .high(tick.high())
+                                        .low(tick.low())
+                                        .spread(tick.spread())
+                                        .pip_size(tick.pip_size())
+                                        .time(Local::now().timestamp())
+                                        .build()
+                                        .unwrap();
+
+                                    let index = self.instrument.data.len().checked_sub(1).unwrap();
+                                    let pending_orders = order::get_pending(&self.orders);
+
+                                    let activated_orders_result =
+                                        self.strategy.pending_orders_activated(
+                                            index,
+                                            &self.instrument,
+                                            &pending_orders,
+                                            &self.trades_in,
+                                            Some(&tick),
+                                            true,
+                                        );
+
+                                    match activated_orders_result {
+                                        PositionResult::None => (),
+                                        _ => {
+                                            self.process_activated_orders(
+                                                &activated_orders_result,
+                                                &mut open_positions,
+                                            )
+                                            .await
+                                        }
+                                    };
+
+                                    self.tick = tick;
                                 }
                                 MessageType::TradeInFulfilled(res) => {
                                     let payload = res.payload.unwrap();
@@ -936,11 +972,6 @@ impl BotBuilder {
                 },
                 None => HTFInstrument::None,
             };
-
-            // let higher_time_frame = match &self.higher_time_frame {
-            //     Some(htf) => htf,
-            //     None => &TimeFrameType::ERR,
-            // };
 
             let strategy = set_strategy(
                 &strategy_name,
