@@ -671,7 +671,7 @@ impl Bot {
 
                                     if new_candle.is_closed() {
                                         log::info!(
-                                            "{:?} Session. Candle {:?} closed. Open pos: {} ",
+                                            "{:?} Session - Candle {:?} closed - Open pos: {} ",
                                             &current_session,
                                             close_date,
                                             open_positions
@@ -684,7 +684,12 @@ impl Bot {
                                     if higher_candle.is_closed()
                                         && is_mtf_strategy(&self.strategy_type)
                                     {
-                                        log::info!("HTF Candle closed {:?}", higher_candle.date());
+                                        log::info!(
+                                            "{:?} Session - HTF Candle {:?} closed - Open pos: {} ",
+                                            &current_session,
+                                            higher_candle.date(),
+                                            open_positions
+                                        );
 
                                         if let HTFInstrument::HTFInstrument(
                                             ref mut htf_instrument,
