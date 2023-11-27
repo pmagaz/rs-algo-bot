@@ -551,9 +551,11 @@ impl Bot {
                                     let data = payload.data;
                                     let index = self.instrument.data.len().checked_sub(1).unwrap();
                                     let new_candle = self.instrument.next(data).unwrap();
+                                    let candle_date = data.0;
                                     let mut higher_candle: Candle = new_candle.clone();
+
                                     let current_session =
-                                        &self.market_hours.current_session(Local::now()).unwrap();
+                                        &self.market_hours.current_session(candle_date).unwrap();
 
                                     if is_mtf_strategy(&self.strategy_type) {
                                         if let HTFInstrument::HTFInstrument(
@@ -564,13 +566,12 @@ impl Bot {
                                         }
                                     }
 
-                                    let datetime = Local::now();
                                     let close_date = format!(
                                         "{}:{} {}-{}",
-                                        datetime.hour(),
-                                        datetime.minute(),
-                                        datetime.day(),
-                                        datetime.month()
+                                        candle_date.hour(),
+                                        candle_date.minute(),
+                                        candle_date.day(),
+                                        candle_date.month()
                                     );
 
                                     let (new_position_result, activated_orders_result) = self
@@ -620,6 +621,7 @@ impl Bot {
                                     match new_position_result {
                                         PositionResult::None => (),
                                         _ => {
+                                            self.send_bot_status(&bot_str).await;
                                             self.process_activated_positions(
                                                 &new_position_result,
                                                 &mut open_positions,
@@ -631,6 +633,7 @@ impl Bot {
                                     match activated_orders_result {
                                         PositionResult::None => (),
                                         _ => {
+                                            self.send_bot_status(&bot_str).await;
                                             self.process_activated_orders(
                                                 &activated_orders_result,
                                                 &mut open_positions,
