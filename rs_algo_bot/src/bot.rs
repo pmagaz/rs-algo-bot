@@ -9,10 +9,10 @@ use crate::strategies::strategy::*;
 
 use futures::Future;
 use rs_algo_shared::helpers::date::{self, DateTime, Local, Timelike};
-use rs_algo_shared::helpers::http::{request, HttpMethod};
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
+use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::order::{Order, OrderStatus};
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::strategy::*;
@@ -38,6 +38,8 @@ pub struct Bot {
     market: Market,
     #[serde(skip_serializing)]
     tick: InstrumentTick,
+    #[serde(skip_serializing)]
+    market_hours: MarketHours,
     strategy_name: String,
     strategy_type: StrategyType,
     time_frame: TimeFrameType,
@@ -103,30 +105,30 @@ impl Bot {
             .unwrap();
     }
 
-    pub async fn get_historic_data(&mut self) {
-        let time_frame = self.time_frame.clone();
-
-        let initial_limit = env::var("INITIAL_BARS").unwrap().parse::<i64>().unwrap();
+    pub async fn get_instrument_data(&mut self) {
+        let num_bars = env::var("NUM_BARS").unwrap().parse::<i64>().unwrap();
+        let time_frame_from =
+            TimeFrame::get_starting_bar(num_bars, &self.time_frame, &ExecutionMode::Bot);
 
         log::info!(
-            "Requesting HTF {}_{} historic data",
+            "Requesting {}_{} data from {:?}",
             &self.symbol,
-            &time_frame,
+            &self.time_frame,
+            time_frame_from
         );
-
-        let historic_command_data = Command {
-            command: CommandType::GetHistoricData,
-            data: Some(HistoricDataPayload {
+        let get_instrument_data = Command {
+            command: CommandType::GetInstrumentData,
+            data: Some(InstrumentDataPayload {
                 symbol: &self.symbol,
                 strategy: &self.strategy_name,
-                time_frame: time_frame,
+                time_frame: self.time_frame.to_owned(),
                 strategy_type: self.strategy_type.to_owned(),
-                limit: initial_limit,
+                num_bars,
             }),
         };
 
         self.websocket
-            .send(&serde_json::to_string(&historic_command_data).unwrap())
+            .send(&serde_json::to_string(&get_instrument_data).unwrap())
             .await
             .unwrap();
 
@@ -137,13 +139,13 @@ impl Bot {
 
         if is_mtf_strategy(&self.strategy_type) {
             let get_higher_instrument_data = Command {
-                command: CommandType::GetHistoricData,
-                data: Some(HistoricDataPayload {
+                command: CommandType::GetInstrumentData,
+                data: Some(InstrumentDataPayload {
                     symbol: &self.symbol,
                     strategy: &self.strategy_name,
                     strategy_type: self.strategy_type.to_owned(),
                     time_frame: higher_time_frame.to_owned(),
-                    limit: initial_limit,
+                    num_bars,
                 }),
             };
 
@@ -151,6 +153,13 @@ impl Bot {
                 .send(&serde_json::to_string(&get_higher_instrument_data).unwrap())
                 .await
                 .unwrap();
+
+            log::info!(
+                "Requesting HTF {}_{} data from {:?}",
+                &self.symbol,
+                &higher_time_frame,
+                time_frame_from
+            );
         }
     }
 
@@ -416,10 +425,19 @@ impl Bot {
     }
 
     pub async fn reconnect(&mut self) {
-        let secs = env::var("DISCONNECTED_RETRY")
+        let mut secs = env::var("DISCONNECTED_RETRY")
             .unwrap()
             .parse::<u64>()
             .unwrap();
+
+        let ten_random_secs = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("Time went backwards")
+            .subsec_nanos()
+            % 11) as u64;
+
+        // Add the random number to secs
+        secs += ten_random_secs;
 
         log::info!("Reconnecting in {} secs...", secs);
 
@@ -432,7 +450,6 @@ impl Bot {
         self.init_session().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
-        let mut counter = 0;
 
         loop {
             match self.websocket.read().await {
@@ -534,13 +551,15 @@ impl Bot {
                                             self.reconnect().await;
                                         }
                                     };
+
+                                    self.market_hours = market_hours;
                                 }
                                 MessageType::IsMarketOpen(_) => {
                                     let is_market_open = true;
                                     match is_market_open {
                                         true => {
                                             log::info!("{} Market open!", self.symbol);
-                                            self.get_historic_data().await;
+                                            self.get_instrument_data().await;
                                             self.get_tick_data().await;
                                         }
                                         false => {
@@ -617,6 +636,8 @@ impl Bot {
                                     let index = self.instrument.data.len().checked_sub(1).unwrap();
                                     let new_candle = self.instrument.next(data).unwrap();
                                     let mut higher_candle: Candle = new_candle.clone();
+                                    let current_session =
+                                        &self.market_hours.current_session(Local::now()).unwrap();
 
                                     if is_mtf_strategy(&self.strategy_type) {
                                         if let HTFInstrument::HTFInstrument(
@@ -626,6 +647,15 @@ impl Bot {
                                             higher_candle = htf_instrument.next(data).unwrap();
                                         }
                                     }
+
+                                    let datetime = Local::now();
+                                    let close_date = format!(
+                                        "{}:{} {}-{}",
+                                        datetime.hour(),
+                                        datetime.minute(),
+                                        datetime.day(),
+                                        datetime.month()
+                                    );
 
                                     let (new_position_result, activated_orders_result) = self
                                         .strategy
@@ -641,8 +671,9 @@ impl Bot {
 
                                     if new_candle.is_closed() {
                                         log::info!(
-                                            "Candle closed {:?}. Open positions {} ",
-                                            new_candle.date(),
+                                            "{:?} Session. Candle {:?} closed. Open pos: {} ",
+                                            &current_session,
+                                            close_date,
                                             open_positions
                                         );
 
@@ -654,6 +685,7 @@ impl Bot {
                                         && is_mtf_strategy(&self.strategy_type)
                                     {
                                         log::info!("HTF Candle closed {:?}", higher_candle.date());
+
                                         if let HTFInstrument::HTFInstrument(
                                             ref mut htf_instrument,
                                         ) = self.htf_instrument
@@ -700,6 +732,7 @@ impl Bot {
                                             &mut self.orders,
                                         );
                                     }
+                                    self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::StreamTickResponse(res) => {
                                     let tick = res.payload.unwrap();
@@ -967,6 +1000,7 @@ impl BotBuilder {
                 symbol,
                 market,
                 tick: InstrumentTick::default(),
+                market_hours: MarketHours::default(),
                 time_frame,
                 higher_time_frame: self.higher_time_frame,
                 date_start: to_dbtime(Local::now()),
