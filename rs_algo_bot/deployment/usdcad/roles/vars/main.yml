@@ -1,4 +1,4 @@
 package_name: rs_algo_bot
 release_name: rs-algo-bot-backtest-usdcad
 local_path: /home/dev/rs-algo-bot-backtest
-chart_path: deployment/chart
+chart_path: deployment/usdcad/chart
