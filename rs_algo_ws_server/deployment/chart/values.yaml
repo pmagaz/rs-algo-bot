@@ -37,12 +37,12 @@ resources:
     memory: 1Mi
   limits:
     cpu: 800m
-    memory: 512m
+    memory: 512Mi
 
 autoscaling:
   enabled: true
   minReplicas: 1
-  maxReplicas: 4
+  maxReplicas: 3
   targetCPUUtilizationPercentage: 25
   # targetMemoryUtilizationPercentage: 80
 
