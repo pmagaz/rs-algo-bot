@@ -135,7 +135,7 @@ impl<'a> Strategy for EmaScalping2<'a> {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let close_price = &instrument.data.get(index).unwrap().close();
         let spread = 0.;
@@ -214,7 +214,7 @@ impl<'a> Strategy for EmaScalping2<'a> {
         _instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         // let prev_index = calc::get_prev_index(index);
         // let close_price = &instrument.data.get(index).unwrap().close();
@@ -265,7 +265,7 @@ impl<'a> Strategy for EmaScalping2<'a> {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let close_price = &instrument.data.get(index).unwrap().close();
         let spread = 0.;
@@ -344,7 +344,7 @@ impl<'a> Strategy for EmaScalping2<'a> {
         _instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         Position::None
     }

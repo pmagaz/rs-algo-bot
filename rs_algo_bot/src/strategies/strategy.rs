@@ -159,6 +159,7 @@ pub trait Strategy: DynClone {
             .unwrap();
 
         let pending_orders = order::get_pending(orders);
+
         let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
         match wait_for_new_trade {
             false => match trade_direction.is_long() || !trading_direction {
@@ -455,6 +456,15 @@ pub fn set_strategy(
         Box::new(
             strategies::num_bars_atr_dis::NumBars::new(
                 Some("NumBars_Backtest_Dis"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::ema_scalping::EmaScalping::new(
+                Some("EMA_Scalping_Backtest"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),

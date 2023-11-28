@@ -621,7 +621,7 @@ impl Bot {
                                     match new_position_result {
                                         PositionResult::None => (),
                                         _ => {
-                                            self.send_bot_status(&bot_str).await;
+                                            //self.send_bot_status(&bot_str).await;
                                             self.process_activated_positions(
                                                 &new_position_result,
                                                 &mut open_positions,
@@ -633,7 +633,7 @@ impl Bot {
                                     match activated_orders_result {
                                         PositionResult::None => (),
                                         _ => {
-                                            self.send_bot_status(&bot_str).await;
+                                            //self.send_bot_status(&bot_str).await;
                                             self.process_activated_orders(
                                                 &activated_orders_result,
                                                 &mut open_positions,

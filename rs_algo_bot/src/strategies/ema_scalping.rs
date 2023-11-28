@@ -1,12 +1,13 @@
 use super::strategy::*;
 
 use rs_algo_shared::error::Result;
+
 use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::order::{OrderDirection, OrderType};
-use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
+use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame;
 use rs_algo_shared::models::time_frame::{TimeFrame, TimeFrameType};
 use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn};
@@ -26,6 +27,7 @@ pub struct EmaScalping<'a> {
 
 impl<'a> Strategy for EmaScalping<'a> {
     fn new(
+        name: Option<&'static str>,
         time_frame: Option<&str>,
         higher_time_frame: Option<&str>,
         strategy_type: Option<StrategyType>,
@@ -46,6 +48,8 @@ impl<'a> Strategy for EmaScalping<'a> {
             .unwrap();
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
+
+        let name = name.unwrap_or("Num_Bars");
 
         let strategy_type = match strategy_type {
             Some(stype) => stype,
@@ -73,7 +77,7 @@ impl<'a> Strategy for EmaScalping<'a> {
         let trading_direction = TradeDirection::Long;
 
         Ok(Self {
-            name: "Ema_Scalping",
+            name,
             time_frame,
             higher_time_frame,
             strategy_type,
@@ -106,18 +110,28 @@ impl<'a> Strategy for EmaScalping<'a> {
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
     ) -> &TradeDirection {
-        let close_price = &instrument.data.get(index).unwrap().close();
-
         self.trading_direction = time_frame::get_htf_trading_direction(
             index,
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_b = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                let ema_percentage_dis = std::env::var("EMA_PERCENTAGE_DIS")
+                    .unwrap()
+                    .parse::<f64>()
+                    .unwrap();
 
-                let is_long = htf_ema_a > htf_ema_b && close_price > htf_ema_b;
-                let is_short = htf_ema_a < htf_ema_b && close_price < htf_ema_b;
+                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
+                let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+
+                let percentage_diff = {
+                    let numerator = (htf_ema_a - htf_ema_b).abs();
+                    let denominator = ((htf_ema_a + htf_ema_b) / 2.0).abs();
+                    (numerator / denominator) * 100.0
+                };
+
+                let has_min_distance = percentage_diff > ema_percentage_dis;
+                let is_long = htf_ema_a > htf_ema_b && has_min_distance;
+                let is_short = htf_ema_a < htf_ema_b && has_min_distance;
 
                 if is_long {
                     TradeDirection::Long
@@ -130,13 +144,12 @@ impl<'a> Strategy for EmaScalping<'a> {
         );
         &self.trading_direction
     }
-
     fn entry_long(
         &mut self,
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let close_price = &instrument.data.get(index).unwrap().close();
         let spread = 0.;
@@ -184,8 +197,8 @@ impl<'a> Strategy for EmaScalping<'a> {
             .map(|x| x.high())
             .unwrap();
 
-        let buy_price = highest_bar + calc::to_pips(pips_margin, pricing);
-        let stop_loss_price = trigger_price - calc::to_pips(pips_margin, pricing);
+        let buy_price = highest_bar + calc::to_pips(pips_margin, tick);
+        let stop_loss_price = trigger_price - calc::to_pips(pips_margin, tick);
         let risk = buy_price + spread - stop_loss_price;
         let sell_price = buy_price + (risk * self.risk_reward_ratio);
 
@@ -206,7 +219,7 @@ impl<'a> Strategy for EmaScalping<'a> {
         _instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         Position::None
     }
@@ -216,7 +229,7 @@ impl<'a> Strategy for EmaScalping<'a> {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let close_price = &instrument.data.get(index).unwrap().close();
         let spread = 0.;
@@ -264,8 +277,8 @@ impl<'a> Strategy for EmaScalping<'a> {
             .map(|x| x.low())
             .unwrap();
 
-        let buy_price = lowest_bar - calc::to_pips(pips_margin, pricing);
-        let stop_loss_price = trigger_price + calc::to_pips(pips_margin, pricing);
+        let buy_price = lowest_bar - calc::to_pips(pips_margin, tick);
+        let stop_loss_price = trigger_price + calc::to_pips(pips_margin, tick);
         let risk = stop_loss_price + spread - buy_price;
         let sell_price = buy_price - (risk * self.risk_reward_ratio);
 
@@ -286,7 +299,7 @@ impl<'a> Strategy for EmaScalping<'a> {
         _instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         Position::None
     }

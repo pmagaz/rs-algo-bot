@@ -150,7 +150,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let atr_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -197,7 +197,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
@@ -229,7 +229,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        pricing: &Pricing,
+        tick: &InstrumentTick,
     ) -> Position {
         let atr_value = std::env::var("ATR_STOP_LOSS")
             .unwrap()
@@ -276,7 +276,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _pricing: &Pricing,
+        _tick: &InstrumentTick,
     ) -> Position {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
