@@ -363,10 +363,7 @@ pub trait Strategy: DynClone {
         tick: Option<&InstrumentTick>,
         use_tick_price: bool,
     ) -> PositionResult {
-        //let resolve_tick = if use_tick_price { tick } else { None };
-
         let tick = tick.expect("Failed to unwrap Tick: None");
-
         match order::resolve_active_orders(index, instrument, pending_orders, tick, use_tick_price)
         {
             Position::MarketInOrder(mut order) => {
