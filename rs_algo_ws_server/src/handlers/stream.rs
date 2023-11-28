@@ -1,3 +1,4 @@
+use crate::error::RsAlgoErrorKind;
 use crate::handlers::session::Session;
 use crate::message;
 use rs_algo_shared::broker::xtb_stream::*;
@@ -23,9 +24,15 @@ where
     tokio::spawn({
         async move {
             /* TEMPORARY WORKAROUND */
-            let username = &env::var("BROKER_USERNAME").unwrap();
-            let password = &env::var("BROKER_PASSWORD").unwrap();
+            let username = &env::var("BROKER_USERNAME")
+                .map_err(|_| RsAlgoErrorKind::EnvVarNotFound)
+                .unwrap();
+            let password = &env::var("BROKER_PASSWORD")
+                .map_err(|_| RsAlgoErrorKind::EnvVarNotFound)
+                .unwrap();
+
             let keepalive_interval = env::var("KEEPALIVE_INTERVAL")
+                .map_err(|_| RsAlgoErrorKind::EnvVarNotFound)
                 .unwrap()
                 .parse::<u64>()
                 .unwrap();

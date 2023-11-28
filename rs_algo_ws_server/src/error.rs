@@ -7,6 +7,12 @@ pub type Result<T> = ::anyhow::Result<T, RsAlgoError>;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Error)]
 pub enum RsAlgoErrorKind {
+    #[error("EnvVarNotFound!")]
+    EnvVarNotFound,
+    #[error("SocketError!")]
+    SocketError,
+    #[error("InvalidAddress!")]
+    InvalidAddress,
     #[error("No Db Connection!")]
     NoDbConnection,
     #[error("Invalid Instrument!")]

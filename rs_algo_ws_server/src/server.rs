@@ -17,20 +17,23 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::accept_async;
 use tungstenite::protocol::Message;
 
-pub async fn run(addr: String) {
-    let addr = addr.parse::<SocketAddr>().unwrap();
+pub async fn run(addr: String) -> Result<(), RsAlgoErrorKind> {
+    let addr = addr
+        .parse::<SocketAddr>()
+        .map_err(|_| RsAlgoErrorKind::InvalidAddress)?;
     let mut sessions = Sessions::new(Mutex::new(HashMap::new()));
-    let socket = TcpListener::bind(&addr).await.unwrap();
+    let socket = TcpListener::bind(&addr)
+        .await
+        .map_err(|_| RsAlgoErrorKind::SocketError)?;
 
-    let username = env::var("DB_USERNAME").expect("DB_USERNAME not found");
-    let password = env::var("DB_PASSWORD").expect("DB_PASSWORD not found");
-    let db_mem_name = env::var("MONGO_BOT_DB_NAME").expect("MONGO_BOT_DB_NAME not found");
-    let db_mem_uri = env::var("MONGO_BOT_DB_URI").expect("MONGO_BOT_DB_URI not found");
+    let username = env::var("DB_USERNAME").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
+    let password = env::var("DB_PASSWORD").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
+    let db_mem_name = env::var("MONGO_BOT_DB_NAME").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
+    let db_mem_uri = env::var("MONGO_BOT_DB_URI").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
 
     let mongo_client = db::mongo::connect(&username, &password, &db_mem_name, &db_mem_uri)
         .await
-        .map_err(|_e| RsAlgoErrorKind::NoDbConnection)
-        .unwrap();
+        .map_err(|_e| RsAlgoErrorKind::NoDbConnection)?;
 
     heart_beat::init(&mut sessions).await;
 
@@ -44,6 +47,8 @@ pub async fn run(addr: String) {
             handle_connection(sessions, &mut stream, addr, db_client).await;
         });
     }
+
+    Ok(())
 }
 
 async fn handle_connection(
