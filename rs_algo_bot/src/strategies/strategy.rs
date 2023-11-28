@@ -361,13 +361,11 @@ pub trait Strategy: DynClone {
         pending_orders: &Vec<Order>,
         trades_in: &Vec<TradeIn>,
         tick: Option<&InstrumentTick>,
-        use_tick_in_resolve: bool,
+        use_tick_price: bool,
     ) -> PositionResult {
-        let resolve_tick = if use_tick_in_resolve { tick } else { None };
-
         let tick = tick.expect("Failed to unwrap Tick: None");
-
-        match order::resolve_active_orders(index, instrument, pending_orders, resolve_tick) {
+        match order::resolve_active_orders(index, instrument, pending_orders, tick, use_tick_price)
+        {
             Position::MarketInOrder(mut order) => {
                 let order_size = order.size();
                 let trade_type = order.to_trade_type();
@@ -463,15 +461,24 @@ pub fn set_strategy(
             )
             .unwrap(),
         ),
-        Box::new(
-            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("Bollinger_Bands_Reversals"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
+        // Box::new(
+        //     strategies::num_bars_atr_dis::NumBars::new(
+        //         Some("NumBars_dis_0.005"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
+        // Box::new(
+        //     strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+        //         Some("Bollinger_Bands_Reversals"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
     ];
 
     let mut strategy = strategies[0].clone();

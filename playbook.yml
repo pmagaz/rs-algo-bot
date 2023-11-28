@@ -5,5 +5,10 @@
     - { role: "deployment/git/roles" }
     # - { role: "deployment/mongodb-bot/roles/" }
     # backtest
-    - { role: "rs_algo_ws_server/deployment/roles/" }
-    - { role: "rs_algo_bot/deployment/roles/" }
+    - { role: "rs_algo_ws_server/deployment/audnzd/roles/" }
+    - { role: "rs_algo_bot/deployment/eurchf/roles/" }
+    - { role: "rs_algo_bot/deployment/eurusd/roles/" }
+    - { role: "rs_algo_bot/deployment/gbpusd/roles/" }
+    - { role: "rs_algo_bot/deployment/usdcad/roles/" }
+    - { role: "rs_algo_bot/deployment/usdchf/roles/" }
+    - { role: "rs_algo_bot/deployment/usdjpy/roles/" }
