@@ -1,5 +1,3 @@
-use super::stats::*;
-
 use crate::strategies;
 use async_trait::async_trait;
 use dyn_clone::DynClone;
@@ -159,7 +157,6 @@ pub trait Strategy: DynClone {
             .unwrap();
 
         let pending_orders = order::get_pending(orders);
-
         let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
         match wait_for_new_trade {
             false => match trade_direction.is_long() || !trading_direction {
@@ -424,7 +421,7 @@ pub trait Strategy: DynClone {
     ) -> StrategyStats {
         let equity = env::var("EQUITY").unwrap().parse::<f64>().unwrap();
         let commission = env::var("COMMISSION").unwrap().parse::<f64>().unwrap();
-        calculate_stats(instrument, trades_in, trades_out, equity, commission)
+        calculate_strategy_stats(instrument, trades_in, trades_out, equity, commission)
     }
 
     fn update_trade_stats(
