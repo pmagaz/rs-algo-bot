@@ -1,10 +1,6 @@
-use super::stats::*;
-
 use crate::strategies;
-use async_trait::async_trait;
-use dyn_clone::DynClone;
-use rs_algo_shared::error::Result;
 
+use rs_algo_shared::error::Result;
 use rs_algo_shared::models::order::{self, Order, OrderType};
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::tick::InstrumentTick;
@@ -13,6 +9,9 @@ use rs_algo_shared::models::trade::*;
 use rs_algo_shared::models::{strategy::*, trade};
 use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::*;
+
+use async_trait::async_trait;
+use dyn_clone::DynClone;
 use std::cmp::Ordering;
 use std::env;
 
@@ -423,7 +422,7 @@ pub trait Strategy: DynClone {
     ) -> StrategyStats {
         let equity = env::var("EQUITY").unwrap().parse::<f64>().unwrap();
         let commission = env::var("COMMISSION").unwrap().parse::<f64>().unwrap();
-        calculate_stats(instrument, trades_in, trades_out, equity, commission)
+        calculate_strategy_stats(instrument, trades_in, trades_out, equity, commission)
     }
 
     fn update_trade_stats(

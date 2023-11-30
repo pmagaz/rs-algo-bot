@@ -1,17 +1,13 @@
-use std::cmp::Ordering;
-use std::env;
-
 use crate::error::{Result, RsAlgoError, RsAlgoErrorKind};
 use crate::helpers::vars::*;
 use crate::message;
-
 use crate::strategies::strategy::*;
 
-use futures::Future;
-use rs_algo_shared::helpers::date::{self, DateTime, Local, Timelike};
+use rs_algo_shared::helpers::date::{Local, Timelike};
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
+use rs_algo_shared::models::environment::{self, Environment};
 use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::order::{Order, OrderStatus};
 use rs_algo_shared::models::strategy::StrategyStats;
@@ -24,12 +20,17 @@ use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::{HTFInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
-use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
+use futures::Future;
+use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+use std::env;
+use std::time::Duration;
 use tokio::time::sleep;
+
 #[derive(Serialize)]
 pub struct Bot {
+    env: Environment,
     #[serde(skip_serializing)]
     websocket: WebSocket,
     #[serde(rename = "_id")]
@@ -73,14 +74,6 @@ impl Bot {
         uuid::generate(seed)
     }
 
-    pub async fn retry<F, T>(&mut self, seconds: u64, mut callback: F)
-    where
-        F: Send + FnMut() -> T,
-        T: Future + Send + 'static,
-    {
-        sleep(Duration::from_secs(seconds)).await;
-        callback().await;
-    }
     pub async fn init_session(&mut self) {
         log::info!(
             "Creating session for {}_{}_{}_{}",
@@ -895,6 +888,7 @@ impl Bot {
 }
 
 pub struct BotBuilder {
+    env: Option<Environment>,
     symbol: Option<String>,
     market: Option<Market>,
     time_frame: Option<TimeFrameType>,
@@ -907,6 +901,7 @@ pub struct BotBuilder {
 impl BotBuilder {
     pub fn new() -> BotBuilder {
         Self {
+            env: None,
             symbol: None,
             market: None,
             time_frame: None,
@@ -918,6 +913,16 @@ impl BotBuilder {
     }
     pub fn symbol(mut self, val: String) -> Self {
         self.symbol = Some(val);
+        self
+    }
+
+    pub fn env(mut self, val: Environment) -> Self {
+        if val.is_prod() {
+            log::info!("Launching bot in {} env", val.value());
+        } else {
+            log::warn!("Launching bot in {} env", val.value());
+        }
+        self.env = Some(val);
         self
     }
 
@@ -946,13 +951,15 @@ impl BotBuilder {
         self
     }
 
-    pub fn websocket(mut self, val: WebSocket) -> Self {
-        self.websocket = Some(val);
+    pub fn server_url(mut self, val: String) -> Self {
+        let ws_client = WebSocket::connect(&val);
+        self.websocket = Some(ws_client);
         self
     }
 
     pub fn build(self) -> Result<Bot> {
         if let (
+            Some(env),
             Some(symbol),
             Some(market),
             Some(time_frame),
@@ -961,6 +968,7 @@ impl BotBuilder {
             Some(strategy_type),
             Some(websocket),
         ) = (
+            self.env,
             self.symbol,
             self.market,
             self.time_frame,
@@ -1002,6 +1010,7 @@ impl BotBuilder {
 
             Ok(Bot {
                 uuid: uuid::Uuid::new(),
+                env,
                 symbol,
                 market,
                 tick: InstrumentTick::default(),
