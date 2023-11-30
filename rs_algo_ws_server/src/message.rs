@@ -245,12 +245,13 @@ where
                             let trade_json_response = match position_result {
                                 PositionResult::MarketIn(
                                     TradeResult::TradeIn(trade_in),
-                                    _new_orders,
+                                    orders,
                                 ) => {
                                     log::info!("TradeIn position received");
 
                                     let trade_data = TradeData::new(symbol, trade_in, options);
-                                    let trade_response = broker_guard.open_trade(trade_data).await;
+                                    let trade_response =
+                                        broker_guard.open_trade(trade_data, orders).await;
 
                                     let json_response = match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {

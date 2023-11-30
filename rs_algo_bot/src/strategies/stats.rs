@@ -25,9 +25,9 @@ pub fn calculate_trade_stats(
     let trade_type = &trade_in.trade_type;
     let price_in = trade_in.price_in;
     let price_out = trade_out.price_out;
-    let quantity = trade_in.quantity;
+    let volume = trade_in.volume;
 
-    let profit = calculate_trade_profit(quantity, price_in, price_out, trade_type);
+    let profit = calculate_trade_profit(size, price_in, price_out, trade_type);
     let profit_per = calculate_trade_profit_per(price_in, price_out, trade_type);
 
     let run_up = calculate_trade_runup(data, price_in, trade_type);
@@ -39,6 +39,7 @@ pub fn calculate_trade_stats(
         id: trade_out.id,
         index_in: trade_in.index_in,
         price_in: trade_in.price_in,
+        size: trade_in.size,
         ask: trade_in.ask,
         spread_in: trade_in.spread,
         trade_type: trade_out.trade_type.clone(),
@@ -87,7 +88,7 @@ pub fn calculate_stats(
         let net_profit = gross_profit - commissions;
         let first = trades_in.first().unwrap();
 
-        let initial_order_amount = (first.price_in * first.quantity).ceil();
+        let initial_order_amount = (first.price_in * first.volume).ceil();
         let profit_factor = total_profit_factor(gross_profits, gross_loses);
         let net_profit_per = total_profit_per(trades_out);
         let profitable_trades = total_profitable_trades(wining_trades, trades);
