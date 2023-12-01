@@ -11,9 +11,69 @@ use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 use tokio::time;
-use tungstenite::Message;
+use tungstenite::{Error, Message};
+
+async fn initialize_broker_stream(symbol: &str) -> Result<Xtb, RsAlgoErrorKind> {
+    let username = env::var("BROKER_USERNAME").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
+    let password = env::var("BROKER_PASSWORD").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
+
+    let symbol = symbol.to_string();
+    let mut broker_stream = Xtb::new().await;
+
+    broker_stream.login(&username, &password).await.unwrap();
+    broker_stream
+        .get_instrument_data(&symbol, 1, Local::now().timestamp())
+        .await
+        .unwrap();
+    broker_stream.subscribe_stream(&symbol).await.unwrap();
+    broker_stream.subscribe_tick_prices(&symbol).await.unwrap();
+
+    Ok(broker_stream)
+}
+
+pub async fn handle_strean_data<BK: BrokerStream + Send + 'static>(
+    tx: &Sender<()>,
+    session: &Session,
+    data: Result<Message, Error>,
+) {
+    let mut msg_sent = "".to_owned();
+    match data {
+        Ok(msg) => {
+            if msg.is_text() {
+                let parsed = BK::parse_stream_data(msg).await;
+                match parsed {
+                    Some(txt) => {
+                        if &msg_sent != &txt {
+                            match message::send(&session, Message::Text(txt.clone())).await {
+                                Ok(_) => msg_sent = txt,
+                                Err(_) => {
+                                    log::error!(
+                                        "Can't send stream data to {:?}",
+                                        session.bot_name()
+                                    );
+                                    tx.send(()).await.unwrap();
+                                }
+                            }
+                        }
+                    }
+                    None => (),
+                };
+            } else if msg.is_close() {
+                log::error!("Stream closed by broker");
+                message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
+                tx.send(()).await.unwrap();
+            }
+        }
+        Err(err) => {
+            log::error!("Stream error {:?}", (err, &session));
+            message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
+            tx.send(()).await.unwrap();
+        }
+    }
+}
 
 pub fn listen<BK>(broker: Arc<Mutex<BK>>, session: Session)
 where
@@ -23,14 +83,6 @@ where
 
     tokio::spawn({
         async move {
-            /* TEMPORARY WORKAROUND */
-            let username = &env::var("BROKER_USERNAME")
-                .map_err(|_| RsAlgoErrorKind::EnvVarNotFound)
-                .unwrap();
-            let password = &env::var("BROKER_PASSWORD")
-                .map_err(|_| RsAlgoErrorKind::EnvVarNotFound)
-                .unwrap();
-
             let keepalive_interval = env::var("KEEPALIVE_INTERVAL")
                 .map_err(|_| RsAlgoErrorKind::EnvVarNotFound)
                 .unwrap()
@@ -38,17 +90,7 @@ where
                 .unwrap();
 
             let symbol = session.symbol.clone();
-            let mut broker_stream = Xtb::new().await;
-
-            broker_stream.login(username, password).await.unwrap();
-            broker_stream
-                .get_instrument_data(&symbol, 1, Local::now().timestamp())
-                .await
-                .unwrap();
-            broker_stream.subscribe_stream(&symbol).await.unwrap();
-            broker_stream.subscribe_tick_prices(&symbol).await.unwrap();
-
-            let mut msg_sent = "".to_owned();
+            let mut broker_stream = initialize_broker_stream(&symbol).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
 
             loop {
@@ -56,36 +98,7 @@ where
                     stream = broker_stream.get_stream().await.next() => {
                         match stream {
                             Some(data) => {
-                                match data {
-                                    Ok(msg) => {
-                                        if msg.is_text() {
-                                            let parsed = BK::parse_stream_data(msg).await;
-                                            match parsed {
-                                                Some(txt) => {
-                                                    if &msg_sent != &txt {
-                                                        match message::send(&session, Message::Text(txt.clone())).await {
-                                                            Ok(_) => msg_sent = txt,
-                                                            Err(_) => {
-                                                                log::error!("Can't send stream data to {:?}", session.bot_name());
-                                                                tx.send(()).await.unwrap();
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                None => ()
-                                            };
-                                        } else if msg.is_close() {
-                                            log::error!("Stream closed by broker");
-                                            message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
-                                            tx.send(()).await.unwrap();
-                                        }
-                                    },
-                                    Err(err) => {
-                                        log::error!("Stream error {:?}", (err, &session));
-                                        message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
-                                        tx.send(()).await.unwrap();
-                                    }
-                                };
+                                handle_strean_data::<BK>(&tx, &session, data).await;
                             }
                             None => {
                                 log::error!("No stream data");

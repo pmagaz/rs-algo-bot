@@ -18,7 +18,7 @@ async fn main() -> Result<(), IoError> {
     let port = env::var("WS_SERVER_PORT").expect("WS_SERVER_PORT not found");
 
     log::info!("WS Server launching on port {port}");
-    server::run([host, port].concat()).await;
+    server::run([host, port].concat()).await.unwrap();
 
     Ok(())
 }

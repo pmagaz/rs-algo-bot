@@ -664,7 +664,8 @@ impl Bot {
 
                                     if new_candle.is_closed() {
                                         log::info!(
-                                            "{:?} Session - Candle {:?} closed - Open pos: {} ",
+                                            "{} {:?} Session - Candle {:?} closed - Open pos: {} ",
+                                            &self.env.value(),
                                             &current_session,
                                             close_date,
                                             open_positions
@@ -799,11 +800,16 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
-                                            log::info!(
+                                            log::error!(
                                                 "{:?} {} not fullfilled ask: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
+                                            );
+
+                                            order::cancel_trade_pending_orders(
+                                                &payload.data,
+                                                &mut self.orders,
                                             );
 
                                             open_positions = false;
@@ -856,7 +862,7 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
-                                            log::info!(
+                                            log::error!(
                                                 "{:?} {} not fullfilled ask: {} bid: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
