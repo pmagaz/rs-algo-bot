@@ -42,6 +42,10 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::GetMarketHours,
                 payload: Some(parse_market_hours(payload)),
             }),
+            Some("GetActivePositions") => MessageType::ActivePositions(ResponseBody {
+                response: ResponseType::GetActivePositions,
+                payload: Some(parse_active_positions(payload)),
+            }),
             Some("IsMarketOpen") => MessageType::IsMarketOpen(ResponseBody {
                 response: ResponseType::GetMarketHours,
                 payload: Some(parse_market_open(payload)),
@@ -146,6 +150,11 @@ pub fn parse_market_hours(data: &Value) -> MarketHours {
 pub fn parse_market_open(data: &Value) -> bool {
     let market_open: bool = serde_json::from_value(data.clone()).unwrap();
     market_open
+}
+
+pub fn parse_active_positions(data: &Value) -> PositionResult {
+    let active_positions: PositionResult = serde_json::from_value(data.clone()).unwrap();
+    active_positions
 }
 
 pub fn parse_stream(data: &Value) -> LECHES {

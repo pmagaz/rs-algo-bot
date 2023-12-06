@@ -340,6 +340,19 @@ where
                     };
                     json_response
                 }
+                CommandType::GetActivePositions => {
+                    log::info!("Getting {} active positions", symbol);
+                    let response = broker.lock().await.get_active_positions().await;
+                    let json_response = match response {
+                        Ok(res) => match serde_json::to_string(&res) {
+                            Ok(json_res) => Some(json_res),
+                            Err(e) => Some(error::serialization(e, &command)),
+                        },
+                        Err(e) => error::executed_command(e, &command),
+                    };
+
+                    json_response
+                }
                 CommandType::UpdateBotData => {
                     match &query.data {
                         Some(data) => {

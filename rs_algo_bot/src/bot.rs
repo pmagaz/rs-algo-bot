@@ -11,11 +11,11 @@ use rs_algo_shared::models::environment::{self, Environment};
 use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::order::{Order, OrderStatus};
 use rs_algo_shared::models::strategy::StrategyStats;
-use rs_algo_shared::models::strategy::*;
 use rs_algo_shared::models::tick::InstrumentTick;
 use rs_algo_shared::models::time_frame::*;
 use rs_algo_shared::models::trade::*;
 use rs_algo_shared::models::{market::*, order};
+use rs_algo_shared::models::{strategy::*, trade};
 use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::{HTFInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
@@ -401,6 +401,20 @@ impl Bot {
             .unwrap();
     }
 
+    pub async fn get_active_positions(&mut self) {
+        log::info!("Getting {} active positons...", &self.symbol,);
+
+        let active_positions_command = Command {
+            command: CommandType::GetActivePositions,
+            data: Some(&self),
+        };
+
+        self.websocket
+            .send(&serde_json::to_string(&active_positions_command).unwrap())
+            .await
+            .unwrap();
+    }
+
     pub async fn get_market_hours(&mut self) {
         log::info!("Checking {} trading hours...", &self.symbol,);
         //sleep(Duration::from_millis(200)).await;
@@ -460,6 +474,8 @@ impl Bot {
                                     self.reconnect().await;
                                 }
                                 MessageType::InitSession(res) => {
+                                    let env = environment::from_str(&env::var("ENV").unwrap());
+
                                     log::info!("Getting {} previous session", bot_str);
 
                                     let now = Local::now();
@@ -516,6 +532,62 @@ impl Bot {
                                     } else {
                                         self.restore_values(bot_data).await;
                                         self.get_market_hours().await;
+                                    }
+
+                                    //TODO RECONCILIATION
+                                    if env.is_prod() {
+                                        self.get_active_positions().await;
+                                    }
+                                }
+                                MessageType::ActivePositions(res) => {
+                                    let position_result = res.payload.unwrap();
+                                    match position_result {
+                                        PositionResult::MarketIn(
+                                            TradeResult::TradeIn(trade_in),
+                                            orders,
+                                        ) => {
+                                            if trade::trade_exists(&self.trades_in, trade_in.id) {
+                                                log::info!(
+                                                    "Active position {:?} {} found. Updating position...",
+                                                    trade_in.trade_type,
+                                                    trade_in.id
+                                                );
+                                                trade::update_trades(&mut self.trades_in, trade_in);
+
+                                                match orders {
+                                                    Some(orders) => {
+                                                        order::update_orders(
+                                                            &mut self.orders,
+                                                            &orders,
+                                                        );
+                                                    }
+                                                    None => (),
+                                                }
+                                            } else {
+                                                log::info!(
+                                                    "Active position {:?} {} found. Adding position...",
+                                                    trade_in.trade_type,
+                                                    trade_in.id
+                                                );
+                                                match orders {
+                                                    Some(orders) => {
+                                                        self.trades_in.push(trade_in);
+
+                                                        self.orders = order::add_pending(
+                                                            self.orders.clone(),
+                                                            orders,
+                                                        )
+                                                    }
+                                                    None => (),
+                                                }
+                                            }
+
+                                            open_positions = true;
+                                        }
+                                        _ => {
+                                            log::info!("No active positions found");
+                                            open_positions = false;
+                                        }
                                     }
                                 }
                                 MessageType::MarketHours(res) => {
