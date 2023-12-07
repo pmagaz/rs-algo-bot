@@ -64,6 +64,7 @@ impl Bot {
 
     pub fn generate_bot_uuid(&mut self) -> Uuid {
         let seed = [
+            &self.env.value(),
             &self.symbol,
             &self.strategy_name,
             &self.time_frame.to_string(),

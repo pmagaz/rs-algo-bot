@@ -20,8 +20,8 @@ futures = "0.3.28"
 env_logger = "0.10.0"
 log = "0.4.20"
 futures-util = "0.3.28"
-rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", rev = "bcacaea", features = ["broker","websocket"]}
-#rs_algo_shared = { path = "../../rs_algo_shared", features = ["websocket", "broker"] }
+#rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", rev = "9b54b42", features = ["broker","websocket"]}
+rs_algo_shared = { path = "../../rs_algo_shared", features = ["websocket", "broker"] }
 
 # [profile.release]
 # strip = true
