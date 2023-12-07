@@ -160,6 +160,7 @@ impl<'a> Strategy for NumBars<'a> {
 
         let sell_price = buy_price + (atr_profit_value * atr_value);
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
+
         match entry_condition {
             true => Position::MarketIn(Some(vec![
                 OrderType::SellOrderLong(OrderDirection::Up, self.order_size, sell_price),
