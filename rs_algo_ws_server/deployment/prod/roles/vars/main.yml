@@ -1,4 +1,4 @@
 package_name: rs_algo_ws_server
 release_name: rs-algo-ws-server
 local_path: /home/dev/rs-algo-bot
-chart_path: deployment/chart
+chart_path: deployment/prod/chart

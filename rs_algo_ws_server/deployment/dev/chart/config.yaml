@@ -1,5 +1,5 @@
 ENV: "Development"
-EXECUTION_MODE: "BotBackTest"
+EXECUTION_MODE: "Bot"
 WS_SERVER_HOST: "0.0.0.0:"
 WS_SERVER_PORT: "9000"
 WS_SERVER_NAME: "WS Socket Server"

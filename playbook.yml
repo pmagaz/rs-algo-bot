@@ -8,8 +8,6 @@
     # - { role: "deployment/mongodb-bot/roles/" }
     #PROD
     - { role: "rs_algo_ws_server/deployment/prod/roles/" }
-
-
     #DEV
     # numbars
     - { role: "rs_algo_bot/deployment/dev/numbars/numbars-eurchf-m15/roles" }
@@ -19,12 +17,12 @@
     - { role: "rs_algo_bot/deployment/dev/numbars/numbars-usdchf-m15/roles" }
     - { role: "rs_algo_bot/deployment/dev/numbars/numbars-usdjpy-m15/roles" }
     # # numbarsdis
-    - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-eurchf-m15/roles" }
-    - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-eurusd-m15/roles" }
-    - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-gbpeur-m15/roles" }
-    - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-usdcad-m15/roles" }
-    - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-usdchf-m15/roles" }
-    - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-usdjpy-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-eurchf-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-eurusd-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-gbpeur-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-usdcad-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-usdchf-m15/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/numbarsdis/numbars-usdjpy-m15/roles" }
     # server
     - { role: "rs_algo_ws_server/deployment/dev/roles/" }
     
