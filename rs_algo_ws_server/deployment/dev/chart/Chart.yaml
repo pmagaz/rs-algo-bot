@@ -1,0 +1,8 @@
+apiVersion: v2
+name: rs-algo-ws-server-dev
+description: Rust WS Server Backtest 
+type: application
+version: 0.1.3
+appVersion: "1.16.0"
+maintainers:
+  - name: pablomagaz
