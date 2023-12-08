@@ -1,12 +1,10 @@
 use crate::db;
 use crate::error::RsAlgoErrorKind;
-use crate::handlers::state::AppState;
 use crate::handlers::*;
 use crate::heart_beat;
 use crate::message;
 
 use crate::handlers::session::Sessions;
-use crate::handlers::state::State;
 use rs_algo_shared::broker::xtb_stream::*;
 
 use futures_channel::mpsc::unbounded;
@@ -40,15 +38,13 @@ pub async fn run(addr: String) -> Result<(), RsAlgoErrorKind> {
     heart_beat::init(&mut sessions).await;
 
     let db_client = Arc::new(mongo_client);
-    let app_state = State::new();
 
     while let Ok((mut stream, addr)) = socket.accept().await {
         let sessions = sessions.clone();
         let db_client = Arc::clone(&db_client);
-        let app_state = Arc::clone(&app_state);
 
         tokio::spawn(async move {
-            handle_connection(sessions, &mut stream, addr, db_client, app_state).await;
+            handle_connection(sessions, &mut stream, addr, db_client).await;
         });
     }
 
@@ -60,7 +56,6 @@ async fn handle_connection(
     raw_stream: &mut TcpStream,
     addr: SocketAddr,
     db_client: Arc<mongodb::Client>,
-    app_state: AppState,
 ) {
     loop {
         let (recipient, receiver) = unbounded();
@@ -81,21 +76,10 @@ async fn handle_connection(
                 let broadcast_incoming = incoming.try_for_each(|msg| {
                     let broker = Arc::clone(&broker);
                     let db_client = Arc::clone(&db_client);
-                    let app_state = Arc::clone(&app_state);
                     let mut sessions = Arc::clone(&sessions);
                     let new_session = new_session.clone();
-
                     async move {
-                        match message::handle(
-                            &mut sessions,
-                            &addr,
-                            msg,
-                            broker,
-                            &db_client,
-                            &app_state,
-                        )
-                        .await
-                        {
+                        match message::handle(&mut sessions, &addr, msg, broker, &db_client).await {
                             Some(msg) => message::send(&new_session, Message::Text(msg))
                                 .await
                                 .unwrap(),

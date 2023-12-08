@@ -56,7 +56,6 @@ pub async fn handle<'a, BK>(
     msg: Message,
     broker: Arc<Mutex<BK>>,
     db_client: &mongodb::Client,
-    app_state: &AppState,
 ) -> Option<String>
 where
     BK: stream::BrokerStream + Send + Sync + 'static,
