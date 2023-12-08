@@ -880,12 +880,12 @@ impl Bot {
                                                 &payload.data.ask,
                                             );
 
+                                            open_positions = false;
+
                                             order::cancel_trade_pending_orders(
                                                 &payload.data,
                                                 &mut self.orders,
                                             );
-
-                                            open_positions = false;
                                         }
                                     }
                                 }

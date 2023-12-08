@@ -5,7 +5,6 @@ mod db;
 mod error;
 mod handlers;
 mod heart_beat;
-mod helpers;
 mod message;
 mod server;
 

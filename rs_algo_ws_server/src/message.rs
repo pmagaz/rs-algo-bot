@@ -1,5 +1,6 @@
 use crate::db;
 use crate::error;
+use crate::handlers::state::AppState;
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 
@@ -55,6 +56,7 @@ pub async fn handle<'a, BK>(
     msg: Message,
     broker: Arc<Mutex<BK>>,
     db_client: &mongodb::Client,
+    app_state: &AppState,
 ) -> Option<String>
 where
     BK: stream::BrokerStream + Send + Sync + 'static,

@@ -44,6 +44,7 @@ pub struct Session {
 }
 
 pub type Sessions = Arc<Mutex<HashMap<SocketAddr, Session>>>;
+pub type Sessions2 = HashMap<SocketAddr, Session>;
 
 impl Session {
     pub fn new(recipient: UnboundedSender<Message>) -> Self {
