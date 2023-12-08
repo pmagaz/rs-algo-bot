@@ -21,7 +21,7 @@ use rs_algo_shared::scanner::instrument::{HTFInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
 
-use futures::Future;
+
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::env;
@@ -281,7 +281,7 @@ impl Bot {
                 log::info!("Sending {:?} ...", t.trade_type);
 
                 self.send_position::<PositionResult>(
-                    &new_position_result,
+                    new_position_result,
                     self.symbol.clone(),
                     self.time_frame.clone(),
                 )
@@ -294,7 +294,7 @@ impl Bot {
             PositionResult::MarketOut(TradeResult::TradeOut(t)) if *open_positions => {
                 log::info!("Sending {:?} ...", t.trade_type);
                 self.send_position::<PositionResult>(
-                    &new_position_result,
+                    new_position_result,
                     self.symbol.clone(),
                     self.time_frame.clone(),
                 )

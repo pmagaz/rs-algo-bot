@@ -1,6 +1,6 @@
 use crate::db;
 use crate::error;
-use crate::handlers::state::AppState;
+
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
 
@@ -135,22 +135,24 @@ where
                         payload: Some(session_data),
                     };
 
-                    let json_res = match serde_json::to_string(&response) {
+                    
+
+                    match serde_json::to_string(&response) {
                         Ok(s) => Some(s),
                         Err(e) => {
                             log::error!("Failed to serialize {:?} response: {:?}", command, e);
                             None
                         }
-                    };
-
-                    json_res
+                    }
                 }
                 CommandType::GetMarketHours => {
                     log::info!("Requesting {} trading hours", symbol);
 
                     let response = broker.lock().await.get_market_hours(symbol).await;
 
-                    let json_response = match response {
+                    
+
+                    match response {
                         Ok(res) => {
                             let market_hours = res.payload.clone();
 
@@ -170,23 +172,21 @@ where
                             }
                         }
                         Err(e) => error::executed_command(e, &command),
-                    };
-
-                    json_response
+                    }
                 }
                 CommandType::IsMarketOpen => {
                     log::info!("Checking {} market is open", symbol);
                     let response = broker.lock().await.is_market_open(symbol).await;
 
-                    let json_response = match response {
+                    
+
+                    match response {
                         Ok(res) => match serde_json::to_string(&res) {
                             Ok(json_res) => Some(json_res),
                             Err(e) => Some(error::serialization(e, &command)),
                         },
                         Err(e) => error::executed_command(e, &command),
-                    };
-
-                    json_response
+                    }
                 }
                 CommandType::GetInstrumentData => {
                     let time_frame = match &query.data {
@@ -222,15 +222,15 @@ where
                         )
                         .await;
 
-                    let json_response = match response {
+                    
+
+                    match response {
                         Ok(res) => match serde_json::to_string(&res) {
                             Ok(json_res) => Some(json_res),
                             Err(e) => Some(error::serialization(e, &command)),
                         },
                         Err(e) => error::executed_command(e, &command),
-                    };
-
-                    json_response
+                    }
                 }
                 CommandType::ExecutePosition => {
                     let json_response = match &query.data {
@@ -243,7 +243,9 @@ where
                             let position_result: PositionResult =
                                 serde_json::from_value(value["data"].clone()).unwrap();
 
-                            let trade_json_response = match position_result {
+                            
+
+                            match position_result {
                                 PositionResult::MarketIn(
                                     TradeResult::TradeIn(trade_in),
                                     orders,
@@ -254,7 +256,9 @@ where
                                     let trade_response =
                                         broker_guard.open_trade(trade_data, orders).await;
 
-                                    let json_response = match trade_response {
+                                    
+
+                                    match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
                                             Ok(json_res) => Some(json_res),
                                             Err(e) => Some(error::serialization(e, &command)),
@@ -263,16 +267,16 @@ where
                                             log::error!("{:?} Command error {}", command, err);
                                             None
                                         }
-                                    };
-
-                                    json_response
+                                    }
                                 }
                                 PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
                                     log::info!("TradeOut position received");
 
                                     let trade_data = TradeData::new(symbol, trade_out, options);
                                     let trade_response = broker_guard.close_trade(trade_data).await;
-                                    let json_response = match trade_response {
+                                    
+
+                                    match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
                                             Ok(json_res) => Some(json_res),
                                             Err(e) => Some(error::serialization(e, &command)),
@@ -281,9 +285,7 @@ where
                                             log::error!("{:?} Command error {}", command, err);
                                             None
                                         }
-                                    };
-
-                                    json_response
+                                    }
                                 }
                                 PositionResult::MarketInOrder(
                                     TradeResult::TradeIn(_trade_in),
@@ -293,7 +295,9 @@ where
 
                                     let trade_data = TradeData::new(symbol, order, options);
                                     let trade_response = broker_guard.open_order(trade_data).await;
-                                    let json_response = match trade_response {
+                                    
+
+                                    match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
                                             Ok(json_res) => Some(json_res),
                                             Err(e) => Some(error::serialization(e, &command)),
@@ -302,9 +306,7 @@ where
                                             log::error!("{:?} Command error {}", command, err);
                                             None
                                         }
-                                    };
-
-                                    json_response
+                                    }
                                 }
                                 PositionResult::MarketOutOrder(
                                     TradeResult::TradeOut(trade_out),
@@ -317,7 +319,9 @@ where
                                     let order_data = TradeData::new(symbol, order, options);
                                     let trade_response =
                                         broker_guard.close_order(trade_data, order_data).await;
-                                    let json_response = match trade_response {
+                                    
+
+                                    match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
                                             Ok(json_res) => Some(json_res),
                                             Err(e) => Some(error::serialization(e, &command)),
@@ -326,16 +330,12 @@ where
                                             log::error!("{:?} Command error {}", command, err);
                                             None
                                         }
-                                    };
-
-                                    json_response
+                                    }
                                 }
                                 _ => {
                                     todo!();
                                 }
-                            };
-
-                            trade_json_response
+                            }
                         }
                         None => None,
                     };
@@ -344,15 +344,15 @@ where
                 CommandType::GetActivePositions => {
                     log::info!("Getting {} active positions", symbol);
                     let response = broker.lock().await.get_active_positions().await;
-                    let json_response = match response {
+                    
+
+                    match response {
                         Ok(res) => match serde_json::to_string(&res) {
                             Ok(json_res) => Some(json_res),
                             Err(e) => Some(error::serialization(e, &command)),
                         },
                         Err(e) => error::executed_command(e, &command),
-                    };
-
-                    json_response
+                    }
                 }
                 CommandType::UpdateBotData => {
                     match &query.data {
@@ -372,15 +372,15 @@ where
                     log::info!("Getting {} tick data", symbol);
                     let response = broker.lock().await.get_instrument_tick(symbol).await;
 
-                    let json_response = match response {
+                    
+
+                    match response {
                         Ok(res) => match serde_json::to_string(&res) {
                             Ok(json_res) => Some(json_res),
                             Err(e) => Some(error::serialization(e, &command)),
                         },
                         Err(e) => error::executed_command(e, &command),
-                    };
-
-                    json_response
+                    }
                 }
                 CommandType::SubscribeStream => {
                     session::find(sessions, addr, |session| {

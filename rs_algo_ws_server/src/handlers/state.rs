@@ -1,17 +1,17 @@
 use rs_algo_shared::helpers::date::*;
-use rs_algo_shared::helpers::uuid::*;
-use rs_algo_shared::models::market::MarketHours;
-use rs_algo_shared::models::strategy::*;
-use rs_algo_shared::models::time_frame::*;
-use rs_algo_shared::ws::message::*;
 
-use futures_channel::mpsc::UnboundedSender;
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+
+
+
+
+
+
+
+use std::{sync::Arc};
 use tokio::sync::Mutex;
-use tungstenite::protocol::Message;
 
-use super::session::Sessions;
+
+
 use super::session::Sessions2;
 
 #[derive(Debug, Clone)]
@@ -60,7 +60,7 @@ impl State {
         let portfolio = Portfolio::default();
 
         Arc::new(Mutex::new(State {
-            portfolio: portfolio,
+            portfolio,
             sessions: Sessions2::new(),
         }))
     }

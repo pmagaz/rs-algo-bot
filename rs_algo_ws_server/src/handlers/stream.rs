@@ -47,7 +47,7 @@ pub async fn handle_strean_data<BK: BrokerStream + Send + 'static>(
                 match parsed {
                     Some(txt) => {
                         if &msg_sent != &txt {
-                            match message::send(&session, Message::Text(txt.clone())).await {
+                            match message::send(session, Message::Text(txt.clone())).await {
                                 Ok(_) => msg_sent = txt,
                                 Err(_) => {
                                     log::error!(
@@ -63,13 +63,13 @@ pub async fn handle_strean_data<BK: BrokerStream + Send + 'static>(
                 };
             } else if msg.is_close() {
                 log::error!("Stream closed by broker");
-                message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
+                message::send_reconnect(session, ReconnectOptions { clean_data: true }).await;
                 tx.send(()).await.unwrap();
             }
         }
         Err(err) => {
             log::error!("Stream error {:?}", (err, &session));
-            message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
+            message::send_reconnect(session, ReconnectOptions { clean_data: true }).await;
             tx.send(()).await.unwrap();
         }
     }

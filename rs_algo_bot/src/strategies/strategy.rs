@@ -509,7 +509,7 @@ fn log_created_orders(orders: &[Order]) {
                 acc
             });
 
-    if orders_created.len() > 0 {
+    if !orders_created.is_empty() {
         log::info!("Orders created: {:?}", orders_created);
     }
 }

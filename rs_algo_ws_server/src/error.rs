@@ -1,6 +1,6 @@
 pub use rs_algo_shared::error::RsAlgoError;
 use rs_algo_shared::ws::message::CommandType;
-use std::fmt::{self, Display};
+
 use thiserror::Error;
 
 pub type Result<T> = ::anyhow::Result<T, RsAlgoError>;
