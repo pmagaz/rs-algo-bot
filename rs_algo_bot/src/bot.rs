@@ -21,7 +21,6 @@ use rs_algo_shared::scanner::instrument::{HTFInstrument, Instrument};
 use rs_algo_shared::ws::message::*;
 use rs_algo_shared::ws::ws_client::WebSocket;
 
-
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::env;
@@ -996,11 +995,7 @@ impl BotBuilder {
     }
 
     pub fn env(mut self, val: Environment) -> Self {
-        if val.is_prod() {
-            log::info!("Launching bot in {} env", val.value());
-        } else {
-            log::warn!("Launching bot in {} env", val.value());
-        }
+        log::warn!("Launching bot in {} env", &val.value());
         self.env = Some(val);
         self
     }

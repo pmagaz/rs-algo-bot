@@ -121,13 +121,7 @@ impl<'a> Strategy for NumBars<'a> {
                 let is_long = htf_ema_a > htf_ema_b;
                 let is_short = htf_ema_a < htf_ema_b;
 
-                if is_long {
-                    TradeDirection::Long
-                } else if is_short {
-                    TradeDirection::Short
-                } else {
-                    TradeDirection::None
-                }
+                TradeDirection::Long
             },
         );
         &self.trading_direction
@@ -157,10 +151,9 @@ impl<'a> Strategy for NumBars<'a> {
         let is_closed: bool = candle.is_closed();
 
         let buy_price = candle.close() + tick.spread();
-
         let sell_price = buy_price + (atr_profit_value * atr_value);
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
-
+        let entry_condition: bool = true;
         match entry_condition {
             true => Position::MarketIn(Some(vec![
                 OrderType::SellOrderLong(OrderDirection::Up, self.order_size, sell_price),
@@ -179,6 +172,7 @@ impl<'a> Strategy for NumBars<'a> {
         _tick: &InstrumentTick,
     ) -> Position {
         let exit_condition = self.trading_direction == TradeDirection::Short;
+        let exit_condition: bool = true;
         match exit_condition {
             true => Position::MarketOut(None),
             false => Position::None,

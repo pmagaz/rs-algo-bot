@@ -8,7 +8,7 @@ image:
 imagePullSecrets:
  - name: docker-credentials 
 
-envSecretName: rs-algo-screener-secrets
+envSecretName: rs-algo-bot-secrets
 
 podAnnotations: {}
 
