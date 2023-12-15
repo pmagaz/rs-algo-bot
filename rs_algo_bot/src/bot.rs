@@ -65,6 +65,7 @@ impl Bot {
 
     pub fn generate_bot_uuid(&mut self) -> Uuid {
         let seed = [
+            &self.env.value(),
             &self.symbol,
             &self.strategy_name,
             &self.time_frame.to_string(),
@@ -679,7 +680,7 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
-                                            log::info!(
+                                            log::error!(
                                                 "{:?} {} not fullfilled ask: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
@@ -736,7 +737,7 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
-                                            log::info!(
+                                            log::error!(
                                                 "{:?} {} not fullfilled ask: {} bid: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
