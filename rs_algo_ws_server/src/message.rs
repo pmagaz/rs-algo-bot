@@ -300,7 +300,7 @@ where
                                     TradeResult::TradeIn(trade_in),
                                     orders,
                                 ) => {
-                                    log::info!("TradeIn position received");
+                                    log::info!("TradeIn {} position received", symbol);
 
                                     let trade_data = TradeData::new(symbol, trade_in, options);
                                     let trade_response =
@@ -320,10 +320,13 @@ where
                                     json_response
                                 }
                                 PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
-                                    log::info!("TradeOut position received");
+                                    let trade_data =
+                                        TradeData::new(symbol, trade_out.clone(), options);
 
-                                    let trade_data = TradeData::new(symbol, trade_out, options);
+                                    log::info!("TradeOut {} position received", symbol);
+
                                     let trade_response = broker_guard.close_trade(trade_data).await;
+
                                     let json_response = match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
                                             Ok(json_res) => Some(json_res),
@@ -341,7 +344,7 @@ where
                                     TradeResult::TradeIn(_trade_in),
                                     order,
                                 ) => {
-                                    log::info!("MarketInOrder position received");
+                                    log::info!("MarketInOrder {} position received", symbol);
 
                                     let trade_data = TradeData::new(symbol, order, options);
                                     let trade_response = broker_guard.open_order(trade_data).await;
@@ -362,9 +365,10 @@ where
                                     TradeResult::TradeOut(trade_out),
                                     order,
                                 ) => {
-                                    log::info!("MarketOutOrder position received");
+                                    log::info!("MarketOutOrder {} position received", symbol);
+
                                     let trade_data =
-                                        TradeData::new(symbol, trade_out, options.clone());
+                                        TradeData::new(symbol, trade_out.clone(), options.clone());
 
                                     let order_data = TradeData::new(symbol, order, options);
                                     let trade_response =
