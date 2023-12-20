@@ -388,6 +388,7 @@ pub trait Strategy: DynClone {
             }
             Position::MarketOutOrder(order) => {
                 let trade_type = order.to_trade_type();
+
                 let trade_out_result = match trades_in.last() {
                     Some(trade_in) => trade::resolve_trade_out(
                         index,
@@ -399,7 +400,6 @@ pub trait Strategy: DynClone {
                     ),
                     None => TradeResult::None,
                 };
-
                 log::info!("Order activated: {:?} ", order.order_type);
 
                 PositionResult::MarketOutOrder(trade_out_result, order)

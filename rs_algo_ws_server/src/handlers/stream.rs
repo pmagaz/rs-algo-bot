@@ -23,7 +23,6 @@ where
     BK: BrokerStream + Send + 'static,
 {
     let (tx, mut rx) = mpsc::channel::<()>(1);
-    let symbol = session.symbol();
 
     tokio::spawn({
         async move {
@@ -38,7 +37,7 @@ where
                 .unwrap_or(0);
 
             let mut counter: usize = 0;
-            let sleep_time = 1;
+            let sleep_time = 100;
 
             let data: VEC_DOHLC = handlers::historic::get_historic_data(symbol, &time_frame, limit)
                 .await
