@@ -13,3 +13,4 @@
     - { role: "rs_algo_bot/deployment/usdcad/roles/" }
     - { role: "rs_algo_bot/deployment/usdchf/roles/" }
     - { role: "rs_algo_bot/deployment/usdjpy/roles/" }
+    - { role: "rs_algo_bot/deployment/cadjpy/roles/" }
