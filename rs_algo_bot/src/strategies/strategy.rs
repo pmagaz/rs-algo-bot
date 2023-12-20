@@ -452,6 +452,15 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::num_bars_atr::NumBars::new(
+                Some("NumBars_Backtest_atr48"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::num_bars_atr::NumBars::new(
                 Some("NumBars_Backtest_813"),
                 Some(time_frame),
                 higher_time_frame,
@@ -471,6 +480,15 @@ pub fn set_strategy(
         Box::new(
             strategies::num_bars_atr_dis::NumBars::new(
                 Some("NumBars_Backtest_Dis_813"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::num_bars_atr_dis::NumBars::new(
+                Some("NumBars_Backtest_Dis_atr48"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
