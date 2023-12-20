@@ -570,6 +570,7 @@ impl Bot {
                                             HTFInstrument::None => {}
                                         };
                                     }
+                                    self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::StreamResponse(res) => {
                                     let payload = res.payload.unwrap();
