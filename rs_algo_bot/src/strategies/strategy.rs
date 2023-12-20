@@ -451,6 +451,15 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
+            strategies::num_bars_atr::NumBars::new(
+                Some("NumBars_Backtest_813"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
             strategies::num_bars_atr_dis::NumBars::new(
                 Some("NumBars_Backtest_Dis"),
                 Some(time_frame),
@@ -460,14 +469,23 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::ema_scalping::EmaScalping::new(
-                Some("EMA_Scalping_Backtest"),
+            strategies::num_bars_atr_dis::NumBars::new(
+                Some("NumBars_Backtest_Dis_813"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
             )
             .unwrap(),
         ),
+        // Box::new(
+        //     strategies::ema_scalping::EmaScalping::new(
+        //         Some("EMA_Scalping_Backtest"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
         // Box::new(
         //     strategies::num_bars_atr_dis::NumBars::new(
         //         Some("NumBars_dis_0.005"),
