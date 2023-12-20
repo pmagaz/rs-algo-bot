@@ -135,8 +135,6 @@ where
                         payload: Some(session_data),
                     };
 
-                    
-
                     match serde_json::to_string(&response) {
                         Ok(s) => Some(s),
                         Err(e) => {
@@ -149,8 +147,6 @@ where
                     log::info!("Requesting {} trading hours", symbol);
 
                     let response = broker.lock().await.get_market_hours(symbol).await;
-
-                    
 
                     match response {
                         Ok(res) => {
@@ -177,8 +173,6 @@ where
                 CommandType::IsMarketOpen => {
                     log::info!("Checking {} market is open", symbol);
                     let response = broker.lock().await.is_market_open(symbol).await;
-
-                    
 
                     match response {
                         Ok(res) => match serde_json::to_string(&res) {
@@ -222,8 +216,6 @@ where
                         )
                         .await;
 
-                    
-
                     match response {
                         Ok(res) => match serde_json::to_string(&res) {
                             Ok(json_res) => Some(json_res),
@@ -243,8 +235,6 @@ where
                             let position_result: PositionResult =
                                 serde_json::from_value(value["data"].clone()).unwrap();
 
-                            
-
                             match position_result {
                                 PositionResult::MarketIn(
                                     TradeResult::TradeIn(trade_in),
@@ -255,8 +245,6 @@ where
                                     let trade_data = TradeData::new(symbol, trade_in, options);
                                     let trade_response =
                                         broker_guard.open_trade(trade_data, orders).await;
-
-                                    
 
                                     match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
@@ -274,7 +262,6 @@ where
 
                                     let trade_data = TradeData::new(symbol, trade_out, options);
                                     let trade_response = broker_guard.close_trade(trade_data).await;
-                                    
 
                                     match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
@@ -295,7 +282,6 @@ where
 
                                     let trade_data = TradeData::new(symbol, order, options);
                                     let trade_response = broker_guard.open_order(trade_data).await;
-                                    
 
                                     match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
@@ -319,7 +305,6 @@ where
                                     let order_data = TradeData::new(symbol, order, options);
                                     let trade_response =
                                         broker_guard.close_order(trade_data, order_data).await;
-                                    
 
                                     match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
@@ -343,8 +328,7 @@ where
                 }
                 CommandType::GetActivePositions => {
                     log::info!("Getting {} active positions", symbol);
-                    let response = broker.lock().await.get_active_positions().await;
-                    
+                    let response = broker.lock().await.get_active_positions(&symbol).await;
 
                     match response {
                         Ok(res) => match serde_json::to_string(&res) {
@@ -371,8 +355,6 @@ where
                 CommandType::GetInstrumentTick => {
                     log::info!("Getting {} tick data", symbol);
                     let response = broker.lock().await.get_instrument_tick(symbol).await;
-
-                    
 
                     match response {
                         Ok(res) => match serde_json::to_string(&res) {

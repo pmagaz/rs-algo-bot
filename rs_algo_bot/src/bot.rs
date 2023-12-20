@@ -246,7 +246,7 @@ impl Bot {
     pub async fn fullfill_activated_order<T: Trade>(
         &mut self,
         activated_orders_result: &PositionResult,
-        trade_in: &T,
+        trade: &T,
         order: &Order,
         open_positions: &mut bool,
     ) {
@@ -256,14 +256,14 @@ impl Bot {
         };
 
         if *open_positions != should_open {
-            log::info!("Sending {:?} ...", trade_in.get_type());
+            log::info!("Sending {} {:?} ...", trade.get_index(), trade.get_type());
             self.send_position::<PositionResult>(
                 activated_orders_result,
                 self.symbol.clone(),
                 self.time_frame.clone(),
             )
             .await;
-            order::fulfill_bot_order::<T>(trade_in, order, &mut self.orders, &self.instrument);
+            order::fulfill_bot_order::<T>(trade, order, &mut self.orders, &self.instrument);
 
             *open_positions = should_open;
         }
@@ -276,8 +276,12 @@ impl Bot {
         open_positions: &mut bool,
     ) {
         match new_position_result {
-            PositionResult::MarketIn(TradeResult::TradeIn(t), _) if !*open_positions => {
-                log::info!("Sending {:?} ...", t.trade_type);
+            PositionResult::MarketIn(TradeResult::TradeIn(trade_in), _) if !*open_positions => {
+                log::info!(
+                    "Sending {} {:?} ...",
+                    trade_in.get_index(),
+                    trade_in.get_type()
+                );
 
                 self.send_position::<PositionResult>(
                     new_position_result,
@@ -290,8 +294,12 @@ impl Bot {
                 }
                 *open_positions = true;
             }
-            PositionResult::MarketOut(TradeResult::TradeOut(t)) if *open_positions => {
-                log::info!("Sending {:?} ...", t.trade_type);
+            PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) if *open_positions => {
+                log::info!(
+                    "Sending {} {:?} ...",
+                    trade_out.get_index(),
+                    trade_out.get_type()
+                );
                 self.send_position::<PositionResult>(
                     new_position_result,
                     self.symbol.clone(),
@@ -321,6 +329,8 @@ impl Bot {
                     open_positions,
                 )
                 .await;
+
+                self.trades_in.push(trade_in.clone());
             }
             PositionResult::MarketOutOrder(TradeResult::TradeOut(trade_out), order) => {
                 self.fullfill_activated_order::<TradeOut>(
@@ -330,6 +340,8 @@ impl Bot {
                     open_positions,
                 )
                 .await;
+
+                self.trades_out.push(trade_out.clone());
             }
             _ => todo!(),
         };
@@ -341,17 +353,21 @@ impl Bot {
         open_positions: &mut bool,
     ) {
         match new_position_result {
-            PositionResult::MarketIn(TradeResult::TradeIn(_), associated_orders) => {
+            PositionResult::MarketIn(TradeResult::TradeIn(trade_in), associated_orders) => {
                 self.process_trade(
                     new_position_result,
                     associated_orders.as_ref(),
                     open_positions,
                 )
                 .await;
+
+                self.trades_in.push(trade_in.clone());
             }
-            PositionResult::MarketOut(TradeResult::TradeOut(_)) => {
+            PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
                 self.process_trade(new_position_result, None, open_positions)
                     .await;
+
+                self.trades_out.push(trade_out.clone());
             }
             PositionResult::PendingOrder(associated_orders) => {
                 if !*open_positions {
@@ -406,7 +422,9 @@ impl Bot {
 
         let active_positions_command = Command {
             command: CommandType::GetActivePositions,
-            data: Some(&self),
+            data: Some(Symbol {
+                symbol: self.symbol.to_owned(),
+            }),
         };
 
         self.websocket
@@ -552,7 +570,11 @@ impl Bot {
                                                     trade_in.trade_type,
                                                     trade_in.id
                                                 );
-                                                trade::update_trades(&mut self.trades_in, trade_in);
+
+                                                trade::update_trade_by_id(
+                                                    &mut self.trades_in,
+                                                    trade_in,
+                                                );
 
                                                 match orders {
                                                     Some(orders) => {
@@ -694,6 +716,7 @@ impl Bot {
                                             HTFInstrument::None => {}
                                         };
                                     }
+                                    self.send_bot_status(&bot_str).await;
                                 }
                                 MessageType::StreamResponse(res) => {
                                     let payload = res.payload.unwrap();
@@ -858,8 +881,8 @@ impl Bot {
                                                 &payload.data.ask,
                                             );
 
-                                            let trade_response = payload;
-                                            self.trades_in.push(trade_response.data);
+                                            let trade_in = payload.data;
+                                            trade::update_last(&mut self.trades_in, trade_in);
 
                                             self.strategy_stats = self.strategy.update_stats(
                                                 &self.instrument,
@@ -879,12 +902,12 @@ impl Bot {
                                                 &payload.data.ask,
                                             );
 
-                                            open_positions = false;
-
+                                            trade::delete_last(&mut self.trades_in);
                                             order::cancel_trade_pending_orders(
                                                 &payload.data,
                                                 &mut self.orders,
                                             );
+                                            open_positions = false;
                                         }
                                     }
                                 }
@@ -902,19 +925,13 @@ impl Bot {
                                                 &payload.data.bid,
                                             );
 
-                                            let trade_response = payload;
-
+                                            let trade_out = payload.data;
                                             let updated_trade_out =
                                                 self.strategy.update_trade_stats(
                                                     self.trades_in.last().unwrap(),
-                                                    &trade_response.data,
+                                                    &trade_out,
                                                     &self.instrument.data,
                                                 );
-
-                                            order::cancel_trade_pending_orders(
-                                                &updated_trade_out,
-                                                &mut self.orders,
-                                            );
 
                                             log::info!(
                                                 "TradeOut stats profit {} profit_per {} ",
@@ -922,7 +939,15 @@ impl Bot {
                                                 &updated_trade_out.profit_per,
                                             );
 
-                                            self.trades_out.push(updated_trade_out);
+                                            order::cancel_trade_pending_orders(
+                                                &updated_trade_out,
+                                                &mut self.orders,
+                                            );
+
+                                            trade::update_last(
+                                                &mut self.trades_out,
+                                                updated_trade_out,
+                                            );
 
                                             self.strategy_stats = self.strategy.update_stats(
                                                 &self.instrument,
@@ -941,6 +966,8 @@ impl Bot {
                                                 &payload.data.ask,
                                                 &payload.data.bid,
                                             );
+
+                                            trade::delete_last(&mut self.trades_out);
 
                                             open_positions = true;
                                         }
