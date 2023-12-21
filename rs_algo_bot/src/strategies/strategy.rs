@@ -1,5 +1,6 @@
 use crate::strategies;
 use async_trait::async_trait;
+use chrono::Local;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
@@ -114,21 +115,45 @@ pub trait Strategy: DynClone {
         );
 
         if open_positions {
-            let trade_in = trades_in.last().unwrap();
-            position_result =
-                self.should_exit_position(index, instrument, htf_instrument, trade_in, tick);
+            let current_trade_fulfilled = match trades_in.last() {
+                Some(trade) => trade.is_fulfilled(),
+                None => true,
+            };
+
+            if current_trade_fulfilled {
+                let current_trade_in = trades_in.last().unwrap();
+
+                position_result = self.should_exit_position(
+                    index,
+                    instrument,
+                    htf_instrument,
+                    current_trade_in,
+                    tick,
+                );
+            } else {
+                log::warn!("Previnous tradeIn no fulfilled");
+            }
         }
 
         if !open_positions && self.there_are_funds(trades_out) {
-            position_result = self.should_open_position(
-                index,
-                instrument,
-                htf_instrument,
-                orders,
-                trades_out,
-                trade_direction,
-                tick,
-            );
+            let current_trade_fulfilled = match trades_out.last() {
+                Some(trade) => trade.is_fulfilled(),
+                None => true,
+            };
+
+            if current_trade_fulfilled {
+                position_result = self.should_open_position(
+                    index,
+                    instrument,
+                    htf_instrument,
+                    orders,
+                    trades_out,
+                    trade_direction,
+                    tick,
+                );
+            } else {
+                log::warn!("Previnous tradeOut no fulfilled");
+            }
         }
 
         (position_result, order_position_result)
@@ -382,11 +407,12 @@ pub trait Strategy: DynClone {
                     _ => 0,
                 };
                 log::info!("Order activated: {:?} ", order.order_type);
-
+                // order.set_status(order::OrderStatus::Fulfilled);
                 order.set_trade_id(trade_id);
+
                 PositionResult::MarketInOrder(trade_in_result, order)
             }
-            Position::MarketOutOrder(order) => {
+            Position::MarketOutOrder(mut order) => {
                 let trade_type = order.to_trade_type();
 
                 let trade_out_result = match trades_in.last() {
@@ -401,6 +427,8 @@ pub trait Strategy: DynClone {
                     None => TradeResult::None,
                 };
                 log::info!("Order activated: {:?} ", order.order_type);
+
+                // order.set_status(order::OrderStatus::Fulfilled);
 
                 PositionResult::MarketOutOrder(trade_out_result, order)
             }
@@ -442,6 +470,15 @@ pub fn set_strategy(
 ) -> Box<dyn Strategy> {
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
+            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
             strategies::num_bars_atr::NumBars::new(
                 Some("NumBars_Backtest"),
                 Some(time_frame),
@@ -471,6 +508,15 @@ pub fn set_strategy(
         Box::new(
             strategies::num_bars_atr_dis::NumBars::new(
                 Some("NumBars_Backtest_Dis"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::num_bars_atr_dis::NumBars::new(
+                Some("NumBars_Backtest_Dis_b"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),

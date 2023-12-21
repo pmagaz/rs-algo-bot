@@ -225,6 +225,10 @@ impl Bot {
         };
 
         if *open_positions != should_open {
+            order::fulfill_bot_order::<T>(trade, order, &mut self.orders, &self.instrument);
+
+            *open_positions = should_open;
+
             log::info!("Sending {} {:?} ...", trade.get_index(), trade.get_type());
 
             self.send_position::<PositionResult>(
@@ -233,9 +237,6 @@ impl Bot {
                 self.time_frame.clone(),
             )
             .await;
-            order::fulfill_bot_order::<T>(trade, order, &mut self.orders, &self.instrument);
-
-            *open_positions = should_open;
         }
     }
 
@@ -302,7 +303,7 @@ impl Bot {
                 )
                 .await;
 
-                self.trades_in.push(trade_in.clone());
+                self.add_trade_in(trade_in);
             }
             PositionResult::MarketOutOrder(TradeResult::TradeOut(trade_out), order) => {
                 self.fullfill_activated_order::<TradeOut>(
@@ -313,13 +314,55 @@ impl Bot {
                 )
                 .await;
 
-                self.trades_out.push(trade_out.clone());
+                self.add_trade_out(trade_out);
             }
             _ => {
                 log::error!("{:?}", activated_orders_result);
                 todo!()
             }
         };
+    }
+
+    fn add_trade_in(&mut self, trade_in: &TradeIn) {
+        let num_trades_in = self.trades_in.len();
+        let num_trades_out = self.trades_out.len();
+
+        let max_buy_orders = env::var("MAX_BUY_ORDERS")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+
+        let has_active_trade = match num_trades_in.checked_sub(num_trades_out) {
+            Some(diff) => diff < max_buy_orders,
+            None => false,
+        };
+
+        if has_active_trade {
+            self.trades_in.push(trade_in.clone());
+        } else {
+            log::error!(
+                "Uncontrolled trade in. TradesIn: {} TradesOut: {}",
+                num_trades_in,
+                num_trades_out
+            );
+        }
+    }
+
+    fn add_trade_out(&mut self, trade_out: &TradeOut) {
+        let num_trades_in = self.trades_in.len();
+        let num_trades_out = self.trades_out.len();
+        let has_active_trade = num_trades_in > num_trades_out;
+
+        if has_active_trade {
+            self.trades_out.push(trade_out.clone());
+        } else {
+            log::error!(
+                "Uncontrolled trade out. TradesIn: {} TradesOut: {}",
+                num_trades_in,
+                num_trades_out
+            );
+            //panic!();
+        }
     }
 
     async fn process_activated_positions(
@@ -336,13 +379,13 @@ impl Bot {
                 )
                 .await;
 
-                self.trades_in.push(trade_in.clone());
+                self.add_trade_in(trade_in);
             }
             PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
                 self.process_trade(new_position_result, None, open_positions)
                     .await;
 
-                self.trades_out.push(trade_out.clone());
+                self.add_trade_out(trade_out);
             }
             PositionResult::PendingOrder(associated_orders) => {
                 if !*open_positions {
@@ -676,7 +719,14 @@ impl Bot {
                                         );
                                     }
 
-                                    //self.send_bot_status(&bot_str).await;
+                                    let update_bot_on_stream = env::var("SEND_UPDATE_ON_STREAM")
+                                        .unwrap()
+                                        .parse::<bool>()
+                                        .unwrap();
+
+                                    if update_bot_on_stream {
+                                        self.send_bot_status(&bot_str).await;
+                                    }
                                 }
                                 MessageType::TradeInFulfilled(res) => {
                                     let payload = res.payload.unwrap();
@@ -756,7 +806,7 @@ impl Bot {
 
                                             trade::update_last(
                                                 &mut self.trades_out,
-                                                updated_trade_out,
+                                                updated_trade_out.clone(),
                                             );
 
                                             self.strategy_stats = self.strategy.update_stats(
