@@ -122,6 +122,8 @@ impl<'a> Strategy for NumBars<'a> {
 
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                let current_price = htf_inst.data().last().unwrap().close();
 
                 let percentage_diff = {
                     let numerator = (htf_ema_a - htf_ema_b).abs();

@@ -256,6 +256,10 @@ impl Bot {
         };
 
         if *open_positions != should_open {
+            order::fulfill_bot_order::<T>(trade, order, &mut self.orders, &self.instrument);
+
+            *open_positions = should_open;
+
             log::info!("Sending {} {:?} ...", trade.get_index(), trade.get_type());
             self.send_position::<PositionResult>(
                 activated_orders_result,
@@ -263,9 +267,48 @@ impl Bot {
                 self.time_frame.clone(),
             )
             .await;
-            order::fulfill_bot_order::<T>(trade, order, &mut self.orders, &self.instrument);
+        }
+    }
 
-            *open_positions = should_open;
+    fn add_trade_in(&mut self, trade_in: &TradeIn) {
+        let num_trades_in = self.trades_in.len();
+        let num_trades_out = self.trades_out.len();
+
+        let max_buy_orders = env::var("MAX_BUY_ORDERS")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+
+        let has_active_trade = match num_trades_in.checked_sub(num_trades_out) {
+            Some(diff) => diff < max_buy_orders,
+            None => false, // Handle overflow case
+        };
+
+        if has_active_trade {
+            self.trades_in.push(trade_in.clone());
+        } else {
+            log::error!(
+                "Uncontrolled trade in. TradesIn: {} TradesOut: {}",
+                num_trades_in,
+                num_trades_out
+            );
+        }
+    }
+
+    fn add_trade_out(&mut self, trade_out: &TradeOut) {
+        let num_trades_in = self.trades_in.len();
+        let num_trades_out = self.trades_out.len();
+        let has_active_trade = num_trades_in > num_trades_out;
+
+        if has_active_trade {
+            self.add_trade_out(trade_out);
+        } else {
+            log::error!(
+                "Uncontrolled trade out. TradesIn: {} TradesOut: {}",
+                num_trades_in,
+                num_trades_out
+            );
+            //panic!();
         }
     }
 
@@ -341,7 +384,7 @@ impl Bot {
                 )
                 .await;
 
-                self.trades_out.push(trade_out.clone());
+                self.add_trade_out(trade_out);
             }
             _ => todo!(),
         };
@@ -593,7 +636,7 @@ impl Bot {
                                                 );
                                                 match orders {
                                                     Some(orders) => {
-                                                        self.trades_in.push(trade_in);
+                                                        self.add_trade_in(&trade_in);
 
                                                         self.orders = order::add_pending(
                                                             self.orders.clone(),
@@ -826,7 +869,14 @@ impl Bot {
                                             &mut self.orders,
                                         );
                                     }
-                                    self.send_bot_status(&bot_str).await;
+                                    let update_bot_on_stream = env::var("SEND_UPDATE_ON_STREAM")
+                                        .unwrap()
+                                        .parse::<bool>()
+                                        .unwrap();
+
+                                    if update_bot_on_stream {
+                                        self.send_bot_status(&bot_str).await;
+                                    }
                                 }
                                 MessageType::StreamTickResponse(res) => {
                                     let tick = res.payload.unwrap();

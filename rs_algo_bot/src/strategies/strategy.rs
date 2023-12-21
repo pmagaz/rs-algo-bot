@@ -115,21 +115,45 @@ pub trait Strategy: DynClone {
         );
 
         if open_positions {
-            let trade_in = trades_in.last().unwrap();
-            position_result =
-                self.should_exit_position(index, instrument, htf_instrument, trade_in, tick);
+            let current_trade_fulfilled = match trades_in.last() {
+                Some(trade) => trade.is_fulfilled(),
+                None => true,
+            };
+
+            if current_trade_fulfilled {
+                let current_trade_in = trades_in.last().unwrap();
+
+                position_result = self.should_exit_position(
+                    index,
+                    instrument,
+                    htf_instrument,
+                    current_trade_in,
+                    tick,
+                );
+            } else {
+                log::warn!("Previnous tradeIn no fulfilled");
+            }
         }
 
         if !open_positions && self.there_are_funds(trades_out) {
-            position_result = self.should_open_position(
-                index,
-                instrument,
-                htf_instrument,
-                orders,
-                trades_out,
-                trade_direction,
-                tick,
-            );
+            let current_trade_fulfilled = match trades_out.last() {
+                Some(trade) => trade.is_fulfilled(),
+                None => true,
+            };
+
+            if current_trade_fulfilled {
+                position_result = self.should_open_position(
+                    index,
+                    instrument,
+                    htf_instrument,
+                    orders,
+                    trades_out,
+                    trade_direction,
+                    tick,
+                );
+            } else {
+                log::warn!("Previnous tradeOut no fulfilled");
+            }
         }
 
         (position_result, order_position_result)
@@ -454,6 +478,15 @@ pub fn set_strategy(
         Box::new(
             strategies::num_bars_atr_dis::NumBars::new(
                 Some("NumBars_Dis"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::num_bars_atr_dis::NumBars::new(
+                Some("NumBars_Backtest_Dis_b"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
