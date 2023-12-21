@@ -23,7 +23,7 @@ log = "0.4"
 mongodb = {version="2.2.2", features=["bson-uuid-0_8"]}
 bson = "2.3.0"
 csv = "1.1"
-rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", rev = "e4d5971", features = ["broker","websocket"]}
+rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", rev = "4004273", features = ["broker","websocket"]}
 #rs_algo_shared = { path = "../../rs_algo_shared", features = ["broker","websocket"] }
 
 # [profile.release]
