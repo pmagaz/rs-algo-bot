@@ -5,6 +5,7 @@
 //pub mod bollinger_bands_middle_band;
 pub mod bollinger_bands_reversals;
 pub mod bollinger_bands_reversals_atr;
+pub mod bollinger_bands_reversals_buy;
 pub mod ema_scalping;
 pub mod num_bars_atr;
 pub mod num_bars_atr_dis;

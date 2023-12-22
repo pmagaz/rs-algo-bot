@@ -174,10 +174,10 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
 
         match entry_condition {
-            true => Position::MarketIn(Some(vec![
-                //OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
+            true => Position::Order(vec![
+                OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
                 OrderType::StopLossLong(OrderDirection::Down, StopLossType::Atr(atr_value)),
-            ])),
+            ]),
 
             false => Position::None,
         }
@@ -257,10 +257,10 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
 
         match entry_condition {
-            true => Position::MarketIn(Some(vec![
-                //OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
+            true => Position::Order(vec![
+                OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
                 OrderType::StopLossShort(OrderDirection::Up, StopLossType::Atr(atr_value)),
-            ])),
+            ]),
 
             false => Position::None,
         }
