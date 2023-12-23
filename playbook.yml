@@ -7,6 +7,7 @@
     # backtest
     - { role: "rs_algo_ws_server/deployment/roles/" }
     - { role: "rs_algo_bot/deployment/audnzd/roles/" }
+    - { role: "rs_algo_bot/deployment/audusd/roles/" }
     - { role: "rs_algo_bot/deployment/eurchf/roles/" }
     - { role: "rs_algo_bot/deployment/eurusd/roles/" }
     - { role: "rs_algo_bot/deployment/gbpusd/roles/" }

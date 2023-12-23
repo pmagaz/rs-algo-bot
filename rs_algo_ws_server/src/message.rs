@@ -341,13 +341,16 @@ where
                                     json_response
                                 }
                                 PositionResult::MarketInOrder(
-                                    TradeResult::TradeIn(_trade_in),
+                                    TradeResult::TradeIn(trade_in),
                                     order,
                                 ) => {
                                     log::info!("MarketInOrder {} position received", symbol);
 
-                                    let trade_data = TradeData::new(symbol, order, options);
-                                    let trade_response = broker_guard.open_order(trade_data).await;
+                                    let trade_data =
+                                        TradeData::new(symbol, trade_in, options.clone());
+                                    let order_data = TradeData::new(symbol, order, options);
+                                    let trade_response =
+                                        broker_guard.open_order(trade_data, order_data).await;
                                     let json_response = match trade_response {
                                         Ok(res) => match serde_json::to_string(&res) {
                                             Ok(json_res) => Some(json_res),
@@ -368,9 +371,10 @@ where
                                     log::info!("MarketOutOrder {} position received", symbol);
 
                                     let trade_data =
-                                        TradeData::new(symbol, trade_out.clone(), options.clone());
+                                        TradeData::new(symbol, trade_out, options.clone());
 
                                     let order_data = TradeData::new(symbol, order, options);
+
                                     let trade_response =
                                         broker_guard.close_order(trade_data, order_data).await;
                                     let json_response = match trade_response {
