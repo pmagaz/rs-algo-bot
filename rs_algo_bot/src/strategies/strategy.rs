@@ -409,7 +409,6 @@ pub trait Strategy: DynClone {
                 log::info!("Order activated: {:?} ", order.order_type);
                 // order.set_status(order::OrderStatus::Fulfilled);
                 order.set_trade_id(trade_id);
-
                 PositionResult::MarketInOrder(trade_in_result, order)
             }
             Position::MarketOutOrder(mut order) => {
@@ -490,6 +489,15 @@ pub fn set_strategy(
         Box::new(
             strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
                 Some("BB_Reversals_Backtest_Buy_Exit"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Buy_Exit_B"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
