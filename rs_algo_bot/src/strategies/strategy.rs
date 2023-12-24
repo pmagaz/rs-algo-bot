@@ -467,6 +467,24 @@ pub fn set_strategy(
 ) -> Box<dyn Strategy> {
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
+            strategies::bollinger_bands_reversals_buy::BollingerBandsReversals::new(
+                Some("BB_Reversals_Buy"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
+                Some("BB_Reversals_Buy_Exit"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
             strategies::num_bars_atr::NumBars::new(
                 Some("NumBars"),
                 Some(time_frame),

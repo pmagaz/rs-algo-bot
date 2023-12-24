@@ -13,7 +13,7 @@ use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn};
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
-pub struct BollingerBandsMiddleBand<'a> {
+pub struct BollingerBandsReversals<'a> {
     name: &'a str,
     time_frame: TimeFrameType,
     higher_time_frame: Option<TimeFrameType>,
@@ -24,7 +24,7 @@ pub struct BollingerBandsMiddleBand<'a> {
     profit_target: f64,
 }
 
-impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
+impl<'a> Strategy for BollingerBandsReversals<'a> {
     fn new(
         name: Option<&'static str>,
         time_frame: Option<&str>,
@@ -48,7 +48,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
 
         let order_size = std::env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
-        let name = name.unwrap_or("Bollinger_Bands_MiddleBand");
+        let name = name.unwrap_or("Bollinger_Bands_Reversals");
 
         let strategy_type = match strategy_type {
             Some(stype) => stype,
@@ -79,9 +79,9 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             name,
             time_frame,
             higher_time_frame,
-            order_size,
             strategy_type,
             trading_direction,
+            order_size,
             risk_reward_ratio,
             profit_target,
         })
@@ -115,18 +115,14 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let _htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
 
-                let high_price = &htf_inst.data().get(idx).unwrap().high();
-                let low_price = &htf_inst.data().get(idx).unwrap().low();
+                let is_long = htf_ema_a > htf_ema_b;
+                let is_short = htf_ema_a < htf_ema_b;
 
-                let is_long = htf_ema_a > htf_ema_c && low_price > htf_ema_c;
-                let is_short = htf_ema_a < htf_ema_c && high_price < htf_ema_c;
-
-                if is_long {
+                if is_long && !is_short {
                     TradeDirection::Long
-                } else if is_short {
+                } else if is_short && !is_long {
                     TradeDirection::Short
                 } else {
                     TradeDirection::None
@@ -151,16 +147,20 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
         let candle = data.get(index).unwrap();
-        let prev_candle = &data.get(prev_index).unwrap();
+        let _prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
-        let prev_close = &prev_candle.close();
-        let is_closed = candle.is_closed();
+        let _high_price = &candle.high();
+        let is_closed: bool = candle.is_closed();
 
-        let middle_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
-        let prev_middle_band = instrument
+        let prev_candle = &data.get(prev_index).unwrap();
+        let prev_close = &prev_candle.close();
+
+        let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
+        let mid_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
+        let prev_low_band = instrument
             .indicators
             .bb
-            .get_data_c()
+            .get_data_b()
             .get(prev_index)
             .unwrap();
 
@@ -171,8 +171,8 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
 
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
-            && close_price > middle_band
-            && (prev_close <= prev_middle_band);
+            && close_price < low_band
+            && (prev_close >= prev_low_band);
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
 
@@ -199,19 +199,18 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
-        let prev_close = &prev_candle.close();
+        let prev_high = &prev_candle.high();
         let is_closed = candle.is_closed();
 
-        let middle_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
-        let prev_middle_band = instrument
+        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
+        let prev_top_band = instrument
             .indicators
             .bb
-            .get_data_c()
+            .get_data_a()
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = self.trading_direction == TradeDirection::Short
-            || (is_closed && close_price < middle_band && (prev_close >= prev_middle_band));
+        let exit_condition = (is_closed && close_price < top_band && (prev_high > prev_top_band));
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -234,27 +233,31 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
         let candle = data.get(index).unwrap();
-        let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
-        let prev_close = &prev_candle.close();
+        let _low_price = &candle.low();
         let is_closed = candle.is_closed();
 
-        let middle_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
-        let prev_middle_band = instrument
-            .indicators
-            .bb
-            .get_data_c()
-            .get(prev_index)
-            .unwrap();
+        let prev_candle = &data.get(prev_index).unwrap();
+        let prev_high = &prev_candle.high();
+
         let pips_margin = std::env::var("PIPS_MARGIN")
             .unwrap()
             .parse::<f64>()
             .unwrap();
+        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
+        let mid_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
+
+        let prev_top_band = instrument
+            .indicators
+            .bb
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
 
         let entry_condition = self.trading_direction == TradeDirection::Short
             && is_closed
-            && close_price < middle_band
-            && (prev_close >= prev_middle_band);
+            && close_price < top_band
+            && (prev_high >= prev_top_band);
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
 
@@ -284,16 +287,15 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         let prev_close = &prev_candle.close();
         let is_closed = candle.is_closed();
 
-        let middle_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
-        let prev_middle_band = instrument
+        let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
+        let prev_low_band = instrument
             .indicators
             .bb
-            .get_data_c()
+            .get_data_b()
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = self.trading_direction == TradeDirection::Long
-            || (is_closed && close_price > middle_band && (prev_close <= prev_middle_band));
+        let exit_condition = (is_closed && close_price < low_band && (prev_close >= prev_low_band));
 
         match exit_condition {
             true => Position::MarketOut(None),
