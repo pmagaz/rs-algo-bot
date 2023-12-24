@@ -172,7 +172,10 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .get(prev_index)
             .unwrap();
 
-        let pips_margin = 0.5;
+        let pips_margin = std::env::var("PIPS_MARGIN")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
 
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
@@ -251,7 +254,10 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             .get_data_c()
             .get(prev_index)
             .unwrap();
-        let pips_margin = 0.5;
+        let pips_margin = std::env::var("PIPS_MARGIN")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
 
         let entry_condition = self.trading_direction == TradeDirection::Short
             && is_closed
