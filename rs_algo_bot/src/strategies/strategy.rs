@@ -550,6 +550,15 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
+            strategies::bollinger_bands_reversals_buy_sell_b::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Buy_SellB_B"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
             strategies::bollinger_bands_reversals_buy_exit_direction::BollingerBandsReversals::new(
                 Some("BB_Reversals_Backtest_buy_exit_direction"),
                 Some(time_frame),
