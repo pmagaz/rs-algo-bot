@@ -505,6 +505,42 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
+            strategies::bollinger_bands_reversals_buy_sell::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Buy_Sell_C"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_buy_sell::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Buy_Sell_D"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_buy_sell::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Buy_Sell_E"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_buy_sell_b::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Buy_SellB"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
             strategies::bollinger_bands_reversals_buy_exit_direction::BollingerBandsReversals::new(
                 Some("BB_Reversals_Backtest_buy_exit_direction"),
                 Some(time_frame),
@@ -604,71 +640,8 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_813"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals_atr::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Atr_813"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
             strategies::num_bars_atr::NumBars::new(
                 Some("NumBars_Backtest_Atr"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::num_bars_atr::NumBars::new(
-                Some("NumBars_Backtest_813"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::num_bars_atr_dis::NumBars::new(
-                Some("NumBars_Backtest_Dis"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::num_bars_atr_dis::NumBars::new(
-                Some("NumBars_Backtest_Dis_b"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::num_bars_atr_dis::NumBars::new(
-                Some("NumBars_Backtest_Dis_813"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::num_bars_atr_dis::NumBars::new(
-                Some("NumBars_Backtest_Dis_atr48"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),

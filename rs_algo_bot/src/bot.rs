@@ -318,7 +318,6 @@ impl Bot {
             }
             _ => {
                 log::error!("{:?}", activated_orders_result);
-                todo!()
             }
         };
     }

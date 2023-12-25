@@ -9,6 +9,7 @@ pub mod bollinger_bands_reversals_buy;
 pub mod bollinger_bands_reversals_buy_exit;
 pub mod bollinger_bands_reversals_buy_exit_direction;
 pub mod bollinger_bands_reversals_buy_sell;
+pub mod bollinger_bands_reversals_buy_sell_b;
 pub mod bollinger_bands_reversals_buy_sell_direction;
 pub mod ema_scalping;
 pub mod num_bars_atr;
