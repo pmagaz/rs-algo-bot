@@ -139,7 +139,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_value = std::env::var("ATR_STOP_LOSS")
+        let atr_stop_loss = std::env::var("ATR_STOP_LOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -169,12 +169,10 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .parse::<f64>()
             .unwrap();
 
-        let atr_profit_value = std::env::var("ATR_PROFIT_TARGET")
+        let atr_profit_target = std::env::var("ATR_PROFIT_TARGET")
             .unwrap()
             .parse::<f64>()
             .unwrap();
-
-        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
 
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
@@ -182,13 +180,17 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close >= prev_low_band);
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
-        let sell_price = buy_price + (atr_profit_value * atr_value);
+        let sell_price = buy_price + (atr_profit_target * atr_stop_loss) + tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
                 OrderType::SellOrderLong(OrderDirection::Up, self.order_size, sell_price),
-                OrderType::StopLossLong(OrderDirection::Down, StopLossType::Atr(*atr_value)),
+                OrderType::StopLossLong(
+                    OrderDirection::Down,
+                    buy_price,
+                    StopLossType::Atr(atr_stop_loss),
+                ),
             ]),
 
             false => Position::None,
@@ -218,7 +220,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_value = std::env::var("ATR_STOP_LOSS")
+        let atr_stop_loss = std::env::var("ATR_STOP_LOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -247,12 +249,10 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let atr_profit_value = std::env::var("ATR_PROFIT_TARGET")
+        let atr_profit_target = std::env::var("ATR_PROFIT_TARGET")
             .unwrap()
             .parse::<f64>()
             .unwrap();
-
-        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
 
         let entry_condition = self.trading_direction == TradeDirection::Short
             && is_closed
@@ -260,13 +260,17 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_high >= prev_top_band);
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
-        let sell_price = buy_price - (atr_profit_value * atr_value) - tick.spread();
+        let sell_price = buy_price - (atr_profit_target * atr_stop_loss) - tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
                 OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
-                OrderType::StopLossShort(OrderDirection::Up, StopLossType::Atr(*atr_value)),
+                OrderType::StopLossShort(
+                    OrderDirection::Up,
+                    buy_price,
+                    StopLossType::Atr(atr_stop_loss),
+                ),
             ]),
 
             false => Position::None,

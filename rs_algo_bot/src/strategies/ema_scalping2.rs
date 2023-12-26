@@ -192,8 +192,8 @@ impl<'a> Strategy for EmaScalping2<'a> {
             .map(|x| x.low())
             .unwrap();
 
-        let buy_price = candle.close() + calc::to_pips(pips_margin, pricing);
-        let stop_loss_price = lowest_bar - calc::to_pips(pips_margin, pricing);
+        let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
+        let stop_loss_price = lowest_bar - calc::to_pips(pips_margin, tick);
         let risk = buy_price + spread - stop_loss_price;
         let sell_price = buy_price + (risk * self.risk_reward_ratio);
 
@@ -322,8 +322,8 @@ impl<'a> Strategy for EmaScalping2<'a> {
             .map(|x| x.high())
             .unwrap();
 
-        let buy_price = candle.close() - calc::to_pips(pips_margin, pricing);
-        let stop_loss_price = highest_bar + calc::to_pips(pips_margin, pricing);
+        let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
+        let stop_loss_price = highest_bar + calc::to_pips(pips_margin, tick);
         let risk = stop_loss_price + spread - buy_price;
         let sell_price = buy_price - (risk * self.risk_reward_ratio);
 

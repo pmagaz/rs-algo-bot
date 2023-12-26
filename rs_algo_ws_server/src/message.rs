@@ -344,7 +344,11 @@ where
                                     TradeResult::TradeIn(trade_in),
                                     order,
                                 ) => {
-                                    log::info!("MarketInOrder {} position received", symbol);
+                                    log::info!(
+                                        "MarketInOrder {} position received: {:?}",
+                                        symbol,
+                                        trade_in
+                                    );
 
                                     let trade_data =
                                         TradeData::new(symbol, trade_in, options.clone());

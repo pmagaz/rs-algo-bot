@@ -200,13 +200,17 @@ impl<'a> Strategy for EmaScalping<'a> {
         let buy_price = highest_bar + calc::to_pips(pips_margin, tick);
         let stop_loss_price = trigger_price - calc::to_pips(pips_margin, tick);
         let risk = buy_price + spread - stop_loss_price;
-        let sell_price = buy_price + (risk * self.risk_reward_ratio);
+        let sell_price = buy_price + (risk * self.risk_reward_ratio) + tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
                 OrderType::SellOrderLong(OrderDirection::Up, self.order_size, sell_price),
-                OrderType::StopLossLong(OrderDirection::Down, StopLossType::Price(stop_loss_price)),
+                OrderType::StopLossLong(
+                    OrderDirection::Down,
+                    buy_price,
+                    StopLossType::Price(stop_loss_price),
+                ),
             ]),
 
             false => Position::None,
@@ -280,13 +284,17 @@ impl<'a> Strategy for EmaScalping<'a> {
         let buy_price = lowest_bar - calc::to_pips(pips_margin, tick);
         let stop_loss_price = trigger_price + calc::to_pips(pips_margin, tick);
         let risk = stop_loss_price + spread - buy_price;
-        let sell_price = buy_price - (risk * self.risk_reward_ratio);
+        let sell_price = buy_price - (risk * self.risk_reward_ratio) - tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
                 OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
-                OrderType::StopLossShort(OrderDirection::Up, StopLossType::Price(stop_loss_price)),
+                OrderType::StopLossShort(
+                    OrderDirection::Up,
+                    buy_price,
+                    StopLossType::Price(stop_loss_price),
+                ),
             ]),
 
             false => Position::None,

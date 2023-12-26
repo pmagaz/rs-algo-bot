@@ -185,7 +185,7 @@ impl<'a> Strategy for Pullback<'a> {
         let buy_price = highest_bar + calc::to_pips(pips_margin, tick);
         let stop_loss_price = trigger_price - calc::to_pips(pips_margin, tick);
         let risk = buy_price + spread - stop_loss_price;
-        let sell_price = buy_price + (risk * self.risk_reward_ratio);
+        let sell_price = buy_price + (risk * self.risk_reward_ratio) + tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
@@ -265,7 +265,7 @@ impl<'a> Strategy for Pullback<'a> {
         let buy_price = lowest_bar - calc::to_pips(pips_margin, tick);
         let stop_loss_price = trigger_price + calc::to_pips(pips_margin, tick);
         let risk = stop_loss_price + spread - buy_price;
-        let sell_price = buy_price - (risk * self.risk_reward_ratio);
+        let sell_price = buy_price - (risk * self.risk_reward_ratio) - tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
