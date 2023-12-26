@@ -131,7 +131,7 @@ pub trait Strategy: DynClone {
                     tick,
                 );
             } else {
-                log::warn!("Previnous tradeIn no fulfilled");
+                log::warn!("Previous tradeIn no fulfilled");
             }
         }
 
@@ -152,7 +152,7 @@ pub trait Strategy: DynClone {
                     tick,
                 );
             } else {
-                log::warn!("Previnous tradeOut no fulfilled");
+                log::warn!("Previous tradeOut no fulfilled");
             }
         }
 
@@ -411,7 +411,7 @@ pub trait Strategy: DynClone {
                 order.set_trade_id(trade_id);
                 PositionResult::MarketInOrder(trade_in_result, order)
             }
-            Position::MarketOutOrder(mut order) => {
+            Position::MarketOutOrder(order) => {
                 let trade_type = order.to_trade_type();
 
                 let trade_out_result = match trades_in.last() {
@@ -426,9 +426,7 @@ pub trait Strategy: DynClone {
                     None => TradeResult::None,
                 };
                 log::info!("Order activated: {:?} ", order.order_type);
-
                 // order.set_status(order::OrderStatus::Fulfilled);
-
                 PositionResult::MarketOutOrder(trade_out_result, order)
             }
             _ => PositionResult::None,
@@ -597,6 +595,15 @@ pub fn set_strategy(
         Box::new(
             strategies::bollinger_bands_reversals_buy_sell_direction::BollingerBandsReversals::new(
                 Some("BB_Reversals_Backtest_buy_sell_direction_B"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_buy_sell_direction::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_buy_sell_direction_B2"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
