@@ -143,7 +143,7 @@ impl<'a> Strategy for NumBars<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_stop_loss = std::env::var("ATR_STOP_LOSS")
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -158,7 +158,7 @@ impl<'a> Strategy for NumBars<'a> {
         let is_closed: bool = candle.is_closed();
 
         let buy_price = candle.close();
-        let sell_price = buy_price + (atr_profit_target * atr_stop_loss) + tick.spread();
+        let sell_price = buy_price + (atr_profit_target * atr_stoploss) + tick.spread();
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
 
         match entry_condition {
@@ -167,7 +167,7 @@ impl<'a> Strategy for NumBars<'a> {
                 OrderType::StopLossLong(
                     OrderDirection::Down,
                     buy_price,
-                    StopLossType::Atr(atr_stop_loss),
+                    StopLossType::Atr(atr_stoploss),
                 ),
             ])),
             false => Position::None,
@@ -197,7 +197,7 @@ impl<'a> Strategy for NumBars<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_stop_loss = std::env::var("ATR_STOP_LOSS")
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -212,7 +212,7 @@ impl<'a> Strategy for NumBars<'a> {
         let is_closed: bool = candle.is_closed();
 
         let buy_price = candle.close();
-        let sell_price = buy_price - (atr_profit_target * atr_stop_loss) - tick.spread();
+        let sell_price = buy_price - (atr_profit_target * atr_stoploss) - tick.spread();
         let entry_condition = candle.candle_type() == &CandleType::ThreeInRow && is_closed;
 
         match entry_condition {
@@ -221,7 +221,7 @@ impl<'a> Strategy for NumBars<'a> {
                 OrderType::StopLossShort(
                     OrderDirection::Up,
                     buy_price,
-                    StopLossType::Atr(atr_stop_loss),
+                    StopLossType::Atr(atr_stoploss),
                 ),
             ])),
             false => Position::None,

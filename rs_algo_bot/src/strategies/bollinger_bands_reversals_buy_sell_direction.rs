@@ -141,7 +141,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_stop_loss = std::env::var("ATR_STOP_LOSS")
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -182,7 +182,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close >= prev_low_band);
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
-        let sell_price = buy_price + (atr_profit_target * atr_stop_loss) + tick.spread();
+        let sell_price = buy_price + (atr_profit_target * atr_stoploss) + tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
@@ -191,7 +191,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 OrderType::StopLossLong(
                     OrderDirection::Down,
                     buy_price,
-                    StopLossType::Atr(atr_stop_loss),
+                    StopLossType::Atr(atr_stoploss),
                 ),
             ]),
 
@@ -222,7 +222,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_stop_loss = std::env::var("ATR_STOP_LOSS")
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -261,7 +261,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_high >= prev_top_band);
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
-        let sell_price = buy_price - (atr_profit_target * atr_stop_loss) - tick.spread();
+        let sell_price = buy_price - (atr_profit_target * atr_stoploss) - tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
@@ -270,7 +270,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 OrderType::StopLossShort(
                     OrderDirection::Up,
                     buy_price,
-                    StopLossType::Atr(atr_stop_loss),
+                    StopLossType::Atr(atr_stoploss),
                 ),
             ]),
 
