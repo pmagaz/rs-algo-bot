@@ -121,8 +121,8 @@ impl<'a> Strategy for NumBars<'a> {
                 let current_price = &htf_inst.data().last().unwrap().close();
 
                 let is_over_price = current_price > htf_ema_c;
-                let is_long = htf_ema_a > htf_ema_b && is_over_price;
-                let is_short = htf_ema_a < htf_ema_b && !is_over_price;
+                let is_long = htf_ema_a > htf_ema_b; // && is_over_price;
+                let is_short = htf_ema_a < htf_ema_b; // && !is_over_price;
 
                 if is_long {
                     TradeDirection::Long
@@ -158,7 +158,8 @@ impl<'a> Strategy for NumBars<'a> {
         let is_closed: bool = candle.is_closed();
 
         let buy_price = candle.close();
-        let sell_price = buy_price + (atr_profit_target * atr_stoploss) + tick.spread();
+        let current_atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+        let sell_price = buy_price - (atr_profit_target * current_atr_value) + tick.spread();
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
 
         match entry_condition {

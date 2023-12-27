@@ -187,13 +187,6 @@ pub trait Strategy: DynClone {
             .unwrap();
 
         let pending_orders = order::get_pending(orders);
-        let active_buy_orders = pending_orders
-            .iter()
-            .filter(|o| o.is_entry() && o.has_active_trade())
-            .last()
-            .unwrap();
-
-        log::info!("11111 {:?}", (pending_orders.len(), active_buy_orders));
         let no_pending_orders = pending_orders.len() < max_pending_orders;
         let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
 
