@@ -270,7 +270,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
-                OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
                 OrderType::StopLossShort(
                     OrderDirection::Up,
                     buy_price,

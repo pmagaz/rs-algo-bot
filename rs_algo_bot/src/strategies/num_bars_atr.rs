@@ -158,8 +158,8 @@ impl<'a> Strategy for NumBars<'a> {
         let is_closed: bool = candle.is_closed();
 
         let buy_price = candle.close();
-        let current_atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
-        let sell_price = buy_price - (atr_profit_target * current_atr_value) + tick.spread();
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+        let sell_price = buy_price - (atr_profit_target * atr_value) + tick.spread();
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
 
         match entry_condition {
@@ -213,8 +213,8 @@ impl<'a> Strategy for NumBars<'a> {
         let is_closed: bool = candle.is_closed();
 
         let buy_price = candle.close();
-        let current_atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
-        let sell_price = buy_price - (atr_profit_target * current_atr_value) - tick.spread();
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+        let sell_price = buy_price - (atr_profit_target * atr_value) - tick.spread();
         let entry_condition = candle.candle_type() == &CandleType::ThreeInRow && is_closed;
 
         match entry_condition {

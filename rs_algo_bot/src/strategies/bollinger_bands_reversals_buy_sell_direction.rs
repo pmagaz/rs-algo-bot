@@ -176,13 +176,15 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .parse::<f64>()
             .unwrap();
 
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
             && close_price < low_band
             && (prev_close >= prev_low_band);
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
-        let sell_price = buy_price + (atr_profit_target * atr_stoploss) + tick.spread();
+        let sell_price = buy_price + (atr_profit_target * atr_value) + tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
@@ -261,8 +263,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_high >= prev_top_band);
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
-        let current_atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
-        let sell_price = buy_price - (atr_profit_target * current_atr_value) - tick.spread();
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+        let sell_price = buy_price - (atr_profit_target * atr_value) - tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
