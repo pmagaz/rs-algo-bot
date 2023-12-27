@@ -159,7 +159,7 @@ impl<'a> Strategy for NumBars<'a> {
 
         let buy_price = candle.close();
         let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
-        let sell_price = buy_price - (atr_profit_target * atr_value) + tick.spread();
+        let sell_price = buy_price + (atr_profit_target * atr_value) + tick.spread();
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
 
         match entry_condition {
