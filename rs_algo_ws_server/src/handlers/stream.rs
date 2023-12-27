@@ -37,7 +37,7 @@ where
                 .unwrap_or(0);
 
             let mut counter: usize = 0;
-            let sleep_time = 75;
+            let sleep_time = 50;
 
             let data: VEC_DOHLC = handlers::historic::get_historic_data(symbol, &time_frame, limit)
                 .await

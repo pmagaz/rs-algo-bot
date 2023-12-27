@@ -261,12 +261,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_high >= prev_top_band);
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
-        let sell_price = buy_price - (atr_profit_target * atr_stoploss) - tick.spread();
+        let current_atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+        let sell_price = buy_price - (atr_profit_target * current_atr_value) - tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
                 OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
+                OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
                 OrderType::StopLossShort(
                     OrderDirection::Up,
                     buy_price,

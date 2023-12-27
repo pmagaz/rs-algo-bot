@@ -171,6 +171,11 @@ pub trait Strategy: DynClone {
     ) -> PositionResult {
         let trade_size = env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
+        let max_pending_orders = env::var("MAX_PENDING_ORDERS")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+
         let overwrite_orders = env::var("OVERWRITE_ORDERS")
             .unwrap()
             .parse::<bool>()
@@ -182,8 +187,10 @@ pub trait Strategy: DynClone {
             .unwrap();
 
         let pending_orders = order::get_pending(orders);
+        let no_pending_orders = pending_orders.len() < max_pending_orders;
         let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
-        match wait_for_new_trade {
+
+        match wait_for_new_trade && no_pending_orders {
             false => match trade_direction.is_long() || !trading_direction {
                 true => match self.is_long_strategy() {
                     true => match self.entry_long(index, instrument, htf_instrument, tick) {
@@ -243,7 +250,7 @@ pub trait Strategy: DynClone {
 
                     _ => PositionResult::None,
                 },
-                false => match self.is_short_strategy() {
+                false => match self.is_short_strategy() && no_pending_orders {
                     true => match self.entry_short(index, instrument, htf_instrument, tick) {
                         Position::MarketIn(order_types) => {
                             let trade_type = TradeType::MarketInShort;
@@ -406,6 +413,7 @@ pub trait Strategy: DynClone {
                     TradeResult::TradeIn(trade_in) => trade_in.id,
                     _ => 0,
                 };
+
                 log::info!("Order activated: {:?} ", order.order_type);
                 // order.set_status(order::OrderStatus::Fulfilled);
                 order.set_trade_id(trade_id);
@@ -414,7 +422,7 @@ pub trait Strategy: DynClone {
             Position::MarketOutOrder(order) => {
                 let trade_type = order.to_trade_type();
 
-                let trade_out_result = match trades_in.last() {
+                let trade_out_result = match trades_in.iter().filter(|x| x.is_fulfilled()).last() {
                     Some(trade_in) => trade::resolve_trade_out(
                         index,
                         instrument,

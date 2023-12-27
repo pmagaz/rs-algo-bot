@@ -317,8 +317,7 @@ impl Bot {
                 self.add_trade_out(trade_out);
             }
             _ => {
-                log::error!("{:?}", activated_orders_result);
-                panic!();
+                //log::error!("{:?}", activated_orders_result);
             }
         };
     }
@@ -742,6 +741,12 @@ impl Bot {
                                             );
 
                                             let trade_in = payload.data;
+
+                                            order::update_trade_pending_orders(
+                                                &mut self.orders,
+                                                &trade_in,
+                                            );
+
                                             trade::update_last(&mut self.trades_in, trade_in);
 
                                             self.strategy_stats = self.strategy.update_stats(
@@ -751,7 +756,7 @@ impl Bot {
                                             );
 
                                             open_positions = true;
-                                            order::extend_all_pending_orders(&mut self.orders);
+
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
