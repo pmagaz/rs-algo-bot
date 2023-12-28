@@ -494,7 +494,7 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::bollinger_bands_reversals_buy_sell::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Sell"),
+                Some("BB_Reversals_Backtest_Buy_Sell_B"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -557,7 +557,7 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::bollinger_bands_reversals_buy_sell_b::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_SellB_B"),
+                Some("BB_Reversals_Backtest_Buy_SellB_C"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
