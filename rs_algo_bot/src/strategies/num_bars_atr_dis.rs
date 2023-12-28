@@ -3,7 +3,7 @@ use super::strategy::*;
 use rs_algo_shared::error::Result;
 
 use rs_algo_shared::indicators::Indicator;
-use rs_algo_shared::models::order::{OrderDirection, OrderType};
+use rs_algo_shared::models::order::OrderType;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
 use rs_algo_shared::models::tick::InstrumentTick;
@@ -177,12 +177,8 @@ impl<'a> Strategy for NumBars<'a> {
 
         match entry_condition {
             true => Position::MarketIn(Some(vec![
-                OrderType::SellOrderLong(OrderDirection::Up, self.order_size, sell_price),
-                OrderType::StopLossLong(
-                    OrderDirection::Down,
-                    buy_price,
-                    StopLossType::Atr(atr_stoploss),
-                ),
+                OrderType::SellOrderLong(self.order_size, sell_price),
+                OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
             ])),
             false => Position::None,
         }
@@ -232,12 +228,8 @@ impl<'a> Strategy for NumBars<'a> {
 
         match entry_condition {
             true => Position::MarketIn(Some(vec![
-                OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
-                OrderType::StopLossShort(
-                    OrderDirection::Up,
-                    buy_price,
-                    StopLossType::Atr(atr_stoploss),
-                ),
+                OrderType::SellOrderShort(self.order_size, sell_price),
+                OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
             ])),
             false => Position::None,
         }

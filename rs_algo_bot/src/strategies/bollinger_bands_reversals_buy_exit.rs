@@ -3,7 +3,7 @@ use super::strategy::*;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
-use rs_algo_shared::models::order::{OrderDirection, OrderType};
+use rs_algo_shared::models::order::OrderType;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
 use rs_algo_shared::models::tick::InstrumentTick;
@@ -172,18 +172,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
             && close_price < low_band
-            && (prev_close >= prev_low_band);
+            && (prev_close > prev_low_band);
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
-                OrderType::StopLossLong(
-                    OrderDirection::Down,
-                    buy_price,
-                    StopLossType::Atr(atr_stoploss),
-                ),
+                OrderType::BuyOrderLong(self.order_size, buy_price),
+                OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
@@ -203,7 +199,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
         let close_price = &candle.close();
-        let prev_high = &prev_candle.high();
+        let prev_close = &prev_candle.close();
         let is_closed = candle.is_closed();
 
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
@@ -214,7 +210,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = (is_closed && close_price < top_band && (prev_high > prev_top_band));
+        let exit_condition = is_closed && close_price < top_band && (prev_close > prev_top_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -242,14 +238,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let is_closed = candle.is_closed();
 
         let prev_candle = &data.get(prev_index).unwrap();
-        let prev_high = &prev_candle.high();
+        let prev_close = &prev_candle.close();
 
         let pips_margin = std::env::var("PIPS_MARGIN")
             .unwrap()
             .parse::<f64>()
             .unwrap();
+
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
-        let mid_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
 
         let prev_top_band = instrument
             .indicators
@@ -261,18 +257,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let entry_condition = self.trading_direction == TradeDirection::Short
             && is_closed
             && close_price < top_band
-            && (prev_high >= prev_top_band);
+            && (prev_close > prev_top_band);
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
-                OrderType::StopLossShort(
-                    OrderDirection::Up,
-                    buy_price,
-                    StopLossType::Atr(atr_stoploss),
-                ),
+                OrderType::BuyOrderShort(self.order_size, buy_price),
+                OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
@@ -303,7 +295,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = (is_closed && close_price < low_band && (prev_close >= prev_low_band));
+        let exit_condition = is_closed && close_price < low_band && (prev_close > prev_low_band);
 
         match exit_condition {
             true => Position::MarketOut(None),

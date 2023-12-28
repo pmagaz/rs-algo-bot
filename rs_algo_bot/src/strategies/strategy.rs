@@ -664,15 +664,6 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::bollinger_bands_reversals_atr::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Atr"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
             strategies::num_bars_atr::NumBars::new(
                 Some("NumBars_Backtest_Atr"),
                 Some(time_frame),

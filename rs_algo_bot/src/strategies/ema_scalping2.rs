@@ -2,7 +2,7 @@ use super::strategy::*;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
-use rs_algo_shared::models::order::{OrderDirection, OrderType};
+use rs_algo_shared::models::order::OrderType;
 use rs_algo_shared::models::pricing::Pricing;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
@@ -199,8 +199,8 @@ impl<'a> Strategy for EmaScalping2<'a> {
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
-                OrderType::SellOrderLong(OrderDirection::Up, self.order_size, sell_price),
+                OrderType::BuyOrderLong(self.order_size, buy_price),
+                OrderType::SellOrderLong(self.order_size, sell_price),
                 OrderType::StopLossLong(OrderDirection::Down, StopLossType::Price(stop_loss_price)),
             ]),
 
@@ -329,8 +329,8 @@ impl<'a> Strategy for EmaScalping2<'a> {
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
-                OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
+                OrderType::BuyOrderShort(self.order_size, buy_price),
+                OrderType::SellOrderShort(self.order_size, sell_price),
                 OrderType::StopLossShort(OrderDirection::Up, StopLossType::Price(stop_loss_price)),
             ]),
 

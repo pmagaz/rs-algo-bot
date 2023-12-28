@@ -186,12 +186,8 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
-                OrderType::StopLossLong(
-                    OrderDirection::Down,
-                    buy_price,
-                    StopLossType::Atr(atr_stoploss),
-                ),
+                OrderType::BuyOrderLong(self.order_size, buy_price),
+                OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
@@ -272,12 +268,8 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
-                OrderType::StopLossShort(
-                    OrderDirection::Up,
-                    buy_price,
-                    StopLossType::Atr(atr_stoploss),
-                ),
+                OrderType::BuyOrderShort(self.order_size, buy_price),
+                OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
