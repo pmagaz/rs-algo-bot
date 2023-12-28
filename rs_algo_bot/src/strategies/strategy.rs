@@ -131,7 +131,7 @@ pub trait Strategy: DynClone {
                     tick,
                 );
             } else {
-                log::warn!("Previnous tradeIn no fulfilled");
+                log::warn!("Previous tradeIn no fulfilled");
             }
         }
 
@@ -152,7 +152,7 @@ pub trait Strategy: DynClone {
                     tick,
                 );
             } else {
-                log::warn!("Previnous tradeOut no fulfilled");
+                log::warn!("Previous tradeOut no fulfilled");
             }
         }
 
@@ -171,6 +171,11 @@ pub trait Strategy: DynClone {
     ) -> PositionResult {
         let trade_size = env::var("ORDER_SIZE").unwrap().parse::<f64>().unwrap();
 
+        let max_pending_orders = env::var("MAX_PENDING_ORDERS")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+
         let overwrite_orders = env::var("OVERWRITE_ORDERS")
             .unwrap()
             .parse::<bool>()
@@ -182,8 +187,10 @@ pub trait Strategy: DynClone {
             .unwrap();
 
         let pending_orders = order::get_pending(orders);
+        let no_pending_orders = pending_orders.len() < max_pending_orders;
         let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
-        match wait_for_new_trade {
+
+        match wait_for_new_trade && no_pending_orders {
             false => match trade_direction.is_long() || !trading_direction {
                 true => match self.is_long_strategy() {
                     true => match self.entry_long(index, instrument, htf_instrument, tick) {
@@ -243,7 +250,7 @@ pub trait Strategy: DynClone {
 
                     _ => PositionResult::None,
                 },
-                false => match self.is_short_strategy() {
+                false => match self.is_short_strategy() && no_pending_orders {
                     true => match self.entry_short(index, instrument, htf_instrument, tick) {
                         Position::MarketIn(order_types) => {
                             let trade_type = TradeType::MarketInShort;
@@ -467,8 +474,17 @@ pub fn set_strategy(
 ) -> Box<dyn Strategy> {
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
-            strategies::bollinger_bands_reversals_buy::BollingerBandsReversals::new(
-                Some("BB_Reversals_Buy"),
+            strategies::bollinger_bands_reversals_buy_sell_direction::BollingerBandsReversals::new(
+                Some("BB_Reversals_Buy_Sell_Direction"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Buy_Exit"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),

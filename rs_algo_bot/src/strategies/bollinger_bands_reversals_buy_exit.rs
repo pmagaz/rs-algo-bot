@@ -139,7 +139,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_value = std::env::var("ATR_STOP_LOSS")
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -179,7 +179,11 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
-                OrderType::StopLossLong(OrderDirection::Down, StopLossType::Atr(atr_value)),
+                OrderType::StopLossLong(
+                    OrderDirection::Down,
+                    buy_price,
+                    StopLossType::Atr(atr_stoploss),
+                ),
             ]),
 
             false => Position::None,
@@ -210,7 +214,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = (is_closed && close_price < top_band && (prev_high > prev_top_band));
+        let exit_condition = is_closed && close_price < top_band && (prev_high > prev_top_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -225,7 +229,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_value = std::env::var("ATR_STOP_LOSS")
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -264,7 +268,11 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
-                OrderType::StopLossShort(OrderDirection::Up, StopLossType::Atr(atr_value)),
+                OrderType::StopLossShort(
+                    OrderDirection::Up,
+                    buy_price,
+                    StopLossType::Atr(atr_stoploss),
+                ),
             ]),
 
             false => Position::None,
@@ -295,7 +303,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = (is_closed && close_price < low_band && (prev_close >= prev_low_band));
+        let exit_condition = is_closed && close_price < low_band && (prev_close >= prev_low_band);
 
         match exit_condition {
             true => Position::MarketOut(None),

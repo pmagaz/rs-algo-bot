@@ -925,13 +925,19 @@ impl Bot {
                                     match accepted {
                                         true => {
                                             log::info!(
-                                                "{:?} {} fullfilled ask: {}",
+                                                "{:?} {} fulfilled ask: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
                                             );
 
                                             let trade_in = payload.data;
+
+                                            order::update_trade_pending_orders(
+                                                &mut self.orders,
+                                                &trade_in,
+                                            );
+
                                             trade::update_last(&mut self.trades_in, trade_in);
 
                                             self.strategy_stats = self.strategy.update_stats(
@@ -941,12 +947,12 @@ impl Bot {
                                             );
 
                                             open_positions = true;
-                                            order::extend_all_pending_orders(&mut self.orders);
+
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
                                             log::error!(
-                                                "{:?} {} not fullfilled ask: {}",
+                                                "{:?} {} not fulfilled ask: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
@@ -968,7 +974,7 @@ impl Bot {
                                     match accepted {
                                         true => {
                                             log::info!(
-                                                "{:?} {} fullfilled ask: {} bid: {}",
+                                                "{:?} {} fulfilled ask: {} bid: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
@@ -1010,7 +1016,7 @@ impl Bot {
                                         }
                                         false => {
                                             log::error!(
-                                                "{:?} {} not fullfilled ask: {} bid: {}",
+                                                "{:?} {} not fulfilled ask: {} bid: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,

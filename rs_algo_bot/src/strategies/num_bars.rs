@@ -154,8 +154,8 @@ impl<'a> Strategy for NumBars<'a> {
         let candle = data.get(index).unwrap();
         let is_closed: bool = candle.is_closed();
 
-        let buy_price = candle.close() + tick.spread();
-        let sell_price = buy_price + calc::to_pips(pips_profit, tick);
+        let buy_price = candle.close();
+        let sell_price = buy_price + calc::to_pips(pips_profit, tick) + tick.spread();
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
 
         match entry_condition {

@@ -114,15 +114,27 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let _htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                let htf_ema_a = htf_inst
+                    .indicators
+                    .ema_a
+                    .get_data_a()
+                    .get(idx)
+                    .unwrap_or_else(|| &0.);
+                let htf_ema_b = htf_inst
+                    .indicators
+                    .ema_b
+                    .get_data_a()
+                    .get(idx)
+                    .unwrap_or_else(|| &0.);
+                let htf_ema_c = htf_inst
+                    .indicators
+                    .ema_c
+                    .get_data_a()
+                    .get(idx)
+                    .unwrap_or_else(|| &0.);
 
-                let high_price = &htf_inst.data().get(idx).unwrap().high();
-                let low_price = &htf_inst.data().get(idx).unwrap().low();
-
-                let is_long = htf_ema_a > htf_ema_c && low_price > htf_ema_c;
-                let is_short = htf_ema_a < htf_ema_c && high_price < htf_ema_c;
+                let is_long = htf_ema_a > htf_ema_b && htf_ema_b > htf_ema_c;
+                let is_short = htf_ema_a < htf_ema_b && htf_ema_b < htf_ema_c;
 
                 if is_long {
                     TradeDirection::Long
@@ -143,11 +155,10 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_value = std::env::var("ATR_STOP_LOSS")
+        let atr_stop_loss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
-
         let prev_index = calc::get_prev_index(index);
         let data = &instrument.data();
         let candle = data.get(index).unwrap();
@@ -179,7 +190,11 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(OrderDirection::Up, self.order_size, buy_price),
-                OrderType::StopLossLong(OrderDirection::Down, StopLossType::Atr(atr_value)),
+                OrderType::StopLossLong(
+                    OrderDirection::Down,
+                    buy_price,
+                    StopLossType::Atr(atr_stop_loss),
+                ),
             ]),
 
             false => Position::None,
@@ -226,7 +241,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_value = std::env::var("ATR_STOP_LOSS")
+        let atr_stop_loss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -261,7 +276,11 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
-                OrderType::StopLossShort(OrderDirection::Up, StopLossType::Atr(atr_value)),
+                OrderType::StopLossShort(
+                    OrderDirection::Up,
+                    buy_price,
+                    StopLossType::Atr(atr_stop_loss),
+                ),
             ]),
 
             false => Position::None,

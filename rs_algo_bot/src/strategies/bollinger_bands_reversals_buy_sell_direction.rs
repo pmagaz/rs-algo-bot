@@ -114,11 +114,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
+                let current_price = &instrument.data.last().unwrap().close();
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
 
-                let is_long = htf_ema_a > htf_ema_b;
-                let is_short = htf_ema_a < htf_ema_b;
+                let is_long = htf_ema_a > htf_ema_b && htf_ema_c > current_price;
+                let is_short = htf_ema_a < htf_ema_b && htf_ema_c < current_price;
 
                 if is_long && !is_short {
                     TradeDirection::Long
@@ -139,7 +141,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_stop_loss = std::env::var("ATR_STOPLOSS")
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -174,13 +176,15 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .parse::<f64>()
             .unwrap();
 
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
             && close_price < low_band
             && (prev_close >= prev_low_band);
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
-        let sell_price = buy_price + (atr_profit_target * atr_stop_loss);
+        let sell_price = buy_price + (atr_profit_target * atr_value) + tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
@@ -189,7 +193,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 OrderType::StopLossLong(
                     OrderDirection::Down,
                     buy_price,
-                    StopLossType::Atr(atr_stop_loss),
+                    StopLossType::Atr(atr_stoploss),
                 ),
             ]),
 
@@ -220,7 +224,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_stop_loss = std::env::var("ATR_STOPLOSS")
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
             .unwrap();
@@ -240,7 +244,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .parse::<f64>()
             .unwrap();
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
-        let mid_band = instrument.indicators.bb.get_data_c().get(index).unwrap();
 
         let prev_top_band = instrument
             .indicators
@@ -260,16 +263,17 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_high >= prev_top_band);
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
-        let sell_price = buy_price - (atr_profit_target * atr_stop_loss) - tick.spread();
+        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+        let sell_price = buy_price - (atr_profit_target * atr_value) - tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
                 OrderType::BuyOrderShort(OrderDirection::Down, self.order_size, buy_price),
+                OrderType::SellOrderShort(OrderDirection::Down, self.order_size, sell_price),
                 OrderType::StopLossShort(
                     OrderDirection::Up,
                     buy_price,
-                    StopLossType::Atr(atr_stop_loss),
+                    StopLossType::Atr(atr_stoploss),
                 ),
             ]),
 
