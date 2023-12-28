@@ -17,6 +17,12 @@
     - { role: "rs_algo_bot/deployment/dev/bb-reversals/usdcad/roles" }
     - { role: "rs_algo_bot/deployment/dev/bb-reversals/usdjpy/roles" }
     
+
+    # bb-reversals-sell
+    - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/audnzd/roles" }
+    - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/eurusd/roles" }
+    - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/usdcad/roles" }
+    - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/usdjpy/roles" }
     - { role: "rs_algo_ws_server/deployment/dev/roles/" }
 
     # # bb-reversalsdis
