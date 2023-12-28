@@ -1,4 +1,0 @@
-package_name: rs_algo_bot
-release_name: bot-numbars-usdjpy-m15-dev
-local_path: /home/dev/rs-algo-bot
-chart_path: deployment/dev/numbars/numbars-usdjpy-m15/chart

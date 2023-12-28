@@ -472,89 +472,15 @@ pub fn set_strategy(
     higher_time_frame: Option<&str>,
     strategy_type: StrategyType,
 ) -> Box<dyn Strategy> {
-    let strategies: Vec<Box<dyn Strategy>> = vec![
-        Box::new(
-            strategies::bollinger_bands_reversals_buy_sell_direction::BollingerBandsReversals::new(
-                Some("BB_Reversals_Buy_Sell_Direction"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Exit"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals_buy_sell::BollingerBandsReversals::new(
-                Some("BB_Reversals_Buy_Sell"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Buy_Exit"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::num_bars_atr::NumBars::new(
-                Some("NumBars"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::num_bars_atr_dis::NumBars::new(
-                Some("NumBars_Dis"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::num_bars_atr_dis::NumBars::new(
-                Some("NumBars_Backtest_Dis_b"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        // Box::new(
-        //     strategies::num_bars_atr_dis::NumBars::new(
-        //         Some("NumBars_dis_0.005"),
-        //         Some(time_frame),
-        //         higher_time_frame,
-        //         Some(strategy_type.clone()),
-        //     )
-        //     .unwrap(),
-        // ),
-        Box::new(
-            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("Bollinger_Bands_Reversals"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-    ];
+    let strategies: Vec<Box<dyn Strategy>> = vec![Box::new(
+        strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+            Some("BB_Reversals"),
+            Some(time_frame),
+            higher_time_frame,
+            Some(strategy_type.clone()),
+        )
+        .unwrap(),
+    )];
 
     let mut strategy = strategies[0].clone();
     let mut found = false;
