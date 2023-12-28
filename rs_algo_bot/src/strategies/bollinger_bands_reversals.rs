@@ -173,7 +173,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && is_closed
             && close_price < low_band
             && (prev_close >= prev_low_band);
-
+        if entry_condition {
+            log::info!("Entry!!!");
+        }
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
 
         match entry_condition {
@@ -260,7 +262,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_high >= prev_top_band);
 
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
-
+        if entry_condition {
+            log::info!("Entry!!!");
+        }
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(self.order_size, buy_price),

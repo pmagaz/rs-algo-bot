@@ -184,7 +184,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
         let sell_price = buy_price + (atr_profit_target * atr_value) + tick.spread();
-
+        if entry_condition {
+            log::info!("Entry!!!");
+        }
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(self.order_size, buy_price),
@@ -260,7 +262,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
         let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
         let sell_price = buy_price - (atr_profit_target * atr_value) - tick.spread();
-
+        if entry_condition {
+            log::info!("Entry!!!");
+        }
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(self.order_size, buy_price),
