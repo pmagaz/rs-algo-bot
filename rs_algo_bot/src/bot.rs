@@ -301,7 +301,7 @@ impl Bot {
         let has_active_trade = num_trades_in > num_trades_out;
 
         if has_active_trade {
-            self.add_trade_out(trade_out);
+            self.trades_out.push(trade_out.clone());
         } else {
             log::error!(
                 "Uncontrolled trade out. TradesIn: {} TradesOut: {}",
