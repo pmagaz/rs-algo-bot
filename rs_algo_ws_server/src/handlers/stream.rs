@@ -1,13 +1,8 @@
 use crate::handlers::session::Session;
 use crate::{handlers, message};
-use chrono::{Datelike, TimeZone};
 pub use rs_algo_shared::broker::BrokerStream;
-use rs_algo_shared::broker::{xtb_stream::*, VEC_DOHLC};
+use rs_algo_shared::broker::VEC_DOHLC;
 
-use futures_util::StreamExt;
-use rs_algo_shared::helpers::date::{self, DateTime, Local, Timelike};
-use rs_algo_shared::helpers::http::{request, HttpMethod};
-use rs_algo_shared::models::mode::ExecutionMode;
 use rs_algo_shared::models::time_frame::TimeFrame;
 use rs_algo_shared::ws::message::ResponseBody;
 use rs_algo_shared::ws::message::ResponseType;
@@ -37,7 +32,7 @@ where
                 .unwrap_or(0);
 
             let mut counter: usize = 0;
-            let sleep_time = 75;
+            let sleep_time = 65;
 
             let data: VEC_DOHLC = handlers::historic::get_historic_data(symbol, &time_frame, limit)
                 .await

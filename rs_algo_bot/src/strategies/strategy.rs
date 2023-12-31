@@ -493,6 +493,15 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
+            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Buy_Exit_C"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
             strategies::bollinger_bands_reversals_buy_sell::BollingerBandsReversals::new(
                 Some("BB_Reversals_Backtest_Buy_Sell_B"),
                 Some(time_frame),
@@ -621,42 +630,6 @@ pub fn set_strategy(
         Box::new(
             strategies::bollinger_bands_reversals_buy::BollingerBandsReversals::new(
                 Some("BB_Reversals_Backtest_Buy_D"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Exit"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Exit_B"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Exit_C"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Exit_B"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
