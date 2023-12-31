@@ -13,7 +13,7 @@ envSecretName: rs-algo-screener-secrets
 podAnnotations: {}
 
 service:
-  type: ClusterIP
+  type: LoadBalancer
   port: 9000
   targetPort: 9000
   metadata:
