@@ -1,4 +1,4 @@
 package_name: rs_algo_bot
-release_name: bot-bb-reversals-usdchf-dev
+release_name: bot-bb-reversals-sell-usdchf-dev
 local_path: /home/dev/rs-algo-bot
 chart_path: deployment/dev/bb-reversals-sell/usdchf/chart
