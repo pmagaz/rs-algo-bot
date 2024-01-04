@@ -150,8 +150,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let is_closed = candle.is_closed();
 
-        let price_source = &candle.low();
-        let prev_price_source = &prev_candle.low();
+        let price_source = &candle.close();
+        let prev_price_source = &prev_candle.close();
 
         let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
         let prev_low_band = instrument
@@ -197,8 +197,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let is_closed = candle.is_closed();
 
-        let price_source = &candle.high();
-        let prev_price_source = &prev_candle.high();
+        let price_source = &candle.close();
+        let prev_price_source = &prev_candle.close();
 
         let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
         let prev_top_band = instrument
@@ -235,8 +235,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let is_closed = candle.is_closed();
 
-        let price_source = &candle.high();
-        let prev_price_source = &prev_candle.high();
+        let price_source = &candle.close();
+        let prev_price_source = &prev_candle.close();
 
         let pips_margin = std::env::var("PIPS_MARGIN")
             .unwrap()
@@ -283,8 +283,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let is_closed = candle.is_closed();
 
-        let price_source = &candle.low();
-        let prev_price_source = &prev_candle.low();
+        let price_source = &candle.close();
+        let prev_price_source = &prev_candle.close();
 
         let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
         let prev_low_band = instrument
