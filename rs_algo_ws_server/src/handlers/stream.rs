@@ -1,9 +1,9 @@
 use crate::error::RsAlgoErrorKind;
 use crate::handlers::session::Session;
 use crate::message;
-use rs_algo_shared::broker::xtb_stream::*;
 pub use rs_algo_shared::broker::BrokerStream;
 use rs_algo_shared::helpers::date::Local;
+use rs_algo_shared::{broker::xtb_stream::*, models::environment};
 
 use futures_util::StreamExt;
 use rs_algo_shared::ws::message::ReconnectOptions;
@@ -17,6 +17,7 @@ use tokio::time;
 use tungstenite::{Error, Message};
 
 async fn initialize_broker_stream(symbol: &str) -> Result<Xtb, RsAlgoErrorKind> {
+    let env = environment::from_str(&env::var("ENV").unwrap());
     let username = env::var("BROKER_USERNAME").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
     let password = env::var("BROKER_PASSWORD").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
 
@@ -28,8 +29,13 @@ async fn initialize_broker_stream(symbol: &str) -> Result<Xtb, RsAlgoErrorKind> 
         .get_instrument_data(&symbol, 1, Local::now().timestamp())
         .await
         .unwrap();
+
     broker_stream.subscribe_stream(&symbol).await.unwrap();
     broker_stream.subscribe_tick_prices(&symbol).await.unwrap();
+
+    if env.is_prod() {
+        broker_stream.subscribe_trades(&symbol).await.unwrap();
+    }
 
     Ok(broker_stream)
 }

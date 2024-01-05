@@ -1,6 +1,5 @@
-use rs_algo_shared::broker::{DOHLC, LECHES, VEC_DOHLC};
+use rs_algo_shared::broker::{DOHLC, VEC_DOHLC};
 use rs_algo_shared::helpers::date::DateTime;
-use rs_algo_shared::helpers::date::*;
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::tick::InstrumentTick;
@@ -74,6 +73,10 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::SubscribeTickPrices,
                 payload: Some(parse_tick_data(payload)),
             }),
+            Some("SubscribeTrades") => MessageType::StreamTradesResponse(ResponseBody {
+                response: ResponseType::SubscribeTrades,
+                payload: Some(parse_trades_data(payload)),
+            }),
             Some("TradeInFulfilled") => MessageType::TradeInFulfilled(ResponseBody {
                 response: ResponseType::TradeInFulfilled,
                 payload: Some(TradeResponse {
@@ -118,28 +121,14 @@ pub fn parse_bot_data(data: &Value) -> BotData {
     bot_data
 }
 
-pub fn parse_dohlc(data: &Value) -> DOHLC {
-    let obj = data.as_array().unwrap();
-    let date = DateTime::from_str(obj[0].as_str().unwrap()).unwrap();
-    let open = obj[1].as_f64().unwrap();
-    let high = obj[2].as_f64().unwrap();
-    let low = obj[3].as_f64().unwrap();
-    let close = obj[4].as_f64().unwrap();
-    let volume = obj[5].as_f64().unwrap();
-    (date, open, high, low, close, volume)
-}
-
-pub fn parse_vec_dohlc(data: &Value) -> VEC_DOHLC {
-    let mut result: VEC_DOHLC = vec![];
-    for obj in data.as_array().unwrap() {
-        result.push(parse_dohlc(obj));
-    }
-    result
-}
-
 pub fn parse_tick_data(data: &Value) -> InstrumentTick {
     let tick: InstrumentTick = serde_json::from_value(data.clone()).unwrap();
     tick
+}
+
+pub fn parse_trades_data(data: &Value) -> TradeResult {
+    let trade_result: TradeResult = serde_json::from_value(data.clone()).unwrap();
+    trade_result
 }
 
 pub fn parse_market_hours(data: &Value) -> MarketHours {
@@ -157,15 +146,21 @@ pub fn parse_active_positions(data: &Value) -> PositionResult {
     active_positions
 }
 
-pub fn parse_stream(data: &Value) -> LECHES {
-    let arr = data.as_array().unwrap();
-    let ask = arr[0].as_f64().unwrap();
-    let bid = arr[1].as_f64().unwrap();
-    let high = arr[2].as_f64().unwrap();
-    let low = arr[3].as_f64().unwrap();
-    let volume = arr[4].as_f64().unwrap();
-    let timestamp = arr[5].as_f64().unwrap();
-    let _date = parse_time_seconds(timestamp as i64);
-    let _spread = arr[6].as_f64().unwrap();
-    (ask, ask, bid, high, low, volume)
+pub fn parse_dohlc(data: &Value) -> DOHLC {
+    let obj = data.as_array().unwrap();
+    let date = DateTime::from_str(obj[0].as_str().unwrap()).unwrap();
+    let open = obj[1].as_f64().unwrap();
+    let high = obj[2].as_f64().unwrap();
+    let low = obj[3].as_f64().unwrap();
+    let close = obj[4].as_f64().unwrap();
+    let volume = obj[5].as_f64().unwrap();
+    (date, open, high, low, close, volume)
+}
+
+pub fn parse_vec_dohlc(data: &Value) -> VEC_DOHLC {
+    let mut result: VEC_DOHLC = vec![];
+    for obj in data.as_array().unwrap() {
+        result.push(parse_dohlc(obj));
+    }
+    result
 }
