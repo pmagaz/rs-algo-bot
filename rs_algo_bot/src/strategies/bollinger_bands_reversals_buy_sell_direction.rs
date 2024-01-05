@@ -182,7 +182,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && close_price < low_band
             && (prev_close > prev_low_band);
 
-        let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
+        let buy_price = close_price + calc::to_pips(pips_margin, tick);
         let sell_price = buy_price + (atr_profit_target * atr_value) + tick.spread();
 
         match entry_condition {
@@ -257,7 +257,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && close_price < top_band
             && (prev_close > prev_top_band);
 
-        let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
+        let buy_price = close_price - calc::to_pips(pips_margin, tick);
         let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
         let sell_price = buy_price - (atr_profit_target * atr_value) - tick.spread();
 

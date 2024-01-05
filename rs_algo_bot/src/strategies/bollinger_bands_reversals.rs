@@ -174,7 +174,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && close_price < low_band
             && (prev_close > prev_low_band);
 
-        let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
+        let buy_price = close_price + calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::MarketIn(Some(vec![
@@ -260,7 +260,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && close_price < top_band
             && (prev_close > prev_top_band);
 
-        let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
+        let buy_price = close_price - calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::MarketIn(Some(vec![

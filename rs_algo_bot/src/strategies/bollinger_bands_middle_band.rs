@@ -182,7 +182,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             && close_price > middle_band
             && (prev_close <= prev_middle_band);
 
-        let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
+        let buy_price = close_price + calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
@@ -264,7 +264,7 @@ impl<'a> Strategy for BollingerBandsMiddleBand<'a> {
             && close_price < middle_band
             && (prev_close >= prev_middle_band);
 
-        let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
+        let buy_price = close_price - calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![

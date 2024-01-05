@@ -488,7 +488,7 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::bollinger_bands_reversals_buy_exit_hv::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Exit_Hv"),
+                Some("BB_Reversals_Backtest_Buy_Exit_Ny"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -508,7 +508,7 @@ pub fn set_strategy(
     if found {
         log::info!("Using strategy {}", strategy.name());
     } else {
-        panic!("Strategy not found!");
+        panic!("Strategy {} not found!", strategy_name);
     }
 
     strategy
