@@ -4,6 +4,7 @@ use chrono::Local;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
+use rs_algo_shared::models::market::{MarketHours, MarketSessions};
 use rs_algo_shared::models::order::{self, Order, OrderType};
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::tick::InstrumentTick;
@@ -64,6 +65,7 @@ pub trait Strategy: DynClone {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
+        market_hours: &MarketHours,
     ) -> &TradeDirection;
     fn is_long_strategy(&self) -> bool {
         match self.strategy_type() {
@@ -91,13 +93,14 @@ pub trait Strategy: DynClone {
         trades_out: &Vec<TradeOut>,
         orders: &Vec<Order>,
         tick: &InstrumentTick,
+        market_hours: &MarketHours,
     ) -> (PositionResult, PositionResult) {
         let index = &instrument.data.len() - 1;
         let mut position_result = PositionResult::None;
         let mut order_position_result = PositionResult::None;
         let pending_orders = order::get_pending(orders);
         let trade_direction = &self
-            .trading_direction(index, instrument, htf_instrument)
+            .trading_direction(index, instrument, htf_instrument, market_hours)
             .clone();
 
         let open_positions = match trades_in.len().cmp(&trades_out.len()) {
@@ -484,8 +487,8 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::bollinger_bands_reversals_buy_exit_close::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Exit_Close"),
+            strategies::bollinger_bands_reversals_buy_exit_hv::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Buy_Exit_Hv"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),

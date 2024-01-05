@@ -647,6 +647,7 @@ impl Bot {
                                             &self.trades_out,
                                             &self.orders,
                                             &self.tick,
+                                            &self.market_hours,
                                         )
                                         .await;
 
