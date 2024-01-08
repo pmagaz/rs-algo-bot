@@ -191,10 +191,10 @@ pub trait Strategy: DynClone {
 
         let pending_orders = order::get_pending(orders);
         let no_pending_orders = pending_orders.len() < max_pending_orders;
-        let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
+        let no_wait_for_new_trade = !trade::wait_for_new_trade(index, instrument, trades_out);
 
-        match wait_for_new_trade && no_pending_orders {
-            false => match trade_direction.is_long() || !trading_direction {
+        match no_wait_for_new_trade && no_pending_orders {
+            true => match trade_direction.is_long() || !trading_direction {
                 true => match self.is_long_strategy() {
                     true => match self.entry_long(index, instrument, htf_instrument, tick) {
                         Position::MarketIn(order_types) => {
@@ -313,7 +313,7 @@ pub trait Strategy: DynClone {
                 },
                 false => PositionResult::None,
             },
-            true => PositionResult::None,
+            false => PositionResult::None,
         }
     }
 

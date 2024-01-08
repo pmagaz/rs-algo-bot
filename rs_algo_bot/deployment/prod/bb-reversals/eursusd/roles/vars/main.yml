@@ -1,0 +1,4 @@
+package_name: rs_algo_bot
+release_name: bot-bb-reversals-eurusd
+local_path: /home/dev/rs-algo-bot
+chart_path: deployment/prod/bb-reversals/eurusd/chart

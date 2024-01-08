@@ -73,10 +73,10 @@ pub fn get_type(msg: &str) -> MessageType {
                 response: ResponseType::SubscribeTickPrices,
                 payload: Some(parse_tick_data(payload)),
             }),
-            Some("SubscribeTrades") => MessageType::StreamTradesResponse(ResponseBody {
-                response: ResponseType::SubscribeTrades,
-                payload: Some(parse_trades_data(payload)),
-            }),
+            // Some("SubscribeTrades") => MessageType::StreamTradesResponse(ResponseBody {
+            //     response: ResponseType::SubscribeTrades,
+            //     payload: Some(parse_trades_data(payload)),
+            // }),
             Some("TradeInFulfilled") => MessageType::TradeInFulfilled(ResponseBody {
                 response: ResponseType::TradeInFulfilled,
                 payload: Some(TradeResponse {

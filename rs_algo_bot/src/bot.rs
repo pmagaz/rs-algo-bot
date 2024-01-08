@@ -925,51 +925,7 @@ impl Bot {
                                     };
                                     self.tick = tick;
                                 }
-                                // MessageType::StreamTradesResponse(res) => {
-                                //     //TODO DE-DUPLICATE
-                                //     let trade_result = res.payload.unwrap();
-                                //     let trade = match trade_result {
-                                //         TradeResult::TradeIn(_) => todo!(),
-                                //         TradeResult::TradeOut(trade_out) => trade_out,
-                                //         TradeResult::None => todo!(),
-                                //     };
 
-                                //     log::info!(
-                                //         "Stream Trade {:?} {} fulfilled ask: {} bid: {}",
-                                //         &trade.trade_type,
-                                //         &trade.id,
-                                //         &trade.ask,
-                                //         &trade.bid,
-                                //     );
-
-                                //     let updated_trade_out = self.strategy.update_trade_stats(
-                                //         self.trades_in.last().unwrap(),
-                                //         &trade,
-                                //         &self.instrument.data,
-                                //     );
-
-                                //     log::info!(
-                                //         "TradeOut stats profit {} profit_per {} ",
-                                //         &updated_trade_out.profit,
-                                //         &updated_trade_out.profit_per,
-                                //     );
-
-                                //     order::update_state_pending_orders(
-                                //         &updated_trade_out,
-                                //         &mut self.orders,
-                                //     );
-
-                                //     trade::update_last(&mut self.trades_out, updated_trade_out);
-
-                                //     self.strategy_stats = self.strategy.update_stats(
-                                //         &self.instrument,
-                                //         &self.trades_in,
-                                //         &self.trades_out,
-                                //     );
-
-                                //     open_positions = false;
-                                //     self.send_bot_status(&bot_str).await;
-                                // }
                                 MessageType::TradeInFulfilled(res) => {
                                     let payload = res.payload.unwrap();
                                     let accepted = &payload.accepted;
