@@ -19,10 +19,10 @@
     
 
     # bb-reversals-sell
-    - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/eurusd/roles" }
-    - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/gbpusd/roles" }
-    - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/usdchf/roles" }
-    - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/usdjpy/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/eurusd/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/gbpusd/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/usdchf/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/bb-reversals-sell/usdjpy/roles" }
     - { role: "rs_algo_ws_server/deployment/dev/roles/" }
 
     # # bb-reversalsdis

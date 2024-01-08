@@ -1,6 +1,7 @@
 use crate::strategies;
 
 use rs_algo_shared::error::Result;
+use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::{self, Order, OrderType};
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::tick::InstrumentTick;
@@ -64,6 +65,7 @@ pub trait Strategy: DynClone {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
+        market_hours: &MarketHours,
     ) -> &TradeDirection;
     fn is_long_strategy(&self) -> bool {
         match self.strategy_type() {
@@ -91,13 +93,14 @@ pub trait Strategy: DynClone {
         trades_out: &Vec<TradeOut>,
         orders: &Vec<Order>,
         tick: &InstrumentTick,
+        market_hours: &MarketHours,
     ) -> (PositionResult, PositionResult) {
         let index = &instrument.data.len() - 1;
         let mut position_result = PositionResult::None;
         let mut order_position_result = PositionResult::None;
         let pending_orders = order::get_pending(orders);
         let trade_direction = &self
-            .trading_direction(index, instrument, htf_instrument)
+            .trading_direction(index, instrument, htf_instrument, market_hours)
             .clone();
 
         let open_positions = match trades_in.len().cmp(&trades_out.len()) {
@@ -472,26 +475,15 @@ pub fn set_strategy(
     higher_time_frame: Option<&str>,
     strategy_type: StrategyType,
 ) -> Box<dyn Strategy> {
-    let strategies: Vec<Box<dyn Strategy>> = vec![
-        Box::new(
-            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-                Some("BB_Reversals"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::bollinger_bands_reversals_sell::BollingerBandsReversals::new(
-                Some("BB_Reversals_Sell"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-    ];
+    let strategies: Vec<Box<dyn Strategy>> = vec![Box::new(
+        strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+            Some("BB_Reversals"),
+            Some(time_frame),
+            higher_time_frame,
+            Some(strategy_type.clone()),
+        )
+        .unwrap(),
+    )];
 
     let mut strategy = strategies[0].clone();
     let mut found = false;
@@ -504,7 +496,7 @@ pub fn set_strategy(
     if found {
         log::info!("Using strategy {}", strategy.name());
     } else {
-        panic!("Strategy not found!");
+        panic!("Strategy {} not found!", strategy_name);
     }
 
     strategy

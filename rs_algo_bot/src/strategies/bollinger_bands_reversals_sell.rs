@@ -3,6 +3,7 @@ use super::strategy::*;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
+use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::OrderType;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
@@ -108,6 +109,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
+        _market_hours: &MarketHours,
     ) -> &TradeDirection {
         self.trading_direction = time_frame::get_htf_trading_direction(
             index,
@@ -182,7 +184,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && close_price < low_band
             && (prev_close > prev_low_band);
 
-        let buy_price = candle.close() + calc::to_pips(pips_margin, tick);
+        let buy_price = close_price + calc::to_pips(pips_margin, tick);
         let sell_price = buy_price + (atr_profit_target * atr_value) + tick.spread();
         match entry_condition {
             true => Position::Order(vec![
@@ -256,7 +258,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && close_price < top_band
             && (prev_close > prev_top_band);
 
-        let buy_price = candle.close() - calc::to_pips(pips_margin, tick);
+        let buy_price = close_price - calc::to_pips(pips_margin, tick);
         let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
         let sell_price = buy_price - (atr_profit_target * atr_value) - tick.spread();
 

@@ -260,11 +260,16 @@ impl Bot {
 
             *open_positions = should_open;
 
-            log::info!("Sending {} {:?} ...", trade.get_index(), trade.get_type());
+            log::info!(
+                "Sending activated order {} {:?} ...",
+                trade.get_index_in(),
+                trade.get_type()
+            );
+
             self.send_position::<PositionResult>(
                 activated_orders_result,
                 self.symbol.clone(),
-                self.time_frame.clone(),
+                self.strategy_name.clone(),
             )
             .await;
         }
@@ -321,17 +326,18 @@ impl Bot {
         match new_position_result {
             PositionResult::MarketIn(TradeResult::TradeIn(trade_in), _) if !*open_positions => {
                 log::info!(
-                    "Sending {} {:?} ...",
-                    trade_in.get_index(),
+                    "Sending tradeIn {} {:?} ...",
+                    trade_in.get_index_in(),
                     trade_in.get_type()
                 );
 
                 self.send_position::<PositionResult>(
-                    new_position_result,
+                    &new_position_result,
                     self.symbol.clone(),
-                    self.time_frame.clone(),
+                    self.strategy_name.clone(),
                 )
                 .await;
+
                 if let Some(new_ords) = associated_orders {
                     self.orders = order::add_pending(self.orders.clone(), new_ords.clone());
                 }
@@ -339,14 +345,14 @@ impl Bot {
             }
             PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) if *open_positions => {
                 log::info!(
-                    "Sending {} {:?} ...",
-                    trade_out.get_index(),
+                    "Sending tradeOut {} {:?} ...",
+                    trade_out.get_index_in(),
                     trade_out.get_type()
                 );
                 self.send_position::<PositionResult>(
-                    new_position_result,
+                    &new_position_result,
                     self.symbol.clone(),
-                    self.time_frame.clone(),
+                    self.strategy_name.clone(),
                 )
                 .await;
                 *open_positions = false;
@@ -422,7 +428,7 @@ impl Bot {
         }
     }
 
-    pub async fn send_position<T>(&mut self, trade: &T, symbol: String, _time_frame: TimeFrameType)
+    pub async fn send_position<T>(&mut self, trade: &T, symbol: String, strategy_name: String)
     where
         for<'de> T: Serialize + Deserialize<'de>,
     {
@@ -430,6 +436,7 @@ impl Bot {
             command: CommandType::ExecutePosition,
             data: Some(TradeData {
                 symbol,
+                strategy_name,
                 data: trade,
                 options: TradeOptions {
                     non_profitable_out: env::var("NON_PROFITABLE_OUTS")
@@ -478,7 +485,7 @@ impl Bot {
 
     pub async fn get_market_hours(&mut self) {
         log::info!("Checking {} trading hours...", &self.symbol,);
-        //sleep(Duration::from_millis(200)).await;
+
         let data = Command {
             command: CommandType::GetMarketHours,
             data: Some(Symbol {
@@ -797,6 +804,7 @@ impl Bot {
                                             &self.trades_out,
                                             &self.orders,
                                             &self.tick,
+                                            &self.market_hours,
                                         )
                                         .await;
 
@@ -915,54 +923,53 @@ impl Bot {
                                             .await
                                         }
                                     };
-
                                     self.tick = tick;
                                 }
-                                MessageType::StreamTradesResponse(res) => {
-                                    //TODO DE-DUPLICATE
-                                    let trade_result = res.payload.unwrap();
-                                    let trade = match trade_result {
-                                        TradeResult::TradeIn(_) => todo!(),
-                                        TradeResult::TradeOut(trade_out) => trade_out,
-                                        TradeResult::None => todo!(),
-                                    };
+                                // MessageType::StreamTradesResponse(res) => {
+                                //     //TODO DE-DUPLICATE
+                                //     let trade_result = res.payload.unwrap();
+                                //     let trade = match trade_result {
+                                //         TradeResult::TradeIn(_) => todo!(),
+                                //         TradeResult::TradeOut(trade_out) => trade_out,
+                                //         TradeResult::None => todo!(),
+                                //     };
 
-                                    log::info!(
-                                        "Stream Trade {:?} {} fulfilled ask: {} bid: {}",
-                                        &trade.trade_type,
-                                        &trade.id,
-                                        &trade.ask,
-                                        &trade.bid,
-                                    );
+                                //     log::info!(
+                                //         "Stream Trade {:?} {} fulfilled ask: {} bid: {}",
+                                //         &trade.trade_type,
+                                //         &trade.id,
+                                //         &trade.ask,
+                                //         &trade.bid,
+                                //     );
 
-                                    let updated_trade_out = self.strategy.update_trade_stats(
-                                        self.trades_in.last().unwrap(),
-                                        &trade,
-                                        &self.instrument.data,
-                                    );
+                                //     let updated_trade_out = self.strategy.update_trade_stats(
+                                //         self.trades_in.last().unwrap(),
+                                //         &trade,
+                                //         &self.instrument.data,
+                                //     );
 
-                                    log::info!(
-                                        "TradeOut stats profit {} profit_per {} ",
-                                        &updated_trade_out.profit,
-                                        &updated_trade_out.profit_per,
-                                    );
+                                //     log::info!(
+                                //         "TradeOut stats profit {} profit_per {} ",
+                                //         &updated_trade_out.profit,
+                                //         &updated_trade_out.profit_per,
+                                //     );
 
-                                    order::cancel_trade_pending_orders(
-                                        &updated_trade_out,
-                                        &mut self.orders,
-                                    );
+                                //     order::update_state_pending_orders(
+                                //         &updated_trade_out,
+                                //         &mut self.orders,
+                                //     );
 
-                                    trade::update_last(&mut self.trades_out, updated_trade_out);
+                                //     trade::update_last(&mut self.trades_out, updated_trade_out);
 
-                                    self.strategy_stats = self.strategy.update_stats(
-                                        &self.instrument,
-                                        &self.trades_in,
-                                        &self.trades_out,
-                                    );
+                                //     self.strategy_stats = self.strategy.update_stats(
+                                //         &self.instrument,
+                                //         &self.trades_in,
+                                //         &self.trades_out,
+                                //     );
 
-                                    open_positions = false;
-                                    self.send_bot_status(&bot_str).await;
-                                }
+                                //     open_positions = false;
+                                //     self.send_bot_status(&bot_str).await;
+                                // }
                                 MessageType::TradeInFulfilled(res) => {
                                     let payload = res.payload.unwrap();
                                     let accepted = &payload.accepted;
@@ -1004,7 +1011,7 @@ impl Bot {
                                             );
 
                                             trade::delete_last(&mut self.trades_in);
-                                            order::cancel_trade_pending_orders(
+                                            order::update_state_pending_orders(
                                                 &payload.data,
                                                 &mut self.orders,
                                             );
@@ -1026,7 +1033,7 @@ impl Bot {
                                                 &payload.data.bid,
                                             );
 
-                                            let trade_out = payload.data;
+                                            let trade_out: TradeOut = payload.data;
                                             let updated_trade_out =
                                                 self.strategy.update_trade_stats(
                                                     self.trades_in.last().unwrap(),
@@ -1035,12 +1042,13 @@ impl Bot {
                                                 );
 
                                             log::info!(
-                                                "TradeOut stats profit {} profit_per {} ",
+                                                "{:?} stats profit {} profit_per {} ",
+                                                &updated_trade_out.trade_type,
                                                 &updated_trade_out.profit,
                                                 &updated_trade_out.profit_per,
                                             );
 
-                                            order::cancel_trade_pending_orders(
+                                            order::update_state_pending_orders(
                                                 &updated_trade_out,
                                                 &mut self.orders,
                                             );
