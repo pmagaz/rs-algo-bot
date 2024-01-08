@@ -1,6 +1,5 @@
 use crate::strategies;
 use async_trait::async_trait;
-use chrono::Local;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
@@ -191,10 +190,10 @@ pub trait Strategy: DynClone {
 
         let pending_orders = order::get_pending(orders);
         let no_pending_orders = pending_orders.len() < max_pending_orders;
-        let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
+        let no_wait_for_new_trade = !trade::wait_for_new_trade(index, instrument, trades_out);
 
-        match wait_for_new_trade && no_pending_orders {
-            false => match trade_direction.is_long() || !trading_direction {
+        match no_wait_for_new_trade && no_pending_orders {
+            true => match trade_direction.is_long() || !trading_direction {
                 true => match self.is_long_strategy() {
                     true => match self.entry_long(index, instrument, htf_instrument, tick) {
                         Position::MarketIn(order_types) => {
@@ -313,7 +312,7 @@ pub trait Strategy: DynClone {
                 },
                 false => PositionResult::None,
             },
-            true => PositionResult::None,
+            false => PositionResult::None,
         }
     }
 
@@ -479,7 +478,7 @@ pub fn set_strategy(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
             strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Exit"),
+                Some("BB_Reversals_Backtest"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -488,7 +487,7 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::bollinger_bands_reversals_buy_exit_hv::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Buy_Exit_Ny"),
+                Some("BB_Reversals_Backtest_2"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),

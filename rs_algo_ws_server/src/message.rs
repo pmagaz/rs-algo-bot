@@ -289,6 +289,7 @@ where
                         Some(value) => {
                             let mut broker_guard = broker.lock().await;
                             let symbol = value["symbol"].as_str().unwrap();
+                            let strategy_name = value["strategy_name"].as_str().unwrap();
                             let options: TradeOptions =
                                 serde_json::from_value(value["options"].clone()).unwrap();
 
@@ -302,7 +303,8 @@ where
                                 ) => {
                                     log::info!("TradeIn {} position received", symbol);
 
-                                    let trade_data = TradeData::new(symbol, trade_in, options);
+                                    let trade_data =
+                                        TradeData::new(symbol, strategy_name, trade_in, options);
                                     let trade_response =
                                         broker_guard.open_trade(trade_data, orders).await;
 
@@ -320,8 +322,12 @@ where
                                     json_response
                                 }
                                 PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
-                                    let trade_data =
-                                        TradeData::new(symbol, trade_out.clone(), options);
+                                    let trade_data = TradeData::new(
+                                        symbol,
+                                        strategy_name,
+                                        trade_out.clone(),
+                                        options,
+                                    );
 
                                     log::info!("TradeOut {} position received", symbol);
 
@@ -350,9 +356,14 @@ where
                                         trade_in
                                     );
 
-                                    let trade_data =
-                                        TradeData::new(symbol, trade_in, options.clone());
-                                    let order_data = TradeData::new(symbol, order, options);
+                                    let trade_data = TradeData::new(
+                                        symbol,
+                                        strategy_name,
+                                        trade_in,
+                                        options.clone(),
+                                    );
+                                    let order_data =
+                                        TradeData::new(symbol, strategy_name, order, options);
                                     let trade_response =
                                         broker_guard.open_order(trade_data, order_data).await;
                                     let json_response = match trade_response {
@@ -374,10 +385,15 @@ where
                                 ) => {
                                     log::info!("MarketOutOrder {} position received", symbol);
 
-                                    let trade_data =
-                                        TradeData::new(symbol, trade_out, options.clone());
+                                    let trade_data = TradeData::new(
+                                        symbol,
+                                        strategy_name,
+                                        trade_out,
+                                        options.clone(),
+                                    );
 
-                                    let order_data = TradeData::new(symbol, order, options);
+                                    let order_data =
+                                        TradeData::new(symbol, strategy_name, order, options);
 
                                     let trade_response =
                                         broker_guard.close_order(trade_data, order_data).await;

@@ -1,11 +1,14 @@
 # GLOBAL VARS
 ARG APP_NAME=rs_algo_ws_server
 ARG TARGET=aarch64-unknown-linux-musl
+ARG RUST_VERSION=1.70
 # BUILDER
 FROM messense/rust-musl-cross:aarch64-musl as builder
 ARG APP_NAME
 ARG TARGET
 
+RUN rustup update $RUST_VERSION
+RUN rustup default $RUST_VERSION
 RUN rustup target add $TARGET
 
 RUN USER=root cargo new --bin $APP_NAME
@@ -33,10 +36,6 @@ RUN apk update \
   && apk add --no-cache tzdata \
   && cp /usr/share/zoneinfo/Europe/Madrid /etc/localtime && echo Europe/Madrid > /etc/timezone \
   && rm -rf /var/cache/apk/*
-
-#MOCKED DATA
-COPY ./data ./
-ADD data ${APP_DIR}/data
 
 #USER
 RUN addgroup -S $APP_USER \

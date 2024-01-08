@@ -225,12 +225,16 @@ impl Bot {
 
             *open_positions = should_open;
 
-            log::info!("Sending {} {:?} ...", trade.get_index(), trade.get_type());
+            log::info!(
+                "Sending {} {:?} ...",
+                trade.get_index_in(),
+                trade.get_type()
+            );
 
             self.send_position::<PositionResult>(
                 activated_orders_result,
                 self.symbol.clone(),
-                self.time_frame.clone(),
+                self.strategy_name.clone(),
             )
             .await;
         }
@@ -246,14 +250,14 @@ impl Bot {
             PositionResult::MarketIn(TradeResult::TradeIn(trade_in), _) if !*open_positions => {
                 log::info!(
                     "Sending {} {:?} ...",
-                    trade_in.get_index(),
+                    trade_in.get_index_in(),
                     trade_in.get_type()
                 );
 
                 self.send_position::<PositionResult>(
                     &new_position_result,
                     self.symbol.clone(),
-                    self.time_frame.clone(),
+                    self.strategy_name.clone(),
                 )
                 .await;
 
@@ -265,14 +269,14 @@ impl Bot {
             PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) if *open_positions => {
                 log::info!(
                     "Sending {} {:?} ...",
-                    trade_out.get_index(),
+                    trade_out.get_index_in(),
                     trade_out.get_type()
                 );
 
                 self.send_position::<PositionResult>(
                     &new_position_result,
                     self.symbol.clone(),
-                    self.time_frame.clone(),
+                    self.strategy_name.clone(),
                 )
                 .await;
                 *open_positions = false;
@@ -392,7 +396,7 @@ impl Bot {
         }
     }
 
-    pub async fn send_position<T>(&mut self, trade: &T, symbol: String, _time_frame: TimeFrameType)
+    pub async fn send_position<T>(&mut self, trade: &T, symbol: String, strategy_name: String)
     where
         for<'de> T: Serialize + Deserialize<'de>,
     {
@@ -400,6 +404,7 @@ impl Bot {
             command: CommandType::ExecutePosition,
             data: Some(TradeData {
                 symbol,
+                strategy_name,
                 data: trade,
                 options: TradeOptions {
                     non_profitable_out: env::var("NON_PROFITABLE_OUTS")
@@ -459,6 +464,15 @@ impl Bot {
         self.init_session().await;
     }
 
+    pub fn clean_previous_data(&mut self) {
+        log::info!("Cleaning {} previous session data", &self.symbol);
+
+        self.trades_in = vec![];
+        self.trades_out = vec![];
+        self.orders = vec![];
+        self.strategy_stats = StrategyStats::new();
+    }
+
     pub async fn set_tick(&mut self) {
         let tick_endpoint = format!(
             "{}{}",
@@ -499,8 +513,7 @@ impl Bot {
                                     self.reconnect().await;
                                 }
                                 MessageType::InitSession(res) => {
-                                    log::info!("Getting {} previous session", bot_str);
-
+                                    self.clean_previous_data();
                                     self.get_market_hours().await;
                                 }
                                 MessageType::MarketHours(res) => {
@@ -557,11 +570,7 @@ impl Bot {
                                     }
                                 }
                                 MessageType::StreamTickResponse(res)
-                                | MessageType::InstrumentTick(res) => {
-                                    // let tick = res.payload.unwrap();
-                                    // panic!();
-                                    // self.tick = tick;
-                                }
+                                | MessageType::InstrumentTick(res) => {}
                                 MessageType::InstrumentData(res) => {
                                     let payload = res.payload.unwrap();
 
@@ -765,7 +774,7 @@ impl Bot {
                                             );
 
                                             trade::delete_last(&mut self.trades_in);
-                                            order::cancel_trade_pending_orders(
+                                            order::update_state_pending_orders(
                                                 &payload.data,
                                                 &mut self.orders,
                                             );
@@ -801,7 +810,7 @@ impl Bot {
                                                 &updated_trade_out.profit_per,
                                             );
 
-                                            order::cancel_trade_pending_orders(
+                                            order::update_state_pending_orders(
                                                 &updated_trade_out,
                                                 &mut self.orders,
                                             );

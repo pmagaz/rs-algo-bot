@@ -109,7 +109,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        market_hours: &MarketHours,
+        _market_hours: &MarketHours,
     ) -> &TradeDirection {
         self.trading_direction = time_frame::get_htf_trading_direction(
             index,
