@@ -23,7 +23,11 @@ futures-util = "0.3.28"
 rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", rev = "8afcb2f", features = ["broker","websocket"]}
 #rs_algo_shared = { path = "../../rs_algo_shared", features = ["websocket", "broker"] }
 
-# [profile.release]
-# strip = true
-# lto = true
-# codegen-units = 1
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+strip = true
+lto = true
+codegen-units = 1

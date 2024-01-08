@@ -6,11 +6,11 @@
 
     - { role: "deployment/git/roles" }
     #- { role: "deployment/mongodb-bot/roles/" }
-    
+
     #PROD
-    - { role: "rs_algo_ws_server/deployment/prod/roles" }
-    - { role: "rs_algo_bot/deployment/prod/bb-reversals/eurusd/roles/" }
-    - { role: "rs_algo_bot/deployment/prod/bb-reversals/usdchf/roles/" }
+    - { role: "rs_algo_ws_server/deployment/prod/roles/" }
+    - { role: "rs_algo_bot/deployment/prod/bb-reversals/eurusd/roles" }
+    - { role: "rs_algo_bot/deployment/prod/bb-reversals/usdchf/roles" }
 
     #DEV
     # bb-reversals
