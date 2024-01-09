@@ -12,6 +12,7 @@
     - { role: "rs_algo_bot/deployment/prod/bb-reversals/eurusd/roles" }
     - { role: "rs_algo_bot/deployment/prod/bb-reversals/usdchf/roles" }
     - { role: "rs_algo_bot/deployment/prod/bb-reversals/usdjpy/roles" }
+    - { role: "rs_algo_bot/deployment/prod/bb-reversals/gbpusd/roles" }
 
     #DEV
     # bb-reversals
