@@ -513,8 +513,12 @@ impl Bot {
                                     self.reconnect().await;
                                 }
                                 MessageType::InitSession(res) => {
-                                    self.clean_previous_data();
-                                    self.get_market_hours().await;
+                                    //self.clean_previous_data();
+                                    if self.trades_in.is_empty() {
+                                        self.get_market_hours().await;
+                                    } else {
+                                        panic!("Reeeeestart");
+                                    }
                                 }
                                 MessageType::MarketHours(res) => {
                                     let market_hours = res.payload.unwrap();
