@@ -22,7 +22,7 @@ env_logger = "0.10.0"
 log = "0.4"
 mongodb = {version="2.2.2", features=["bson-uuid-0_8"]}
 bson = "2.3.0"
-rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", rev = "8afcb2f", features = ["broker","websocket"]}
+rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", rev = "e37eb15", features = ["broker","websocket"]}
 #rs_algo_shared = { path = "../../rs_algo_shared", features = ["broker","websocket"] }
 
 [profile.dev]
@@ -32,4 +32,4 @@ opt-level = 0
 opt-level = 3
 strip = true
 lto = true
-codegen-units = 1
+#codegen-units = 1
