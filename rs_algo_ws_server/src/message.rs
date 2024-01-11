@@ -359,8 +359,20 @@ where
                     json_response
                 }
                 CommandType::GetActivePositions => {
-                    log::info!("Getting {} active positions", symbol);
-                    let response = broker.lock().await.get_active_positions(&symbol).await;
+                    let strategy_name = query
+                        .data
+                        .as_ref()
+                        .and_then(|data| data["strategy_name"].as_str())
+                        .unwrap_or_default()
+                        .to_string();
+
+                    log::info!("Getting {}_{} active positions", symbol, strategy_name);
+
+                    let response = broker
+                        .lock()
+                        .await
+                        .get_active_positions(&symbol, &strategy_name)
+                        .await;
 
                     match response {
                         Ok(res) => match serde_json::to_string(&res) {

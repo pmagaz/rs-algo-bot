@@ -159,8 +159,9 @@ impl Bot {
     pub async fn get_tick_data(&mut self) {
         let instrument_tick_data = Command {
             command: CommandType::GetInstrumentTick,
-            data: Some(Symbol {
+            data: Some(StrategySymbol {
                 symbol: self.symbol.to_owned(),
+                strategy_name: self.strategy_name.to_owned(),
             }),
         };
 
@@ -175,8 +176,9 @@ impl Bot {
 
         let instrument_pricing_data = Command {
             command: CommandType::IsMarketOpen,
-            data: Some(Symbol {
+            data: Some(StrategySymbol {
                 symbol: self.symbol.to_owned(),
+                strategy_name: self.strategy_name.to_owned(),
             }),
         };
 
@@ -472,8 +474,9 @@ impl Bot {
 
         let active_positions_command = Command {
             command: CommandType::GetActivePositions,
-            data: Some(Symbol {
+            data: Some(StrategySymbol {
                 symbol: self.symbol.to_owned(),
+                strategy_name: self.strategy_name.to_owned(),
             }),
         };
 
@@ -488,8 +491,9 @@ impl Bot {
 
         let data = Command {
             command: CommandType::GetMarketHours,
-            data: Some(Symbol {
+            data: Some(StrategySymbol {
                 symbol: self.symbol.to_owned(),
+                strategy_name: self.strategy_name.to_owned(),
             }),
         };
 
@@ -609,6 +613,7 @@ impl Bot {
                                 }
                                 MessageType::ActivePositions(res) => {
                                     let position_result = res.payload.unwrap();
+
                                     match position_result {
                                         PositionResult::MarketIn(
                                             TradeResult::TradeIn(trade_in),
@@ -637,10 +642,11 @@ impl Bot {
                                                 }
                                             } else {
                                                 log::info!(
-                                                    "Active position {:?} {} found. Adding position...",
-                                                    trade_in.trade_type,
+                                                    "Active position {:?} {} not found. Adding position...",
+                                                    trade_in,
                                                     trade_in.id
                                                 );
+
                                                 match orders {
                                                     Some(orders) => {
                                                         self.add_trade_in(&trade_in);
@@ -658,6 +664,10 @@ impl Bot {
                                         }
                                         _ => {
                                             log::info!("No active positions found");
+                                            if open_positions {
+                                                log::error!("Divergence between broker open positions and db trades!");
+                                                panic!();
+                                            }
                                             open_positions = false;
                                         }
                                     }

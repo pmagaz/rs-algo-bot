@@ -1,7 +1,7 @@
 # GLOBAL VARS
 ARG APP_NAME=rs_algo_ws_server
 ARG TARGET=aarch64-unknown-linux-musl
-ARG RUST_VERSION=1.70
+ARG RUST_VERSION=1.75
 # BUILDER
 FROM messense/rust-musl-cross:aarch64-musl as builder
 ARG APP_NAME

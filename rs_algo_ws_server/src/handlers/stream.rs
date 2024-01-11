@@ -49,7 +49,9 @@ pub async fn handle_strean_data<BK: BrokerStream + Send + 'static>(
     match data {
         Ok(msg) => {
             if msg.is_text() {
-                let parsed = BK::parse_stream_data(msg).await;
+                let symbol = session.symbol.as_ref();
+                let strategy_name = session.strategy.as_ref();
+                let parsed = BK::parse_stream_data(msg, &symbol, &strategy_name).await;
                 match parsed {
                     Some(txt) => {
                         if &msg_sent != &txt {
