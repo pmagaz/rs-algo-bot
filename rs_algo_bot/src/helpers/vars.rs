@@ -17,9 +17,9 @@ pub fn get_market(market: String) -> Market {
 //         "D" => TimeFrameType::D,
 //         "H4" => TimeFrameType::H4,
 //         "H1" => TimeFrameType::H1,
-//         "M30" => TimeFrameType::M30,
+//         "H1" => TimeFrameType::M30,
 //         "M15" => TimeFrameType::M15,
-//         "M5" => TimeFrameType::M5,
+//         "M15" => TimeFrameType::M15,
 //         _ => TimeFrameType::M1,
 //     }
 // }
