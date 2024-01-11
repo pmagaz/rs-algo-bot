@@ -158,8 +158,9 @@ impl Bot {
     pub async fn get_tick_data(&mut self) {
         let instrument_tick_data = Command {
             command: CommandType::GetInstrumentTick,
-            data: Some(Symbol {
+            data: Some(StrategySymbol {
                 symbol: self.symbol.to_owned(),
+                strategy_name: self.strategy_name.to_owned(),
             }),
         };
 
@@ -174,8 +175,9 @@ impl Bot {
 
         let instrument_pricing_data = Command {
             command: CommandType::IsMarketOpen,
-            data: Some(Symbol {
+            data: Some(StrategySymbol {
                 symbol: self.symbol.to_owned(),
+                strategy_name: self.strategy_name.to_owned(),
             }),
         };
 
@@ -440,8 +442,9 @@ impl Bot {
         //sleep(Duration::from_millis(200)).await;
         let data = Command {
             command: CommandType::GetMarketHours,
-            data: Some(Symbol {
+            data: Some(StrategySymbol {
                 symbol: self.symbol.to_owned(),
+                strategy_name: self.strategy_name.to_owned(),
             }),
         };
 
