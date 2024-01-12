@@ -4,7 +4,7 @@
 // pub mod macd_dual;
 //pub mod bollinger_bands_middle_band;
 pub mod bollinger_bands_reversals_buy_exit;
-pub mod bollinger_bands_reversals_buy_exit_hv;
-pub mod bollinger_bands_reversals_buy_exit_noclose;
-pub mod bollinger_bands_reversals_buy_exit_noclose_2;
+// pub mod bollinger_bands_reversals_buy_exit_hv;
+// pub mod bollinger_bands_reversals_buy_exit_noclose;
+// pub mod bollinger_bands_reversals_buy_exit_noclose_2;
 pub mod strategy;
