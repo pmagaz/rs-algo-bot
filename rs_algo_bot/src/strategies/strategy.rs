@@ -193,9 +193,9 @@ pub trait Strategy: DynClone {
         let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
 
         match !wait_for_new_trade && no_pending_orders {
-            true => match trade_direction.is_long() || !trading_direction {
-                true => match self.is_long_strategy() {
-                    true => match self.entry_long(index, instrument, htf_instrument, tick) {
+            true => {
+                if self.is_long_strategy() && (trade_direction.is_long() || !trading_direction) {
+                    match self.entry_long(index, instrument, htf_instrument, tick) {
                         Position::MarketIn(order_types) => {
                             let trade_type = TradeType::MarketInLong;
                             let trade_in_result = trade::resolve_trade_in(
@@ -247,13 +247,11 @@ pub trait Strategy: DynClone {
                             PositionResult::PendingOrder(new_orders)
                         }
                         _ => PositionResult::None,
-                    },
-                    false => PositionResult::None,
-
-                    _ => PositionResult::None,
-                },
-                false => match self.is_short_strategy() && no_pending_orders {
-                    true => match self.entry_short(index, instrument, htf_instrument, tick) {
+                    }
+                } else if self.is_short_strategy()
+                    && (trade_direction.is_short() || !trading_direction)
+                {
+                    match self.entry_short(index, instrument, htf_instrument, tick) {
                         Position::MarketIn(order_types) => {
                             let trade_type = TradeType::MarketInShort;
 
@@ -306,12 +304,11 @@ pub trait Strategy: DynClone {
                             PositionResult::PendingOrder(new_orders)
                         }
                         _ => PositionResult::None,
-                    },
-                    false => PositionResult::None,
-                    _ => PositionResult::None,
-                },
-                false => PositionResult::None,
-            },
+                    }
+                } else {
+                    PositionResult::None
+                }
+            }
             false => PositionResult::None,
         }
     }
@@ -478,7 +475,7 @@ pub fn set_strategy(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
             strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_H4521"),
+                Some("BB_Reversals_Backtest_510"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -487,7 +484,7 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_H4813"),
+                Some("BB_Reversals_Backtest_NoTd"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
