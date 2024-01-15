@@ -138,7 +138,7 @@ pub trait Strategy: DynClone {
             }
         }
 
-        if !open_positions && self.there_are_funds(trades_out) {
+        if !open_positions {
             let current_trade_fulfilled = match trades_out.last() {
                 Some(trade) => trade.is_fulfilled(),
                 None => true,
@@ -190,13 +190,13 @@ pub trait Strategy: DynClone {
             .unwrap();
 
         let pending_orders = order::get_pending(orders);
-        let no_pending_orders = pending_orders.len() < max_pending_orders;
-        let no_wait_for_new_trade = !trade::wait_for_new_trade(index, instrument, trades_out);
+        let no_pending_orders = pending_orders.is_empty();
+        let wait_for_new_trade = trade::wait_for_new_trade(index, instrument, trades_out);
 
-        match no_wait_for_new_trade && no_pending_orders {
-            true => match trade_direction.is_long() || !trading_direction {
-                true => match self.is_long_strategy() {
-                    true => match self.entry_long(index, instrument, htf_instrument, tick) {
+        match !wait_for_new_trade && no_pending_orders {
+            true => {
+                if self.is_long_strategy() && (trade_direction.is_long() || !trading_direction) {
+                    match self.entry_long(index, instrument, htf_instrument, tick) {
                         Position::MarketIn(order_types) => {
                             let trade_type = TradeType::MarketInLong;
                             let trade_in_result = trade::resolve_trade_in(
@@ -248,13 +248,11 @@ pub trait Strategy: DynClone {
                             PositionResult::PendingOrder(new_orders)
                         }
                         _ => PositionResult::None,
-                    },
-                    false => PositionResult::None,
-
-                    _ => PositionResult::None,
-                },
-                false => match self.is_short_strategy() && no_pending_orders {
-                    true => match self.entry_short(index, instrument, htf_instrument, tick) {
+                    }
+                } else if self.is_short_strategy()
+                    && (trade_direction.is_short() || !trading_direction)
+                {
+                    match self.entry_short(index, instrument, htf_instrument, tick) {
                         Position::MarketIn(order_types) => {
                             let trade_type = TradeType::MarketInShort;
 
@@ -307,12 +305,11 @@ pub trait Strategy: DynClone {
                             PositionResult::PendingOrder(new_orders)
                         }
                         _ => PositionResult::None,
-                    },
-                    false => PositionResult::None,
-                    _ => PositionResult::None,
-                },
-                false => PositionResult::None,
-            },
+                    }
+                } else {
+                    PositionResult::None
+                }
+            }
             false => PositionResult::None,
         }
     }
