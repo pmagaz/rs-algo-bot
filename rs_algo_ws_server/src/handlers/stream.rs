@@ -45,7 +45,6 @@ pub async fn handle_strean_data<BK: BrokerStream + Send + 'static>(
     session: &Session,
     data: Result<Message, Error>,
 ) {
-    let mut msg_sent = "".to_owned();
     match data {
         Ok(msg) => {
             if msg.is_text() {
@@ -53,20 +52,13 @@ pub async fn handle_strean_data<BK: BrokerStream + Send + 'static>(
                 let strategy_name = session.strategy.as_ref();
                 let parsed = BK::parse_stream_data(msg, &symbol, &strategy_name).await;
                 match parsed {
-                    Some(txt) => {
-                        if &msg_sent != &txt {
-                            match message::send(session, Message::Text(txt.clone())).await {
-                                Ok(_) => msg_sent = txt,
-                                Err(_) => {
-                                    log::error!(
-                                        "Can't send stream data to {:?}",
-                                        session.bot_name()
-                                    );
-                                    tx.send(()).await.unwrap();
-                                }
-                            }
+                    Some(txt) => match message::send(session, Message::Text(txt)).await {
+                        Ok(_) => (),
+                        Err(_) => {
+                            log::error!("Can't send stream data to {:?}", session.bot_name());
+                            tx.send(()).await.unwrap();
                         }
-                    }
+                    },
                     None => (),
                 };
             } else if msg.is_close() {
@@ -100,13 +92,17 @@ where
             let symbol = session.symbol.clone();
             let mut broker_stream = initialize_broker_stream(&symbol).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
-
+            let mut msg_sent: String = "".to_owned();
             loop {
                 tokio::select! {
                     stream = broker_stream.get_stream().await.next() => {
                         match stream {
                             Some(data) => {
-                                handle_strean_data::<BK>(&tx, &session, data).await;
+                                let msg_txt = data.as_ref().unwrap().to_string();
+                                if msg_sent != msg_txt{
+                                    msg_sent = msg_txt;
+                                    handle_strean_data::<BK>(&tx, &session, data).await;
+                                }
                             }
                             None => {
                                 log::error!("No stream data");
