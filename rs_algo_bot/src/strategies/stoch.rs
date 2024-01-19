@@ -1,6 +1,5 @@
 use super::strategy::*;
 
-use async_trait::async_trait;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;

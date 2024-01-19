@@ -630,6 +630,7 @@ impl Bot {
                                     let payload = res.payload.unwrap();
                                     let data = payload.data;
                                     let index = self.instrument.data.len().checked_sub(1).unwrap();
+
                                     let new_candle = self.instrument.next(data).unwrap();
                                     let candle_date = data.0;
                                     let mut higher_candle: Candle = new_candle.clone();

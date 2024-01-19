@@ -1,5 +1,5 @@
 use crate::strategies;
-use async_trait::async_trait;
+
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
@@ -15,7 +15,6 @@ use rs_algo_shared::scanner::instrument::*;
 use std::cmp::Ordering;
 use std::env;
 
-#[async_trait(?Send)]
 pub trait Strategy: DynClone {
     fn new(
         name: Option<&'static str>,
@@ -178,7 +177,7 @@ pub trait Strategy: DynClone {
             .parse::<usize>()
             .unwrap();
 
-        let overwrite_orders = env::var("OVERWRITE_ORDERS")
+        let overwrite_orders = env::var("ORDERS_OVERWRITE")
             .unwrap()
             .parse::<bool>()
             .unwrap();
@@ -475,7 +474,7 @@ pub fn set_strategy(
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
             strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_513"),
+                Some("BB_Reversals_Backtest_5132"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -484,7 +483,7 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::bollinger_bands_reversals_buy_exit::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_H1"),
+                Some("BB_Reversals_Backtest_st4"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
