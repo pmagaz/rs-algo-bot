@@ -8,18 +8,20 @@
     #- { role: "deployment/mongodb-bot/roles/" }
 
     #PROD
-    - { role: "rs_algo_ws_server/deployment/prod/roles/" }
+    # - { role: "rs_algo_ws_server/deployment/prod/roles/" }
     - { role: "rs_algo_bot/deployment/prod/bb-reversals/eurusd/roles" }
     - { role: "rs_algo_bot/deployment/prod/bb-reversals/usdchf/roles" }
     - { role: "rs_algo_bot/deployment/prod/bb-reversals/usdjpy/roles" }
     - { role: "rs_algo_bot/deployment/prod/bb-reversals/gbpusd/roles" }
+    - { role: "rs_algo_ws_server/deployment/prod/roles/" }
+
 
     #DEV
     # bb-reversals
     #- { role: "rs_algo_bot/deployment/dev/bb-reversals/eurusd/roles" }
     # - { role: "rs_algo_bot/deployment/dev/bb-reversals/gbpusd/roles" }
     # - { role: "rs_algo_bot/deployment/dev/bb-reversals/usdchf/roles" }
-    - { role: "rs_algo_bot/deployment/dev/bb-reversals/usdjpy/roles" }
+    # - { role: "rs_algo_bot/deployment/dev/bb-reversals/usdjpy/roles" }
     
 
     # bb-reversals-sell

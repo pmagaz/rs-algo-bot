@@ -7,6 +7,7 @@ use rs_algo_shared::{broker::xtb_stream::*, models::environment};
 
 use futures_util::StreamExt;
 use rs_algo_shared::ws::message::ReconnectOptions;
+use std::collections::HashSet;
 use std::env;
 use std::sync::Arc;
 use std::time::Duration;
@@ -92,15 +93,39 @@ where
             let symbol = session.symbol.clone();
             let mut broker_stream = initialize_broker_stream(&symbol).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
-            let mut msg_sent: String = "".to_owned();
+            let mut sent_messages: HashSet<String> = HashSet::with_capacity(4);
+
             loop {
+                // match broker_stream.get_stream().await.next().await {
+                //     Some(Ok(data)) => {
+                //  let txt = data.as_ref().unwrap().to_string();
+                //  if sent_messages.insert(txt) {
+                //      handle_strean_data::<BK>(&tx, &session, data).await;
+                //   }
+                //     }
+                //     Some(Err(err)) => {
+                //         log::warn!("Stream {} stopped!", session.bot_name());
+                //         break;
+                //     }
+                //     None => {
+                //         log::error!("No stream data");
+                //         message::send_reconnect(&session, ReconnectOptions { clean_data: true })
+                //             .await;
+                //         tx.send(()).await.unwrap();
+                //     }
+                // }
+
+                // broker_stream.keepalive_ping().await.unwrap();
+                // let mut guard = broker.lock().await;
+                // guard.keepalive_ping().await.unwrap();
+
+                // interval.tick().await;
                 tokio::select! {
                     stream = broker_stream.get_stream().await.next() => {
                         match stream {
                             Some(data) => {
-                                let msg_txt = data.as_ref().unwrap().to_string();
-                                if msg_sent != msg_txt{
-                                    msg_sent = msg_txt;
+                                let txt = data.as_ref().unwrap().to_string();
+                                if sent_messages.insert(txt) {
                                     handle_strean_data::<BK>(&tx, &session, data).await;
                                 }
                             }

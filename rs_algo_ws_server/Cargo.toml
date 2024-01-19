@@ -9,7 +9,7 @@ tokio-tungstenite = "0.18.0"
 tungstenite = "0.18.0"
 futures-channel = "0.3"
 futures = "0.3.21"
-tokio = { version = "1.32.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.35.1", features = ["rt-multi-thread", "macros"] }
 anyhow = "1.0.75"
 thiserror = "1.0.47"
 futures-util = { version = "0.3.28", default-features = false, features = ["std"] }
@@ -22,8 +22,8 @@ env_logger = "0.10.0"
 log = "0.4"
 mongodb = {version="2.2.2", features=["bson-uuid-0_8"]}
 bson = "2.3.0"
-rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", rev = "3de1352", features = ["broker","websocket"]}
-#rs_algo_shared = { path = "../../rs_algo_shared", features = ["broker","websocket"] }
+#rs_algo_shared = {git = "https://github.com/pmagaz/rs_algo_shared", rev = "c053693", features = ["broker","websocket"]}
+rs_algo_shared = { path = "../../rs_algo_shared", features = ["broker","websocket"] }
 
 [profile.dev]
 opt-level = 0
