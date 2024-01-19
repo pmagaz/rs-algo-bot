@@ -179,7 +179,7 @@ pub trait Strategy: DynClone {
             .parse::<usize>()
             .unwrap();
 
-        let overwrite_orders = env::var("OVERWRITE_ORDERS")
+        let overwrite_orders = env::var("ORDERS_OVERWRITE")
             .unwrap()
             .parse::<bool>()
             .unwrap();
