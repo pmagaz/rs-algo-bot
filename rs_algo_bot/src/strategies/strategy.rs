@@ -3,6 +3,7 @@ use crate::strategies;
 use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
+use async_trait::async_trait;
 use rs_algo_shared::models::market::{MarketHours, MarketSessions};
 use rs_algo_shared::models::order::{self, Order, OrderType};
 use rs_algo_shared::models::strategy::StrategyStats;
@@ -15,6 +16,7 @@ use rs_algo_shared::scanner::instrument::*;
 use std::cmp::Ordering;
 use std::env;
 
+#[async_trait(?Send)]
 pub trait Strategy: DynClone {
     fn new(
         name: Option<&'static str>,
