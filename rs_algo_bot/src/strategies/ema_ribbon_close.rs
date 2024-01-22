@@ -1,7 +1,7 @@
 use super::strategy::*;
 
 use rs_algo_shared::error::Result;
-use rs_algo_shared::helpers::calc;
+use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::OrderType;
@@ -14,7 +14,7 @@ use rs_algo_shared::models::trade::{Position, TradeDirection, TradeIn};
 use rs_algo_shared::scanner::instrument::*;
 
 #[derive(Clone)]
-pub struct BollingerBandsReversals<'a> {
+pub struct EmaRibbon<'a> {
     name: &'a str,
     time_frame: TimeFrameType,
     higher_time_frame: Option<TimeFrameType>,
@@ -25,7 +25,7 @@ pub struct BollingerBandsReversals<'a> {
     profit_target: f64,
 }
 
-impl<'a> Strategy for BollingerBandsReversals<'a> {
+impl<'a> Strategy for EmaRibbon<'a> {
     fn new(
         name: Option<&'static str>,
         time_frame: Option<&str>,
@@ -116,11 +116,12 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap(); //5
+                let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap(); //8
+                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap(); //13
 
-                let is_long = htf_ema_a > htf_ema_b;
-                let is_short = htf_ema_a < htf_ema_b;
+                let is_long = htf_ema_a > htf_ema_c;
+                let is_short = htf_ema_a < htf_ema_c;
 
                 if is_long {
                     TradeDirection::Long
@@ -141,26 +142,17 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
+        let data = &instrument.data();
+        let prev_index = get_prev_index(index);
+        let candle = data.get(index).unwrap();
+        let prev_candle = &data.get(prev_index).unwrap();
+        let close_price = &candle.close();
+        let prev_close_price = &prev_candle.close();
+        let is_closed = candle.is_closed();
+
         let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
             .parse::<f64>()
-            .unwrap();
-
-        let data = &instrument.data();
-        let prev_index = calc::get_prev_index(index);
-        let candle = data.get(index).unwrap();
-        let prev_candle = &data.get(prev_index).unwrap();
-        let is_closed = candle.is_closed();
-
-        let close_price = &candle.close();
-        let prev_close_price = &prev_candle.close();
-
-        let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
-        let prev_low_band = instrument
-            .indicators
-            .bb
-            .get_data_b()
-            .get(prev_index)
             .unwrap();
 
         let pips_margin = std::env::var("PIPS_MARGIN")
@@ -168,12 +160,46 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .parse::<f64>()
             .unwrap();
 
-        let entry_condition = self.trading_direction == TradeDirection::Long
-            && is_closed
-            && close_price < low_band
-            && (prev_close_price > prev_low_band);
+        let ema_a = instrument.indicators.ema_a.get_data_a().last().unwrap(); //5
+        let ema_b = instrument.indicators.ema_b.get_data_a().last().unwrap(); //8
+        let ema_c = instrument.indicators.ema_c.get_data_a().last().unwrap(); //13
 
-        let buy_price = close_price + calc::to_pips(pips_margin, tick);
+        let prev_ema_a = instrument
+            .indicators
+            .ema_a
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
+        let prev_ema_b = instrument
+            .indicators
+            .ema_b
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
+        let prev_ema_c = instrument
+            .indicators
+            .ema_c
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
+
+        // let entry_condition = self.trading_direction == TradeDirection::Long
+        //     && is_closed
+        //     && ema_a > ema_b
+        //     && ema_b > ema_c
+        //     //&& prev_ema_a <= prev_ema_b
+        //     && ema_b > ema_c
+        //     && prev_ema_b <= prev_ema_c
+        //     && (ema_a > prev_ema_a || ema_b > prev_ema_b || ema_c > prev_ema_c)
+        //     && close_price > ema_a;
+
+        let entry_condition = is_closed
+            && close_price > ema_a
+            && prev_close_price <= ema_a
+            && ema_a > ema_b
+            && ema_b > ema_c;
+
+        let buy_price = close_price + to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
@@ -194,26 +220,42 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _tick: &InstrumentTick,
     ) -> Position {
         let data = &instrument.data();
-        let prev_index = calc::get_prev_index(index);
+        let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
-        let is_closed = candle.is_closed();
-
         let close_price = &candle.close();
         let prev_close_price = &prev_candle.close();
+        let is_closed = candle.is_closed();
 
-        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
-        let prev_top_band = instrument
+        let ema_a = instrument.indicators.ema_a.get_data_a().last().unwrap(); //5
+        let ema_b = instrument.indicators.ema_b.get_data_a().last().unwrap(); //8
+        let ema_c = instrument.indicators.ema_c.get_data_a().last().unwrap(); //13
+
+        let prev_ema_a = instrument
             .indicators
-            .bb
+            .ema_a
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
+        let prev_ema_b = instrument
+            .indicators
+            .ema_b
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
+        let prev_ema_c = instrument
+            .indicators
+            .ema_c
             .get_data_a()
             .get(prev_index)
             .unwrap();
 
-        //let exit_condition =
-        //    is_closed && close_price < top_band && (prev_close_price > prev_top_band);
+        // let exit_condition = is_closed
+        //     && (close_price < *ema_a || close_price < *ema_b || close_price < *ema_c)
+        //     || ((ema_a < ema_b && prev_ema_a > prev_ema_b)
+        //         || (ema_b < ema_c && prev_ema_b <= prev_ema_c));
 
-        let exit_condition = close_price < prev_close_price && (prev_close_price > prev_top_band);
+        let exit_condition = is_closed && close_price < ema_c && prev_close_price >= ema_c;
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -228,47 +270,70 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_stoploss = std::env::var("ATR_STOPLOSS")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
-
         let data = &instrument.data();
-        let prev_index = calc::get_prev_index(index);
+        let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
-        let is_closed = candle.is_closed();
-
         let close_price = &candle.close();
         let prev_close_price = &prev_candle.close();
+        let is_closed = candle.is_closed();
+
+        let ema_a = instrument.indicators.ema_a.get_data_a().last().unwrap(); //5
+        let ema_b = instrument.indicators.ema_b.get_data_a().last().unwrap(); //8
+        let ema_c = instrument.indicators.ema_c.get_data_a().last().unwrap(); //13
+
+        let prev_ema_a = instrument
+            .indicators
+            .ema_a
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
+        let prev_ema_b = instrument
+            .indicators
+            .ema_b
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
+        let prev_ema_c = instrument
+            .indicators
+            .ema_c
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
 
         let pips_margin = std::env::var("PIPS_MARGIN")
             .unwrap()
             .parse::<f64>()
             .unwrap();
 
-        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
-
-        let prev_top_band = instrument
-            .indicators
-            .bb
-            .get_data_a()
-            .get(prev_index)
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
+            .unwrap()
+            .parse::<f64>()
             .unwrap();
+
+        // let entry_condition = self.trading_direction == TradeDirection::Short
+        //     && is_closed
+        //     && ema_a < ema_b
+        //     && prev_ema_a >= prev_ema_b
+        //     && ema_b < ema_c
+        //     && prev_ema_b >= prev_ema_c
+        //     && (ema_a < prev_ema_a || ema_b < prev_ema_b || ema_c < prev_ema_c)
+        //     && close_price < *ema_c; // Using the longest EMA for a short position
 
         let entry_condition = self.trading_direction == TradeDirection::Short
             && is_closed
-            && close_price < top_band
-            && (prev_close_price > prev_top_band);
+            && close_price < ema_a
+            && prev_close_price >= ema_a
+            && ema_a < ema_b
+            && ema_b < ema_c;
 
-        let buy_price = close_price - calc::to_pips(pips_margin, tick);
+        let sell_price = close_price - to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::BuyOrderShort(self.order_size, buy_price),
-                OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
+                OrderType::SellOrderShort(self.order_size, sell_price),
+                OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), sell_price),
             ]),
-
             false => Position::None,
         }
     }
@@ -282,26 +347,42 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _tick: &InstrumentTick,
     ) -> Position {
         let data = &instrument.data();
-        let prev_index = calc::get_prev_index(index);
+        let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
-        let is_closed = candle.is_closed();
-
         let close_price = &candle.close();
         let prev_close_price = &prev_candle.close();
+        let is_closed = candle.is_closed();
 
-        let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
-        let prev_low_band = instrument
+        let ema_a = instrument.indicators.ema_a.get_data_a().last().unwrap(); //5
+        let ema_b = instrument.indicators.ema_b.get_data_a().last().unwrap(); //8
+        let ema_c = instrument.indicators.ema_c.get_data_a().last().unwrap(); //13
+
+        let prev_ema_a = instrument
             .indicators
-            .bb
-            .get_data_b()
+            .ema_a
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
+        let prev_ema_b = instrument
+            .indicators
+            .ema_b
+            .get_data_a()
+            .get(prev_index)
+            .unwrap();
+        let prev_ema_c = instrument
+            .indicators
+            .ema_c
+            .get_data_a()
             .get(prev_index)
             .unwrap();
 
-        //let exit_condition =
-        //   is_closed && close_price < low_band && (prev_close_price > prev_low_band);
+        // let exit_condition = is_closed
+        //     && (close_price > *ema_a || close_price > *ema_b || close_price > *ema_c)
+        //     || ((ema_a > ema_b && prev_ema_a < prev_ema_b)
+        //         || (ema_b > ema_c && prev_ema_b < prev_ema_c));
 
-        let exit_condition = close_price < prev_close_price && (prev_close_price > prev_low_band);
+        let exit_condition = is_closed && close_price > ema_c && prev_close_price <= ema_c;
 
         match exit_condition {
             true => Position::MarketOut(None),
