@@ -475,8 +475,17 @@ pub fn set_strategy(
 ) -> Box<dyn Strategy> {
     let strategies: Vec<Box<dyn Strategy>> = vec![
         Box::new(
-            strategies::ema_ribbon_close::EmaRibbon::new(
-                Some("EMA_Ribbon_Close_Backtest"),
+            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_12"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -485,7 +494,7 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::ema_ribbon::EmaRibbon::new(
-                Some("EMA_Ribbon_Backtest"),
+                Some("BB_Reversals_Backtest"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
