@@ -1,7 +1,7 @@
 use super::strategy::*;
 
 use rs_algo_shared::error::Result;
-use rs_algo_shared::helpers::calc;
+use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::OrderType;
@@ -147,7 +147,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .unwrap();
 
         let data = &instrument.data();
-        let prev_index = calc::get_prev_index(index);
+        let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
         let is_closed = candle.is_closed();
@@ -173,7 +173,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && close_price < low_band
             && (prev_close_price > prev_low_band);
 
-        let buy_price = close_price + calc::to_pips(pips_margin, tick);
+        let buy_price = close_price + to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
@@ -194,7 +194,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _tick: &InstrumentTick,
     ) -> Position {
         let data = &instrument.data();
-        let prev_index = calc::get_prev_index(index);
+        let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
         let is_closed = candle.is_closed();
@@ -232,7 +232,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .unwrap();
 
         let data = &instrument.data();
-        let prev_index = calc::get_prev_index(index);
+        let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
         let is_closed = candle.is_closed();
@@ -259,7 +259,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && close_price < top_band
             && (prev_close_price > prev_top_band);
 
-        let buy_price = close_price - calc::to_pips(pips_margin, tick);
+        let buy_price = close_price - to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
@@ -280,7 +280,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _tick: &InstrumentTick,
     ) -> Position {
         let data = &instrument.data();
-        let prev_index = calc::get_prev_index(index);
+        let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
         let is_closed = candle.is_closed();
