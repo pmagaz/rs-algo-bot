@@ -4,6 +4,8 @@
 // pub mod macd_dual;
 //pub mod bollinger_bands_middle_band;
 pub mod bollinger_bands_reversals;
+pub mod bollinger_bands_sell;
+pub mod bollinger_bands_sell_rsi;
 pub mod ema_ribbon;
 pub mod ema_ribbon_close;
 // pub mod bollinger_bands_reversals_buy_exit_hv;
