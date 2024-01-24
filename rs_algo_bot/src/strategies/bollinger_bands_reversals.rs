@@ -122,9 +122,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let is_long = htf_ema_a > htf_ema_b;
                 let is_short = htf_ema_a < htf_ema_b;
 
-                if is_long {
+                if is_long && !is_short {
                     TradeDirection::Long
-                } else if is_short {
+                } else if is_short && !is_long {
                     TradeDirection::Short
                 } else {
                     TradeDirection::None
@@ -175,6 +175,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let buy_price = close_price + to_pips(pips_margin, tick);
 
+        let entry_condition = true;
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(self.order_size, buy_price),
@@ -260,7 +261,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close_price > prev_top_band);
 
         let buy_price = close_price - to_pips(pips_margin, tick);
-
+        let entry_condition = true;
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(self.order_size, buy_price),
