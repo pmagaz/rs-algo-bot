@@ -666,10 +666,9 @@ impl Bot {
                                             log::info!("No active positions found");
                                             if open_positions {
                                                 log::error!("Divergence between broker open positions and db trades!");
+                                                open_positions = true;
+                                                sleep(Duration::from_secs(86400)).await;
                                             }
-                                            //open_positions = true;
-
-                                            sleep(Duration::from_secs(86400)).await;
                                         }
                                     }
                                 }

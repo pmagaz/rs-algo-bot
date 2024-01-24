@@ -116,13 +116,11 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let current_price = &instrument.data.last().unwrap().close();
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
 
-                let is_long = htf_ema_a > htf_ema_b && htf_ema_c > current_price;
-                let is_short = htf_ema_a < htf_ema_b && htf_ema_c < current_price;
+                let is_long = htf_ema_a > htf_ema_b;
+                let is_short = htf_ema_a < htf_ema_b;
 
                 if is_long && !is_short {
                     TradeDirection::Long
