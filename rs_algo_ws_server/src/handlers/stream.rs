@@ -93,7 +93,7 @@ where
             let symbol = session.symbol.clone();
             let mut broker_stream = initialize_broker_stream(&symbol).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
-            let mut sent_messages: HashSet<String> = HashSet::with_capacity(4);
+            let mut sent_messages: HashSet<String> = HashSet::with_capacity(3);
 
             loop {
                 // match broker_stream.get_stream().await.next().await {
