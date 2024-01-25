@@ -118,16 +118,20 @@ impl<'a> Strategy for BollingerBandsSell<'a> {
             |(idx, _prev_idx, htf_inst)| {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let rsi = instrument.indicators.rsi.get_data_a().get(index).unwrap();
 
                 let rsi_values = instrument.indicators.rsi.get_data_a();
                 let len = rsi_values.len();
-                //let last_5_rsi_values = &rsi_values[len - 5..];
-                let rsi = instrument.indicators.rsi.get_data_a().get(index).unwrap();
+                let last_5_rsi_values = &rsi_values[len - 5..];
 
-                let is_long = htf_ema_a > htf_ema_b && *rsi < 40.;
-                //&& comp::is_upward_trend(last_5_rsi_values);
+                let is_long =
+                   // htf_ema_a > htf_ema_b && 
+                    *rsi < 40. && comp::is_upward_trend(last_5_rsi_values);
 
-                let is_short = htf_ema_a < htf_ema_b && *rsi > 60.;
+                let is_short = 
+                //htf_ema_a < htf_ema_b && 
+                    *rsi > 60.
+                    && comp::is_downward_trend(last_5_rsi_values);
 
                 if is_long && !is_short {
                     TradeDirection::Long

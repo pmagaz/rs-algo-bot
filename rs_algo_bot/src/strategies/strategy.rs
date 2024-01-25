@@ -493,7 +493,7 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::bollinger_bands_sell::BollingerBandsSell::new(
+            strategies::bollinger_bands_reversals_rsi::BollingerBandsReversals::new(
                 Some("BB_Reversals_Backtest_C"),
                 Some(time_frame),
                 higher_time_frame,

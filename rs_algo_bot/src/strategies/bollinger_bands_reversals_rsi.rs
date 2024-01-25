@@ -1,7 +1,7 @@
 use super::strategy::*;
 
 use rs_algo_shared::error::Result;
-use rs_algo_shared::helpers::calc::*;
+use rs_algo_shared::helpers::{calc::*, comp};
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::OrderType;
@@ -120,8 +120,17 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
                 let rsi = instrument.indicators.rsi.get_data_a().get(index).unwrap();
 
-                let is_long = htf_ema_a > htf_ema_b && *rsi < 40.;
-                let is_short = htf_ema_a < htf_ema_b && *rsi > 60.;
+                let rsi_values = instrument.indicators.rsi.get_data_a();
+                let len = rsi_values.len();
+                let last_5_rsi_values = &rsi_values[len - 5..];
+
+                let is_long = htf_ema_a > htf_ema_b
+                    && *rsi <= 40.
+                    && comp::is_upward_trend(last_5_rsi_values);
+
+                let is_short = htf_ema_a < htf_ema_b
+                    && *rsi >= 60.
+                    && comp::is_downward_trend(last_5_rsi_values);
 
                 if is_long {
                     TradeDirection::Long
