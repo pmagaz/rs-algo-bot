@@ -122,9 +122,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let is_long = htf_ema_a > htf_ema_b;
                 let is_short = htf_ema_a < htf_ema_b;
 
-                if is_long && !is_short {
+                if is_long {
                     TradeDirection::Long
-                } else if is_short && !is_long {
+                } else if is_short {
                     TradeDirection::Short
                 } else {
                     TradeDirection::None
@@ -213,16 +213,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let exit_condition =
             is_closed && close_price < top_band && (prev_close_price > prev_top_band);
 
-        log::info!(
-            "Long {} Close: {} PrevClose: {} Band: {} PrevBand: {} {:?}",
-            index,
-            close_price,
-            prev_close_price,
-            top_band,
-            prev_top_band,
-            (is_closed, exit_condition)
-        );
-
         match exit_condition {
             true => Position::MarketOut(None),
             false => Position::None,
@@ -308,16 +298,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let exit_condition =
             is_closed && close_price < low_band && (prev_close_price > prev_low_band);
-
-        log::info!(
-            "Short {} Close: {} PrevClose: {} Band: {} PrevBand: {} {:?}",
-            index,
-            close_price,
-            prev_close_price,
-            low_band,
-            prev_low_band,
-            (is_closed, exit_condition)
-        );
 
         match exit_condition {
             true => Position::MarketOut(None),
