@@ -503,7 +503,7 @@ pub fn set_strategy(
         ),
         Box::new(
             strategies::bollinger_bands_sell_rsi::BollingerBandsSell::new(
-                Some("BB_Reversals_Backtest_D"),
+                Some("BB_Reversals_Backtest_A"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),

@@ -677,6 +677,11 @@ impl Bot {
                                         );
                                         self.instrument
                                             .init_candle(data, &Some(self.time_frame.clone()));
+
+                                        self.instrument
+                                            .indicators
+                                            .init_indicators(&self.time_frame)
+                                            .unwrap();
                                     }
 
                                     if higher_candle.is_closed()
@@ -697,6 +702,13 @@ impl Bot {
                                             );
                                             htf_instrument
                                                 .init_candle(htf_data, &self.higher_time_frame);
+
+                                            htf_instrument
+                                                .indicators
+                                                .init_indicators(
+                                                    &self.higher_time_frame.as_ref().unwrap(),
+                                                )
+                                                .unwrap();
                                         }
                                     }
 
