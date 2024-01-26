@@ -680,7 +680,7 @@ impl Bot {
 
                                         self.instrument
                                             .indicators
-                                            .init_indicators(&self.time_frame)
+                                            .init_indicators(&self.time_frame, true)
                                             .unwrap();
                                     }
 
@@ -707,6 +707,7 @@ impl Bot {
                                                 .indicators
                                                 .init_indicators(
                                                     &self.higher_time_frame.as_ref().unwrap(),
+                                                    true,
                                                 )
                                                 .unwrap();
                                         }
