@@ -829,6 +829,11 @@ impl Bot {
 
                                         self.instrument
                                             .init_candle(data, &Some(self.time_frame.clone()));
+
+                                        self.instrument
+                                            .indicators
+                                            .init_indicators(&self.time_frame, true)
+                                            .unwrap();
                                     }
 
                                     if higher_candle.is_closed()
@@ -853,8 +858,17 @@ impl Bot {
                                                 higher_candle.close(),
                                                 higher_candle.volume(),
                                             );
+
                                             htf_instrument
                                                 .init_candle(htf_data, &self.higher_time_frame);
+
+                                            htf_instrument
+                                                .indicators
+                                                .init_indicators(
+                                                    &self.higher_time_frame.as_ref().unwrap(),
+                                                    true,
+                                                )
+                                                .unwrap();
                                         }
                                     }
 

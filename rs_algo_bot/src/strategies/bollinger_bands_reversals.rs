@@ -174,7 +174,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close_price > prev_low_band);
 
         let buy_price = close_price + to_pips(pips_margin, tick);
-        let entry_condition = true;
+
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(self.order_size, buy_price),
@@ -268,7 +268,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && is_closed
             && close_price < top_band
             && (prev_close_price > prev_top_band);
-        let entry_condition = true;
+
         let buy_price = close_price - to_pips(pips_margin, tick);
 
         match entry_condition {
