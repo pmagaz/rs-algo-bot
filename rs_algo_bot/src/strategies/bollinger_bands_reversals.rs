@@ -174,7 +174,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close_price > prev_low_band);
 
         let buy_price = close_price + to_pips(pips_margin, tick);
-
+        let entry_condition = true;
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(self.order_size, buy_price),
@@ -212,6 +212,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let exit_condition =
             is_closed && close_price < top_band && (prev_close_price > prev_top_band);
+
+        log::info!(
+            "Long {} Close: {} PrevClose: {} Band: {} PrevBand: {} {:?}",
+            index,
+            close_price,
+            prev_close_price,
+            top_band,
+            prev_top_band,
+            (is_closed, exit_condition)
+        );
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -258,7 +268,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && is_closed
             && close_price < top_band
             && (prev_close_price > prev_top_band);
-
+        let entry_condition = true;
         let buy_price = close_price - to_pips(pips_margin, tick);
 
         match entry_condition {
@@ -298,6 +308,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let exit_condition =
             is_closed && close_price < low_band && (prev_close_price > prev_low_band);
+
+        log::info!(
+            "Short {} Close: {} PrevClose: {} Band: {} PrevBand: {} {:?}",
+            index,
+            close_price,
+            prev_close_price,
+            low_band,
+            prev_low_band,
+            (is_closed, exit_condition)
+        );
 
         match exit_condition {
             true => Position::MarketOut(None),
