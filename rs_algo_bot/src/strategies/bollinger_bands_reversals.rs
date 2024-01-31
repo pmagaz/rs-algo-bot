@@ -209,9 +209,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .unwrap();
 
         let exit_condition = self.trading_direction == TradeDirection::Short
-            && is_closed
-            && close_price < top_band
-            && (prev_close_price > prev_top_band);
+            || is_closed && close_price < top_band && (prev_close_price > prev_top_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
