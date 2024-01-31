@@ -169,7 +169,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .unwrap();
 
         let entry_condition = self.trading_direction == TradeDirection::Long
-            || is_closed && close_price < low_band && (prev_close_price > prev_low_band);
+            && is_closed
+            && close_price < low_band
+            && (prev_close_price > prev_low_band);
 
         let buy_price = close_price + to_pips(pips_margin, tick);
 
