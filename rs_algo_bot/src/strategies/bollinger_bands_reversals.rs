@@ -208,8 +208,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = self.trading_direction == TradeDirection::Short
-            || is_closed && close_price < top_band && (prev_close_price > prev_top_band);
+        let exit_condition =
+            is_closed && close_price < top_band && (prev_close_price > prev_top_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -294,8 +294,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = self.trading_direction == TradeDirection::Long
-            || is_closed && close_price < low_band && (prev_close_price > prev_low_band);
+        let exit_condition =
+            is_closed && close_price < low_band && (prev_close_price > prev_low_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
