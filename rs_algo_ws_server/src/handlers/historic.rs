@@ -65,15 +65,17 @@ async fn read_csv(
     records_limit: i64,
 ) -> Result<Vec<DOHLC>, RsAlgoErrorKind> {
     let file_path = &format!(
-        "{}{}_{}.csv",
+        "{}{}.csv",
         env::var("BACKEND_HISTORIC_DATA_FOLDER").unwrap(),
-        symbol,
-        "M1",
+        symbol
     );
 
     let file = File::open(Path::new(&file_path)).map_err(|_| RsAlgoErrorKind::File)?;
 
-    let mut rdr = ReaderBuilder::new().has_headers(false).from_reader(file);
+    let mut rdr = ReaderBuilder::new()
+        .has_headers(false)
+        .delimiter(b';')
+        .from_reader(file);
 
     let mut count = 0;
     let mut data: BTreeMap<DateTime<Local>, (f64, f64, f64, f64, f64)> = BTreeMap::new();
@@ -82,24 +84,25 @@ async fn read_csv(
             break;
         }
         let record: StringRecord = result.map_err(|_| RsAlgoErrorKind::File)?;
-        let date_str = format!("{} {}", &record[0], &record[1]);
+
+        let date_str = format!("{}", &record[0]);
         let date_time = Local
-            .datetime_from_str(&date_str, "%Y.%m.%d %H:%M")
+            .datetime_from_str(&date_str, "%Y%m%d %H%M%S")
             .map_err(|_| RsAlgoErrorKind::File)?;
 
-        let open = record[2]
+        let open = record[1]
             .parse::<f64>()
             .map_err(|_| RsAlgoErrorKind::File)?;
-        let high = record[3]
+        let high = record[2]
             .parse::<f64>()
             .map_err(|_| RsAlgoErrorKind::File)?;
-        let low = record[4]
+        let low = record[3]
             .parse::<f64>()
             .map_err(|_| RsAlgoErrorKind::File)?;
-        let close = record[5]
+        let close = record[4]
             .parse::<f64>()
             .map_err(|_| RsAlgoErrorKind::File)?;
-        let volume = record[6]
+        let volume = record[5]
             .parse::<f64>()
             .map_err(|_| RsAlgoErrorKind::File)?;
 
