@@ -129,9 +129,8 @@ impl<'a> Strategy for EmaScalping<'a> {
                     (numerator / denominator) * 100.0
                 };
 
-                let has_min_distance = percentage_diff > ema_percentage_dis;
-                let is_long = htf_ema_a > htf_ema_b && has_min_distance;
-                let is_short = htf_ema_a < htf_ema_b && has_min_distance;
+                let is_long = htf_ema_a > htf_ema_b;
+                let is_short = htf_ema_a < htf_ema_b;
 
                 if is_long {
                     TradeDirection::Long
@@ -188,7 +187,7 @@ impl<'a> Strategy for EmaScalping<'a> {
                 && ema_b > ema_c
                 && ema_c > ema_13);
 
-        let pips_margin = 5.;
+        let pips_margin = 3.;
         let previous_bars = 5;
 
         let highest_bar = data[index - previous_bars..index + 1]
@@ -268,7 +267,7 @@ impl<'a> Strategy for EmaScalping<'a> {
                 && ema_b < ema_c
                 && ema_c < ema_c);
 
-        let pips_margin = 5.;
+        let pips_margin = 3.;
         let previous_bars = 5;
 
         let lowest_bar = data[index - previous_bars..index + 1]
