@@ -493,8 +493,8 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::bollinger_bands_sell::BollingerBandsSell::new(
-                Some("BB_Reversals_Backtest_C"),
+            strategies::ema_scalping::EmaScalping::new(
+                Some("EMA_Scalping_A"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -502,8 +502,8 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::bollinger_bands_sell_rsi::BollingerBandsSell::new(
-                Some("BB_Reversals_Backtest_D"),
+            strategies::ema_scalping::EmaScalping::new(
+                Some("EMA_Scalping_B"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
