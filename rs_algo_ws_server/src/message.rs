@@ -255,7 +255,7 @@ where
                     };
 
                     let data: VEC_DOHLC =
-                        handlers::historic::get_historic_data(symbol, &time_frame)
+                        handlers::historic::get_historic_data(symbol, &time_frame, limit)
                             .await
                             .unwrap();
 

@@ -13,8 +13,9 @@ use std::path::Path;
 pub async fn get_historic_data(
     symbol: &str,
     time_frame: &TimeFrameType,
+    limit: i64,
 ) -> Result<VEC_DOHLC, RsAlgoErrorKind> {
-    let instrument = read_csv(&symbol, &time_frame).await?;
+    let instrument = read_csv(&symbol, &time_frame, limit).await?;
 
     Ok(instrument)
 }
@@ -58,22 +59,16 @@ fn round_down_to_interval(time: DateTime<Local>, time_frame: &TimeFrameType) -> 
     }
 }
 
-async fn read_csv(symbol: &str, time_frame: &TimeFrameType) -> Result<Vec<DOHLC>, RsAlgoErrorKind> {
+async fn read_csv(
+    symbol: &str,
+    time_frame: &TimeFrameType,
+    records_limit: i64,
+) -> Result<Vec<DOHLC>, RsAlgoErrorKind> {
     let file_path = &format!(
-        "{}{}_2023.csv",
+        "{}{}.csv",
         env::var("BACKEND_HISTORIC_DATA_FOLDER").unwrap(),
         symbol
     );
-
-    let records_init = env::var("INIT_HISTORIC_DATA")
-        .unwrap_or_else(|_| "0".to_string())
-        .parse::<i64>()
-        .unwrap_or(0);
-
-    let records_limit = env::var("LIMIT_HISTORIC_DATA")
-        .unwrap_or_else(|_| "0".to_string())
-        .parse::<i64>()
-        .unwrap_or(0);
 
     let file = File::open(Path::new(&file_path)).map_err(|_| RsAlgoErrorKind::File)?;
 
@@ -85,9 +80,7 @@ async fn read_csv(symbol: &str, time_frame: &TimeFrameType) -> Result<Vec<DOHLC>
     let mut count = 0;
     let mut data: BTreeMap<DateTime<Local>, (f64, f64, f64, f64, f64)> = BTreeMap::new();
     for result in rdr.records() {
-        if records_init != 0 && count <= records_init
-            || records_limit != 0 && count >= records_limit
-        {
+        if records_limit != 0 && count >= records_limit {
             break;
         }
         let record: StringRecord = result.map_err(|_| RsAlgoErrorKind::File)?;

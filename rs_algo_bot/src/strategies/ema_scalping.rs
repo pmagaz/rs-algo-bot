@@ -147,6 +147,7 @@ impl<'a> Strategy for EmaScalping<'a> {
         let data = &instrument.data();
         let candle = data.get(index).unwrap();
         let close_price = &candle.close();
+        let is_closed = candle.is_closed();
         let prev_close_price = &data.get(prev_index).unwrap().close();
         let ema_a = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
         let ema_b = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
@@ -158,21 +159,24 @@ impl<'a> Strategy for EmaScalping<'a> {
             .unwrap();
 
         let previous_bars = 5;
-        let entry_condition = ema_a > ema_b
+        let entry_condition = is_closed
+            && ema_a > ema_b
             && ema_b > ema_c
             && close_price < ema_a
             && close_price > ema_c
             && prev_close_price > ema_a;
 
-        let highest_high = data[index - previous_bars..index + 1]
-            .iter()
-            .max_by(|x, y| x.high().partial_cmp(&y.high()).unwrap())
-            .map(|x| x.high())
-            .unwrap();
+        let start_index = std::cmp::max(index.saturating_sub(previous_bars), 0);
+        let end_index = index.saturating_sub(1);
 
+        let highest_high = data[start_index..end_index]
+            .iter()
+            .map(|x| x.high())
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
         let buy_price = highest_high + calc::to_pips(pips_margin, tick);
         let stop_loss = close_price - calc::to_pips(pips_margin, tick);
-        let risk = buy_price - stop_loss;
+        let risk = (buy_price - stop_loss).abs();
         let sell_price = buy_price + (risk * self.risk_reward_ratio) + tick.spread();
 
         match entry_condition {
@@ -212,6 +216,7 @@ impl<'a> Strategy for EmaScalping<'a> {
         let ema_a = instrument.indicators.ema_a.get_data_a().get(index).unwrap();
         let ema_b = instrument.indicators.ema_b.get_data_a().get(index).unwrap();
         let ema_c = instrument.indicators.ema_c.get_data_a().get(index).unwrap();
+        let is_closed = candle.is_closed();
 
         let pips_margin = std::env::var("PIPS_MARGIN")
             .unwrap()
@@ -219,28 +224,32 @@ impl<'a> Strategy for EmaScalping<'a> {
             .unwrap();
 
         let previous_bars = 5;
-        let entry_condition = ema_a < ema_b
+        let entry_condition = is_closed
+            && ema_a < ema_b
             && ema_b < ema_c
             && close_price > ema_a
             && close_price < ema_c
             && prev_close_price < ema_a;
 
-        let lowest_low = data[index - previous_bars..index + 1]
+        let start_index = std::cmp::max(index.saturating_sub(previous_bars), 0);
+        let end_index = index.saturating_sub(1);
+
+        let lowest_low = data[start_index..end_index]
             .iter()
-            .max_by(|x, y| x.low().partial_cmp(&y.low()).unwrap())
             .map(|x| x.low())
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap();
 
         let buy_price = lowest_low - calc::to_pips(pips_margin, tick);
         let stop_loss = close_price + calc::to_pips(pips_margin, tick);
-        let risk = stop_loss - buy_price;
+        let risk = (stop_loss - buy_price).abs();
         let sell_price = buy_price - (risk * self.risk_reward_ratio) - tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
-                OrderType::BuyOrderLong(self.order_size, buy_price),
-                OrderType::SellOrderLong(self.order_size, sell_price),
-                OrderType::StopLossLong(StopLossType::Price(stop_loss), buy_price),
+                OrderType::BuyOrderShort(self.order_size, buy_price),
+                OrderType::SellOrderShort(self.order_size, sell_price),
+                OrderType::StopLossShort(StopLossType::Price(stop_loss), buy_price),
             ]),
 
             false => Position::None,
