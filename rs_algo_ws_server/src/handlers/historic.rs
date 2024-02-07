@@ -65,7 +65,7 @@ async fn read_csv(
     records_limit: i64,
 ) -> Result<Vec<DOHLC>, RsAlgoErrorKind> {
     let file_path = &format!(
-        "{}{}.csv",
+        "{}{}_2023.csv",
         env::var("BACKEND_HISTORIC_DATA_FOLDER").unwrap(),
         symbol
     );
