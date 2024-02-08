@@ -492,24 +492,24 @@ pub fn set_strategy(
             )
             .unwrap(),
         ),
-        Box::new(
-            strategies::num_bars_atr::NumBars::new(
-                Some("BB_Reversals_Backtest_A"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
-        Box::new(
-            strategies::engulfing::Engulfing::new(
-                Some("BB_Reversals_Backtest_B"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
+        // Box::new(
+        //     strategies::num_bars_atr::NumBars::new(
+        //         Some("BB_Reversals_Backtest_A"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
+        // Box::new(
+        //     strategies::engulfing::Engulfing::new(
+        //         Some("BB_Reversals_Backtest_B"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
     ];
 
     let mut strategy = strategies[0].clone();

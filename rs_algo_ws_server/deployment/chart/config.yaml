@@ -30,3 +30,4 @@ MONGO_BOT_DB_URI: "@mongodb-bot:27017/bot-db?authSource=admin&readPreference=pri
 DB_BOT_COLLECTION: "bots"
 BACKEND_BACKTEST_PRICING_ENDPOINT: "http://rs-algo-backend/api/backtest/price/"
 BACKEND_HISTORIC_DATA_FOLDER: "data/"
+HISTORIC_DATA_FILE_SUBFIX: ""
