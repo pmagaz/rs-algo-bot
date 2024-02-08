@@ -10,6 +10,8 @@ pub mod bollinger_bands_sell_rsi;
 pub mod ema_ribbon;
 pub mod ema_ribbon_close;
 pub mod ema_scalping;
+pub mod engulfing;
+pub mod num_bars_atr;
 // pub mod bollinger_bands_reversals_buy_exit_hv;
 // pub mod bollinger_bands_reversals_buy_exit_noclose;
 // pub mod bollinger_bands_reversals_buy_exit_noclose_2;

@@ -493,8 +493,8 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::ema_scalping::EmaScalping::new(
-                Some("EMA_Scalping_A"),
+            strategies::num_bars_atr::NumBars::new(
+                Some("NumBars_A"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
@@ -502,8 +502,8 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::ema_scalping::EmaScalping::new(
-                Some("EMA_Scalping_B"),
+            strategies::engulfing::Engulfing::new(
+                Some("Engulfing_A"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),

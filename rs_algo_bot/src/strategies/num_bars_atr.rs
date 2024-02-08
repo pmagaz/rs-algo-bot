@@ -2,7 +2,9 @@ use super::strategy::*;
 
 use rs_algo_shared::error::Result;
 
+use rs_algo_shared::helpers::calc;
 use rs_algo_shared::indicators::Indicator;
+use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::OrderType;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
@@ -109,6 +111,7 @@ impl<'a> Strategy for NumBars<'a> {
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
+        _market_hours: &MarketHours,
     ) -> &TradeDirection {
         self.trading_direction = time_frame::get_htf_trading_direction(
             index,
@@ -116,13 +119,12 @@ impl<'a> Strategy for NumBars<'a> {
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
                 let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
-                let htf_ema_c = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
-                let current_price = &htf_inst.data().last().unwrap().close();
+                let htf_ema_b = htf_inst.indicators.ema_c.get_data_a().get(idx).unwrap();
+                let candle = htf_inst.data().last().unwrap();
+                let price = &candle.close();
 
-                let is_over_price = current_price > htf_ema_c;
-                let is_long = htf_ema_a > htf_ema_b; // && is_over_price;
-                let is_short = htf_ema_a < htf_ema_b; // && !is_over_price;
+                let is_long = htf_ema_a > htf_ema_b && price > htf_ema_a && price > htf_ema_b;
+                let is_short = htf_ema_a < htf_ema_b && price < htf_ema_a && price < htf_ema_b;
 
                 if is_long {
                     TradeDirection::Long
@@ -152,20 +154,26 @@ impl<'a> Strategy for NumBars<'a> {
             .unwrap()
             .parse::<f64>()
             .unwrap();
+        let pips_margin = std::env::var("PIPS_MARGIN")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
 
         let data = &instrument.data();
         let candle = data.get(index).unwrap();
         let is_closed: bool = candle.is_closed();
-
-        let buy_price = close_price;
+        let close_price = &candle.close();
+        let buy_price = *close_price;
         let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
         let sell_price = buy_price + (atr_profit_target * atr_value) + tick.spread();
+        let stop_loss = close_price - calc::to_pips(pips_margin, tick);
+
         let entry_condition = candle.candle_type() == &CandleType::BearishThreeInRow && is_closed;
 
         match entry_condition {
             true => Position::MarketIn(Some(vec![
                 OrderType::SellOrderLong(self.order_size, sell_price),
-                OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
+                OrderType::StopLossLong(StopLossType::Price(stop_loss), buy_price),
             ])),
             false => Position::None,
         }
@@ -179,12 +187,7 @@ impl<'a> Strategy for NumBars<'a> {
         _trade_in: &TradeIn,
         _tick: &InstrumentTick,
     ) -> Position {
-        let exit_condition = self.trading_direction == TradeDirection::Short;
-
-        match exit_condition {
-            true => Position::MarketOut(None),
-            false => Position::None,
-        }
+        Position::None
     }
 
     fn entry_short(
@@ -204,19 +207,28 @@ impl<'a> Strategy for NumBars<'a> {
             .parse::<f64>()
             .unwrap();
 
+        let pips_margin = std::env::var("PIPS_MARGIN")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+
         let data = instrument.data();
         let candle = data.get(index).unwrap();
         let is_closed: bool = candle.is_closed();
+        let close_price = candle.close();
 
         let buy_price = close_price;
         let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
         let sell_price = buy_price - (atr_profit_target * atr_value) - tick.spread();
+        let stop_loss = close_price + calc::to_pips(pips_margin, tick);
+
         let entry_condition = candle.candle_type() == &CandleType::ThreeInRow && is_closed;
 
         match entry_condition {
             true => Position::MarketIn(Some(vec![
                 OrderType::SellOrderShort(self.order_size, sell_price),
-                OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
+                OrderType::StopLossLong(StopLossType::Price(stop_loss), buy_price),
+                //OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
             ])),
             false => Position::None,
         }
@@ -230,11 +242,6 @@ impl<'a> Strategy for NumBars<'a> {
         _trade_in: &TradeIn,
         _tick: &InstrumentTick,
     ) -> Position {
-        let exit_condition = self.trading_direction == TradeDirection::Long;
-
-        match exit_condition {
-            true => Position::MarketOut(None),
-            false => Position::None,
-        }
+        Position::None
     }
 }
