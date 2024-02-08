@@ -648,11 +648,12 @@ impl Bot {
                                     }
 
                                     let close_date = format!(
-                                        "{}:{} {}-{}",
+                                        "{}:{} {}-{}-{}",
                                         candle_date.hour(),
                                         candle_date.minute(),
                                         candle_date.day(),
-                                        candle_date.month()
+                                        candle_date.month(),
+                                        candle_date.year()
                                     );
 
                                     let (new_position_result, activated_orders_result) = self
