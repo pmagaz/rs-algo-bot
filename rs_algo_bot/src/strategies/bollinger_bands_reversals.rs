@@ -1,7 +1,7 @@
 use super::strategy::*;
 
 use rs_algo_shared::error::Result;
-use rs_algo_shared::helpers::calc::*;
+use rs_algo_shared::helpers::calc::{self, *};
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::OrderType;
@@ -176,11 +176,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close_price > prev_low_band);
 
         let buy_price = close_price + to_pips(pips_margin, tick);
+        let stop_loss = close_price - calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(self.order_size, buy_price),
-                OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
+                OrderType::StopLossLong(StopLossType::Price(stop_loss), buy_price),
+                //OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
@@ -262,11 +264,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close_price > prev_top_band);
 
         let buy_price = close_price - to_pips(pips_margin, tick);
+        let stop_loss = close_price + calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(self.order_size, buy_price),
-                OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
+                OrderType::StopLossShort(StopLossType::Price(stop_loss), buy_price),
+                //OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
