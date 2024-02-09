@@ -180,8 +180,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(self.order_size, buy_price),
-                OrderType::StopLossLong(StopLossType::Price(stop_loss), buy_price),
-                //OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
+                //OrderType::StopLossLong(StopLossType::Price(stop_loss), buy_price),
+                OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
@@ -267,8 +267,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(self.order_size, buy_price),
-                OrderType::StopLossShort(StopLossType::Price(stop_loss), buy_price),
-                //OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
+                //OrderType::StopLossShort(StopLossType::Price(stop_loss), buy_price),
+                OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
