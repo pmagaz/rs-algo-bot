@@ -155,6 +155,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let is_closed = candle.is_closed();
 
         let close_price = &candle.close();
+        let low_price = &candle.low();
         let prev_close_price = &prev_candle.close();
 
         let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
@@ -174,13 +175,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             is_closed && close_price < low_band && (prev_close_price > prev_low_band);
 
         let buy_price = close_price + to_pips(pips_margin, tick);
-        let stop_loss = close_price - calc::to_pips(pips_margin, tick);
+        let stop_loss = low_price - calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(self.order_size, buy_price),
-                //OrderType::StopLossLong(StopLossType::Price(stop_loss), buy_price),
-                OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
+                OrderType::StopLossLong(StopLossType::Price(stop_loss), buy_price),
+                //OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
@@ -240,6 +241,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let is_closed = candle.is_closed();
 
         let close_price = &candle.close();
+        let high_price = &candle.high();
         let prev_close_price = &prev_candle.close();
 
         let pips_margin = std::env::var("PIPS_MARGIN")
@@ -260,13 +262,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             is_closed && close_price < top_band && (prev_close_price > prev_top_band);
 
         let buy_price = close_price - to_pips(pips_margin, tick);
-        let stop_loss = close_price + calc::to_pips(pips_margin, tick);
+        let stop_loss = high_price + calc::to_pips(pips_margin, tick);
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(self.order_size, buy_price),
-                //OrderType::StopLossShort(StopLossType::Price(stop_loss), buy_price),
-                OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
+                OrderType::StopLossShort(StopLossType::Price(stop_loss), buy_price),
+                //OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
             false => Position::None,
