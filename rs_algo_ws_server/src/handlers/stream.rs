@@ -30,6 +30,7 @@ where
                 .unwrap_or_else(|_| "0".to_string())
                 .parse::<i64>()
                 .unwrap_or(0);
+
             let mut counter: usize = 0;
             let sleep_time = 40;
 
