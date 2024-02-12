@@ -912,6 +912,7 @@ impl Bot {
                                 }
                                 MessageType::StreamTickResponse(res) => {
                                     let tick = res.payload.unwrap();
+                                    log::info!("000000 {:?}", tick);
                                     let tick = InstrumentTick::new()
                                         .symbol(self.symbol.clone())
                                         .ask(tick.ask())
