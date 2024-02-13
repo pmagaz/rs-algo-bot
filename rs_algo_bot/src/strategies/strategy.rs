@@ -4,6 +4,7 @@ use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
 
 use async_trait::async_trait;
+use rs_algo_shared::helpers::calc;
 use rs_algo_shared::models::market::{MarketHours, MarketSessions};
 use rs_algo_shared::models::order::{self, Order, OrderType};
 use rs_algo_shared::models::strategy::StrategyStats;
@@ -95,6 +96,14 @@ pub trait Strategy: DynClone {
         tick: &InstrumentTick,
         market_hours: &MarketHours,
     ) -> (PositionResult, PositionResult) {
+        let max_spread = env::var("MAX_SPREAD_PIPS").unwrap().parse::<f64>().unwrap();
+        let spread_pips = calc::get_spread_pips(&instrument.symbol, tick);
+        let is_max_spread = spread_pips > max_spread;
+
+        if is_max_spread {
+            log::warn!("Max spread of {} reached!", spread_pips);
+            return (PositionResult::None, PositionResult::None);
+        }
         let index = &instrument.data.len() - 1;
         let mut position_result = PositionResult::None;
         let mut order_position_result = PositionResult::None;
@@ -394,6 +403,14 @@ pub trait Strategy: DynClone {
         use_tick_price: bool,
     ) -> PositionResult {
         let tick = tick.expect("Failed to unwrap Tick: None");
+        let max_spread = env::var("MAX_SPREAD_PIPS").unwrap().parse::<f64>().unwrap();
+        let spread_pips = calc::get_spread_pips(&instrument.symbol, tick);
+        let is_max_spread = spread_pips > max_spread;
+
+        if is_max_spread {
+            log::warn!("Max spread of {} reached!", spread_pips);
+            return PositionResult::None;
+        }
         match order::resolve_active_orders(index, instrument, pending_orders, tick, use_tick_price)
         {
             Position::MarketInOrder(mut order) => {
