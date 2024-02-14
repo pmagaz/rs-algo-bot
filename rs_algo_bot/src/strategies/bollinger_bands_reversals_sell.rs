@@ -116,8 +116,22 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             instrument,
             htf_instrument,
             |(idx, _prev_idx, htf_inst)| {
-                let htf_ema_a = htf_inst.indicators.ema_a.get_data_a().get(idx).unwrap();
-                let htf_ema_b = htf_inst.indicators.ema_b.get_data_a().get(idx).unwrap();
+                let htf_ema_a = htf_inst
+                    .indicators
+                    .ema_a
+                    .as_ref()
+                    .unwrap()
+                    .get_data_a()
+                    .get(idx)
+                    .unwrap();
+                let htf_ema_b = htf_inst
+                    .indicators
+                    .ema_b
+                    .as_ref()
+                    .unwrap()
+                    .get_data_a()
+                    .get(idx)
+                    .unwrap();
 
                 let is_long = htf_ema_a > htf_ema_b;
                 let is_short = htf_ema_a < htf_ema_b;
@@ -157,10 +171,19 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
         let prev_close = &prev_candle.close();
 
-        let low_band = instrument.indicators.bb.get_data_b().get(index).unwrap();
+        let low_band = instrument
+            .indicators
+            .bb
+            .as_ref()
+            .unwrap()
+            .get_data_b()
+            .get(index)
+            .unwrap();
         let prev_low_band = instrument
             .indicators
             .bb
+            .as_ref()
+            .unwrap()
             .get_data_b()
             .get(prev_index)
             .unwrap();
@@ -175,7 +198,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .parse::<f64>()
             .unwrap();
 
-        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+        let atr_value = instrument
+            .indicators
+            .atr
+            .as_ref()
+            .unwrap()
+            .get_data_a()
+            .get(index)
+            .unwrap();
 
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
@@ -237,11 +267,20 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .unwrap()
             .parse::<f64>()
             .unwrap();
-        let top_band = instrument.indicators.bb.get_data_a().get(index).unwrap();
+        let top_band = instrument
+            .indicators
+            .bb
+            .as_ref()
+            .unwrap()
+            .get_data_a()
+            .get(index)
+            .unwrap();
 
         let prev_top_band = instrument
             .indicators
             .bb
+            .as_ref()
+            .unwrap()
             .get_data_a()
             .get(prev_index)
             .unwrap();
@@ -257,7 +296,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             && (prev_close > prev_top_band);
 
         let buy_price = close_price - calc::to_pips(pips_margin, tick);
-        let atr_value = instrument.indicators.atr.get_data_a().get(index).unwrap();
+        let atr_value = instrument
+            .indicators
+            .atr
+            .as_ref()
+            .unwrap()
+            .get_data_a()
+            .get(index)
+            .unwrap();
         let sell_price = buy_price - (atr_profit_target * atr_value) - tick.spread();
 
         match entry_condition {

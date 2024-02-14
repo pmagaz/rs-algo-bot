@@ -7,7 +7,6 @@ use rs_algo_shared::{broker::xtb_stream::*, models::environment};
 
 use futures_util::StreamExt;
 use rs_algo_shared::ws::message::ReconnectOptions;
-use std::collections::HashSet;
 use std::env;
 use std::sync::Arc;
 use std::time::Duration;
@@ -93,7 +92,7 @@ where
             let symbol = session.symbol.clone();
             let mut broker_stream = initialize_broker_stream(&symbol).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
-            let mut sent_messages: HashSet<String> = HashSet::with_capacity(3);
+            //let mut sent_messages: HashSet<String> = HashSet::with_capacity(3);
 
             loop {
                 // match broker_stream.get_stream().await.next().await {
@@ -124,10 +123,10 @@ where
                     stream = broker_stream.get_stream().await.next() => {
                         match stream {
                             Some(data) => {
-                                let txt = data.as_ref().unwrap().to_string();
-                                if sent_messages.insert(txt) {
+                                //let txt = data.as_ref().unwrap().to_string();
+                                //if sent_messages.insert(txt) {
                                     handle_strean_data::<BK>(&tx, &session, data).await;
-                                }
+                               // }
                             }
                             None => {
                                 log::error!("No stream data");

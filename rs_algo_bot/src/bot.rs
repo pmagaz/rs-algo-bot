@@ -46,6 +46,8 @@ pub struct Bot {
     higher_time_frame: Option<TimeFrameType>,
     date_start: DbDateTime,
     last_update: DbDateTime,
+    #[serde(skip_serializing)]
+    last_received: DateTime<Local>,
     instrument: Instrument,
     htf_instrument: HTFInstrument,
     trades_in: Vec<TradeIn>,
@@ -781,45 +783,53 @@ impl Bot {
                                 MessageType::StreamResponse(res) => {
                                     let payload = res.payload.unwrap();
                                     let data = payload.data;
-                                    let index = self.instrument.data.len().checked_sub(1).unwrap();
-                                    let new_candle = self.instrument.next(data).unwrap();
-                                    let candle_date = data.0;
-                                    let mut higher_candle: Candle = new_candle.clone();
-                                    let current_session =
-                                        &self.market_hours.current_session(candle_date).unwrap();
+                                    let msg_date = data.0;
 
-                                    if is_mtf_strategy(&self.strategy_type) {
-                                        if let HTFInstrument::HTFInstrument(
-                                            ref mut htf_instrument,
-                                        ) = self.htf_instrument
-                                        {
-                                            higher_candle = htf_instrument.next(data).unwrap();
+                                    if self.last_received != msg_date {
+                                        self.last_received = msg_date;
+                                        let index =
+                                            self.instrument.data.len().checked_sub(1).unwrap();
+
+                                        let new_candle = self.instrument.next(data).unwrap();
+                                        let candle_date = data.0;
+                                        let mut higher_candle: Candle = new_candle.clone();
+                                        let current_session = &self
+                                            .market_hours
+                                            .current_session(candle_date)
+                                            .unwrap();
+
+                                        if is_mtf_strategy(&self.strategy_type) {
+                                            if let HTFInstrument::HTFInstrument(
+                                                ref mut htf_instrument,
+                                            ) = self.htf_instrument
+                                            {
+                                                higher_candle = htf_instrument.next(data).unwrap();
+                                            }
                                         }
-                                    }
 
-                                    let close_date = format!(
-                                        "{}:{} {}-{}",
-                                        candle_date.hour(),
-                                        candle_date.minute(),
-                                        candle_date.day(),
-                                        candle_date.month()
-                                    );
+                                        let close_date = format!(
+                                            "{}:{} {}-{}",
+                                            candle_date.hour(),
+                                            candle_date.minute(),
+                                            candle_date.day(),
+                                            candle_date.month()
+                                        );
 
-                                    let (new_position_result, activated_orders_result) = self
-                                        .strategy
-                                        .next(
-                                            &self.instrument,
-                                            &self.htf_instrument,
-                                            &self.trades_in,
-                                            &self.trades_out,
-                                            &self.orders,
-                                            &self.tick,
-                                            &self.market_hours,
-                                        )
-                                        .await;
+                                        let (new_position_result, activated_orders_result) = self
+                                            .strategy
+                                            .next(
+                                                &self.instrument,
+                                                &self.htf_instrument,
+                                                &self.trades_in,
+                                                &self.trades_out,
+                                                &self.orders,
+                                                &self.tick,
+                                                &self.market_hours,
+                                            )
+                                            .await;
 
-                                    if new_candle.is_closed() {
-                                        log::info!(
+                                        if new_candle.is_closed() {
+                                            log::info!(
                                             "{} {:?} Session - Candle {:?} closed - Open pos: {} ",
                                             &self.env.value(),
                                             &current_session,
@@ -827,87 +837,92 @@ impl Bot {
                                             open_positions
                                         );
 
-                                        self.instrument
-                                            .init_candle(data, &Some(self.time_frame.clone()));
+                                            self.instrument
+                                                .init_candle(data, &Some(self.time_frame.clone()));
 
-                                        self.instrument
-                                            .indicators
-                                            .init_indicators(&self.time_frame, true)
-                                            .unwrap();
-                                    }
+                                            self.instrument
+                                                .indicators
+                                                .init_indicators(&self.time_frame, true)
+                                                .unwrap();
+                                        }
 
-                                    if higher_candle.is_closed()
-                                        && is_mtf_strategy(&self.strategy_type)
-                                    {
-                                        log::info!(
+                                        if higher_candle.is_closed()
+                                            && is_mtf_strategy(&self.strategy_type)
+                                        {
+                                            log::info!(
                                             "{:?} Session - HTF Candle {:?} closed - Open pos: {} ",
                                             &current_session,
                                             higher_candle.date(),
                                             open_positions
                                         );
 
-                                        if let HTFInstrument::HTFInstrument(
-                                            ref mut htf_instrument,
-                                        ) = self.htf_instrument
-                                        {
-                                            let htf_data = (
-                                                higher_candle.date(),
-                                                higher_candle.open(),
-                                                higher_candle.high(),
-                                                higher_candle.low(),
-                                                higher_candle.close(),
-                                                higher_candle.volume(),
-                                            );
+                                            if let HTFInstrument::HTFInstrument(
+                                                ref mut htf_instrument,
+                                            ) = self.htf_instrument
+                                            {
+                                                let htf_data = (
+                                                    higher_candle.date(),
+                                                    higher_candle.open(),
+                                                    higher_candle.high(),
+                                                    higher_candle.low(),
+                                                    higher_candle.close(),
+                                                    higher_candle.volume(),
+                                                );
 
-                                            htf_instrument
-                                                .init_candle(htf_data, &self.higher_time_frame);
+                                                htf_instrument
+                                                    .init_candle(htf_data, &self.higher_time_frame);
 
-                                            htf_instrument
-                                                .indicators
-                                                .init_indicators(
-                                                    &self.higher_time_frame.as_ref().unwrap(),
-                                                    true,
+                                                htf_instrument
+                                                    .indicators
+                                                    .init_indicators(
+                                                        &self.higher_time_frame.as_ref().unwrap(),
+                                                        true,
+                                                    )
+                                                    .unwrap();
+                                            }
+                                        }
+
+                                        match new_position_result {
+                                            PositionResult::None => (),
+                                            _ => {
+                                                self.process_activated_positions(
+                                                    &new_position_result,
+                                                    &mut open_positions,
                                                 )
+                                                .await
+                                            }
+                                        };
+
+                                        match activated_orders_result {
+                                            PositionResult::None => (),
+                                            _ => {
+                                                self.process_activated_orders(
+                                                    &activated_orders_result,
+                                                    &mut open_positions,
+                                                )
+                                                .await
+                                            }
+                                        };
+
+                                        if !open_positions {
+                                            self.orders = order::cancel_pending_expired_orders(
+                                                index,
+                                                &self.instrument,
+                                                &mut self.orders,
+                                            );
+                                        }
+                                        let update_bot_on_stream =
+                                            env::var("SEND_UPDATE_ON_STREAM")
+                                                .unwrap()
+                                                .parse::<bool>()
                                                 .unwrap();
+
+                                        if update_bot_on_stream {
+                                            self.send_bot_status(&bot_str).await;
                                         }
-                                    }
-
-                                    match new_position_result {
-                                        PositionResult::None => (),
-                                        _ => {
-                                            self.process_activated_positions(
-                                                &new_position_result,
-                                                &mut open_positions,
-                                            )
-                                            .await
-                                        }
-                                    };
-
-                                    match activated_orders_result {
-                                        PositionResult::None => (),
-                                        _ => {
-                                            self.process_activated_orders(
-                                                &activated_orders_result,
-                                                &mut open_positions,
-                                            )
-                                            .await
-                                        }
-                                    };
-
-                                    if !open_positions {
-                                        self.orders = order::cancel_pending_expired_orders(
-                                            index,
-                                            &self.instrument,
-                                            &mut self.orders,
-                                        );
-                                    }
-                                    let update_bot_on_stream = env::var("SEND_UPDATE_ON_STREAM")
-                                        .unwrap()
-                                        .parse::<bool>()
-                                        .unwrap();
-
-                                    if update_bot_on_stream {
-                                        self.send_bot_status(&bot_str).await;
+                                    } else {
+                                        log::error!("Duplicated stream data!");
+                                        panic!();
                                     }
                                 }
                                 MessageType::StreamTickResponse(res) => {
@@ -1209,6 +1224,7 @@ impl BotBuilder {
                 higher_time_frame: self.higher_time_frame,
                 date_start: to_dbtime(Local::now()),
                 last_update: to_dbtime(Local::now()),
+                last_received: Local::now(),
                 websocket,
                 instrument,
                 htf_instrument,
