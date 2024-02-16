@@ -101,7 +101,7 @@ pub trait Strategy: DynClone {
         let is_max_spread = spread_pips > max_spread;
 
         if is_max_spread {
-            log::warn!("Max spread of {} reached!", spread_pips);
+            log::warn!("Max spread limit! Value: {}", spread_pips);
             return (PositionResult::None, PositionResult::None);
         }
 
@@ -409,7 +409,7 @@ pub trait Strategy: DynClone {
         let is_max_spread = spread_pips > max_spread;
 
         if is_max_spread {
-            log::warn!("Max spread of {} reached!", spread_pips);
+            log::warn!("Max spread limit! Value: {}", spread_pips);
             return PositionResult::None;
         }
 

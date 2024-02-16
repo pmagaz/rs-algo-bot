@@ -789,7 +789,6 @@ impl Bot {
                                         self.last_received = msg_date;
                                         let index =
                                             self.instrument.data.len().checked_sub(1).unwrap();
-
                                         let new_candle = self.instrument.next(data).unwrap();
                                         let candle_date = data.0;
                                         let mut higher_candle: Candle = new_candle.clone();
@@ -921,8 +920,7 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                     } else {
-                                        log::error!("Duplicated stream data!");
-                                        panic!();
+                                        log::warn!("Duplicated stream data!");
                                     }
                                 }
                                 MessageType::StreamTickResponse(res) => {

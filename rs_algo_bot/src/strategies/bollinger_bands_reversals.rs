@@ -119,16 +119,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let htf_ema_a = htf_inst
                     .indicators
                     .ema_a
-                    // .as_ref()
-                    // .unwrap()
+                    .as_ref()
+                    .unwrap()
                     .get_data_a()
                     .get(idx)
                     .unwrap();
                 let htf_ema_b = htf_inst
                     .indicators
                     .ema_b
-                    // .as_ref()
-                    // .unwrap()
+                    .as_ref()
+                    .unwrap()
                     .get_data_a()
                     .get(idx)
                     .unwrap();
@@ -172,16 +172,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let low_band = instrument
             .indicators
             .bb
-            // .as_ref()
-            //   .unwrap()
+            .as_ref()
+            .unwrap()
             .get_data_b()
             .get(index)
             .unwrap();
         let prev_low_band = instrument
             .indicators
             .bb
-            // .as_ref()
-            //   .unwrap()
+            .as_ref()
+            .unwrap()
             .get_data_b()
             .get(prev_index)
             .unwrap();
@@ -228,16 +228,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let top_band = instrument
             .indicators
             .bb
-            // .as_ref()
-            //   .unwrap()
+            .as_ref()
+            .unwrap()
             .get_data_a()
             .get(index)
             .unwrap();
         let prev_top_band = instrument
             .indicators
             .bb
-            // .as_ref()
-            //   .unwrap()
+            .as_ref()
+            .unwrap()
             .get_data_a()
             .get(prev_index)
             .unwrap();
@@ -280,8 +280,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let top_band = instrument
             .indicators
             .bb
-            // .as_ref()
-            //   .unwrap()
+            .as_ref()
+            .unwrap()
             .get_data_a()
             .get(index)
             .unwrap();
@@ -289,8 +289,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_top_band = instrument
             .indicators
             .bb
-            // .as_ref()
-            //   .unwrap()
+            .as_ref()
+            .unwrap()
             .get_data_a()
             .get(prev_index)
             .unwrap();
@@ -332,16 +332,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let low_band = instrument
             .indicators
             .bb
-            // .as_ref()
-            // .unwrap()
+            .as_ref()
+            .unwrap()
             .get_data_b()
             .get(index)
             .unwrap();
         let prev_low_band = instrument
             .indicators
             .bb
-            // .as_ref()
-            // .unwrap()
+            .as_ref()
+            .unwrap()
             .get_data_b()
             .get(prev_index)
             .unwrap();
