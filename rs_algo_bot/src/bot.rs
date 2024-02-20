@@ -67,7 +67,7 @@ impl Bot {
             &self.symbol,
             &self.strategy_name,
             &self.time_frame.to_string(),
-            &self.higher_time_frame.clone().unwrap().to_string(),
+            &self.higher_time_frame.as_ref().unwrap().to_string(),
             &self.strategy_type.to_string(),
         ];
 
@@ -1018,7 +1018,7 @@ impl BotBuilder {
             let strategy = set_strategy(
                 &strategy_name,
                 &time_frame.to_string(),
-                Some(&self.higher_time_frame.clone().unwrap().to_string()),
+                Some(&self.higher_time_frame.as_ref().unwrap().to_string()),
                 strategy_type.clone(),
             );
 
