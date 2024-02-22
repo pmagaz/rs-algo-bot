@@ -485,15 +485,6 @@ impl Bot {
         self.init_session().await;
     }
 
-    pub fn clean_previous_data(&mut self) {
-        log::info!("Cleaning {} previous session data", &self.symbol);
-
-        self.trades_in = vec![];
-        self.trades_out = vec![];
-        self.orders = vec![];
-        self.strategy_stats = StrategyStats::new();
-    }
-
     pub async fn set_tick(&mut self) {
         let tick_endpoint = format!(
             "{}{}",
@@ -517,7 +508,6 @@ impl Bot {
         self.set_tick().await;
         let mut open_positions = false;
         let bot_str = [&self.symbol, "_", &self.time_frame.to_string()].concat();
-        let mut counter = 0;
 
         loop {
             match self.websocket.read().await {
