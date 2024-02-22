@@ -292,40 +292,6 @@ impl Bot {
         }
     }
 
-    async fn process_activated_orders(
-        &mut self,
-        activated_orders_result: &PositionResult,
-        open_positions: &mut bool,
-    ) {
-        match activated_orders_result {
-            PositionResult::MarketInOrder(TradeResult::TradeIn(trade_in), order) => {
-                self.fullfill_activated_order::<TradeIn>(
-                    activated_orders_result,
-                    trade_in,
-                    order,
-                    open_positions,
-                )
-                .await;
-
-                self.add_trade_in(trade_in);
-            }
-            PositionResult::MarketOutOrder(TradeResult::TradeOut(trade_out), order) => {
-                self.fullfill_activated_order::<TradeOut>(
-                    activated_orders_result,
-                    trade_out,
-                    order,
-                    open_positions,
-                )
-                .await;
-
-                self.add_trade_out(trade_out);
-            }
-            _ => {
-                //log::error!("{:?}", activated_orders_result);
-            }
-        };
-    }
-
     fn add_trade_in(&mut self, trade_in: &TradeIn) {
         let num_trades_in = self.trades_in.len();
         let num_trades_out = self.trades_out.len();
@@ -368,27 +334,45 @@ impl Bot {
         }
     }
 
-    async fn process_activated_positions(
+    async fn process_new_positions_and_orders(
         &mut self,
-        new_position_result: &PositionResult,
+        new_position: PositionResult,
+        new_orders: PositionResult,
         open_positions: &mut bool,
     ) {
-        match new_position_result {
-            PositionResult::MarketIn(TradeResult::TradeIn(trade_in), associated_orders) => {
-                self.process_trade(
-                    new_position_result,
-                    associated_orders.as_ref(),
-                    open_positions,
-                )
-                .await;
-
-                self.add_trade_in(trade_in);
+        match new_position {
+            PositionResult::None => (),
+            _ => {
+                self.process_activated_positions(&new_position, open_positions)
+                    .await;
             }
-            PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
-                self.process_trade(new_position_result, None, open_positions)
+        };
+
+        match new_orders {
+            PositionResult::None => (),
+            _ => {
+                self.process_activated_orders(&new_orders, open_positions)
+                    .await;
+            }
+        };
+    }
+
+    async fn process_activated_positions(
+        &mut self,
+        new_position: &PositionResult,
+        open_positions: &mut bool,
+    ) {
+        match new_position {
+            PositionResult::MarketIn(TradeResult::TradeIn(trade_in), associated_orders) => {
+                self.process_trade(new_position, associated_orders.as_ref(), open_positions)
                     .await;
 
-                self.add_trade_out(trade_out);
+                self.trades_in.push(trade_in.clone());
+            }
+            PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
+                self.process_trade(new_position, None, open_positions).await;
+
+                self.trades_out.push(trade_out.clone());
             }
             PositionResult::PendingOrder(associated_orders) => {
                 if !*open_positions {
@@ -398,6 +382,38 @@ impl Bot {
             }
             _ => (),
         }
+    }
+
+    async fn process_activated_orders(
+        &mut self,
+        activated_orders: &PositionResult,
+        open_positions: &mut bool,
+    ) {
+        match activated_orders {
+            PositionResult::MarketInOrder(TradeResult::TradeIn(trade_in), order) => {
+                self.fullfill_activated_order::<TradeIn>(
+                    activated_orders,
+                    trade_in,
+                    order,
+                    open_positions,
+                )
+                .await;
+
+                self.trades_in.push(trade_in.clone());
+            }
+            PositionResult::MarketOutOrder(TradeResult::TradeOut(trade_out), order) => {
+                self.fullfill_activated_order::<TradeOut>(
+                    activated_orders,
+                    trade_out,
+                    order,
+                    open_positions,
+                )
+                .await;
+
+                self.add_trade_out(trade_out);
+            }
+            _ => (),
+        };
     }
 
     pub async fn send_position<T>(&mut self, trade: &T, symbol: String, strategy_name: String)
@@ -492,6 +508,7 @@ impl Bot {
             .await
             .unwrap();
 
+        log::info!("5555555 {:?}", tick);
         self.tick = tick;
     }
 
@@ -656,16 +673,7 @@ impl Bot {
                                             }
                                         }
 
-                                        let close_date = format!(
-                                            "{}:{} {}-{}-{}",
-                                            candle_date.hour(),
-                                            candle_date.minute(),
-                                            candle_date.day(),
-                                            candle_date.month(),
-                                            candle_date.year()
-                                        );
-
-                                        let (new_position_result, activated_orders_result) = self
+                                        let (new_position, new_orders) = self
                                             .strategy
                                             .next(
                                                 &self.instrument,
@@ -674,9 +682,25 @@ impl Bot {
                                                 &self.trades_out,
                                                 &self.orders,
                                                 &self.tick,
-                                                &self.market_hours,
+                                                false,
                                             )
                                             .await;
+
+                                        self.process_new_positions_and_orders(
+                                            new_position,
+                                            new_orders,
+                                            &mut open_positions,
+                                        )
+                                        .await;
+
+                                        let close_date = format!(
+                                            "{}:{} {}-{}-{}",
+                                            candle_date.hour(),
+                                            candle_date.minute(),
+                                            candle_date.day(),
+                                            candle_date.month(),
+                                            candle_date.year()
+                                        );
 
                                         if new_candle.is_closed() {
                                             log::info!(
@@ -725,30 +749,6 @@ impl Bot {
                                                     .unwrap();
                                             }
                                         }
-
-                                        match new_position_result {
-                                            PositionResult::None => (),
-                                            _ => {
-                                                //self.send_bot_status(&bot_str).await;
-                                                self.process_activated_positions(
-                                                    &new_position_result,
-                                                    &mut open_positions,
-                                                )
-                                                .await
-                                            }
-                                        };
-
-                                        match activated_orders_result {
-                                            PositionResult::None => (),
-                                            _ => {
-                                                //self.send_bot_status(&bot_str).await;
-                                                self.process_activated_orders(
-                                                    &activated_orders_result,
-                                                    &mut open_positions,
-                                                )
-                                                .await
-                                            }
-                                        };
 
                                         if !open_positions {
                                             self.orders = order::cancel_pending_expired_orders(

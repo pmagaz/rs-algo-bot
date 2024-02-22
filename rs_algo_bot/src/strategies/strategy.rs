@@ -1,11 +1,7 @@
 use crate::strategies;
 
-use dyn_clone::DynClone;
 use rs_algo_shared::error::Result;
-
-use async_trait::async_trait;
 use rs_algo_shared::helpers::calc;
-use rs_algo_shared::models::market::{MarketHours, MarketSessions};
 use rs_algo_shared::models::order::{self, Order, OrderType};
 use rs_algo_shared::models::strategy::StrategyStats;
 use rs_algo_shared::models::tick::InstrumentTick;
@@ -14,6 +10,9 @@ use rs_algo_shared::models::trade::*;
 use rs_algo_shared::models::{strategy::*, trade};
 use rs_algo_shared::scanner::candle::Candle;
 use rs_algo_shared::scanner::instrument::*;
+
+use async_trait::async_trait;
+use dyn_clone::DynClone;
 use std::cmp::Ordering;
 use std::env;
 
@@ -61,13 +60,13 @@ pub trait Strategy: DynClone {
         trade_in: &TradeIn,
         tick: &InstrumentTick,
     ) -> Position;
-    fn trading_direction(
+    fn set_trading_direction(
         &mut self,
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        market_hours: &MarketHours,
     ) -> &TradeDirection;
+    fn trading_direction(&self) -> &TradeDirection;
     fn is_long_strategy(&self) -> bool {
         match self.strategy_type() {
             StrategyType::OnlyLong
@@ -94,23 +93,33 @@ pub trait Strategy: DynClone {
         trades_out: &Vec<TradeOut>,
         orders: &Vec<Order>,
         tick: &InstrumentTick,
-        market_hours: &MarketHours,
+        use_tick_prices: bool,
     ) -> (PositionResult, PositionResult) {
         let max_spread = env::var("MAX_SPREAD_PIPS").unwrap().parse::<f64>().unwrap();
         let spread_pips = calc::get_spread_pips(&instrument.symbol, tick);
         let is_max_spread = spread_pips > max_spread;
 
         if is_max_spread {
-            log::warn!("Max spread of {} reached!", spread_pips);
+            log::warn!(
+                "Max spread limit of {:?} pips reached! Spread: {}",
+                max_spread,
+                spread_pips
+            );
             return (PositionResult::None, PositionResult::None);
         }
-        let index = &instrument.data.len() - 1;
+
+        let index = instrument.data.len().saturating_sub(1);
         let mut position_result = PositionResult::None;
         let mut order_position_result = PositionResult::None;
+
         let pending_orders = order::get_pending(orders);
-        let trade_direction = &self
-            .trading_direction(index, instrument, htf_instrument, market_hours)
-            .clone();
+
+        let trade_direction = match use_tick_prices {
+            true => self.trading_direction().clone(),
+            false => self
+                .set_trading_direction(index, instrument, htf_instrument)
+                .clone(),
+        };
 
         let open_positions = match trades_in.len().cmp(&trades_out.len()) {
             Ordering::Greater => true,
@@ -122,8 +131,8 @@ pub trait Strategy: DynClone {
             instrument,
             &pending_orders,
             trades_in,
-            Some(tick),
-            false,
+            tick,
+            use_tick_prices,
         );
 
         if open_positions {
@@ -143,7 +152,9 @@ pub trait Strategy: DynClone {
                     tick,
                 );
             } else {
-                log::warn!("Previous tradeIn no fulfilled");
+                if !use_tick_prices {
+                    log::warn!("Previous tradeIn no fulfilled");
+                }
             }
         }
 
@@ -160,11 +171,13 @@ pub trait Strategy: DynClone {
                     htf_instrument,
                     orders,
                     trades_out,
-                    trade_direction,
+                    &trade_direction,
                     tick,
                 );
             } else {
-                log::warn!("Previous tradeOut no fulfilled");
+                if !use_tick_prices {
+                    log::warn!("Previous tradeOut no fulfilled");
+                }
             }
         }
 
@@ -394,23 +407,17 @@ pub trait Strategy: DynClone {
     }
 
     fn pending_orders_activated(
-        &mut self,
+        &self,
         index: usize,
         instrument: &Instrument,
         pending_orders: &Vec<Order>,
         trades_in: &Vec<TradeIn>,
-        tick: Option<&InstrumentTick>,
+        tick: &InstrumentTick,
         use_tick_price: bool,
     ) -> PositionResult {
-        let tick = tick.expect("Failed to unwrap Tick: None");
         let max_spread = env::var("MAX_SPREAD_PIPS").unwrap().parse::<f64>().unwrap();
         let spread_pips = calc::get_spread_pips(&instrument.symbol, tick);
-        let is_max_spread = spread_pips > max_spread;
 
-        if is_max_spread {
-            log::warn!("Max spread of {} reached!", spread_pips);
-            return PositionResult::None;
-        }
         match order::resolve_active_orders(index, instrument, pending_orders, tick, use_tick_price)
         {
             Position::MarketInOrder(mut order) => {
@@ -430,16 +437,14 @@ pub trait Strategy: DynClone {
                     TradeResult::TradeIn(trade_in) => trade_in.id,
                     _ => 0,
                 };
-
                 log::info!("Order activated: {:?} ", order.order_type);
-                // order.set_status(order::OrderStatus::Fulfilled);
+
                 order.set_trade_id(trade_id);
                 PositionResult::MarketInOrder(trade_in_result, order)
             }
             Position::MarketOutOrder(order) => {
                 let trade_type = order.to_trade_type();
-
-                let trade_out_result = match trades_in.iter().filter(|x| x.is_fulfilled()).last() {
+                let trade_out_result = match trades_in.last() {
                     Some(trade_in) => trade::resolve_trade_out(
                         index,
                         instrument,
@@ -450,8 +455,9 @@ pub trait Strategy: DynClone {
                     ),
                     None => TradeResult::None,
                 };
+
                 log::info!("Order activated: {:?} ", order.order_type);
-                // order.set_status(order::OrderStatus::Fulfilled);
+
                 PositionResult::MarketOutOrder(trade_out_result, order)
             }
             _ => PositionResult::None,
@@ -483,7 +489,6 @@ pub trait Strategy: DynClone {
         calculate_trade_stats(trade_in, trade_out, data)
     }
 }
-
 pub fn set_strategy(
     strategy_name: &str,
     time_frame: &str,
@@ -503,6 +508,15 @@ pub fn set_strategy(
         Box::new(
             strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
                 Some("BB_Reversals_Backtest_B"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_close::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Close"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
