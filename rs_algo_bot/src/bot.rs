@@ -699,6 +699,7 @@ impl Bot {
                                                 close_date,
                                                 open_positions
                                             );
+
                                             self.instrument
                                                 .init_candle(data, &Some(self.time_frame.clone()));
 
