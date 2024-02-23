@@ -96,6 +96,11 @@ pub trait Strategy: DynClone {
         use_tick_prices: bool,
     ) -> (PositionResult, PositionResult) {
         let max_spread = env::var("MAX_SPREAD_PIPS").unwrap().parse::<f64>().unwrap();
+        let positions_on_tick_stream = env::var("POSITIONS_ON_TICK_STREAM")
+            .unwrap()
+            .parse::<bool>()
+            .unwrap();
+
         let spread_pips = calc::get_spread_pips(&instrument.symbol, tick);
         let is_max_spread = spread_pips > max_spread;
 
@@ -110,23 +115,16 @@ pub trait Strategy: DynClone {
 
         let index = instrument.data.len().saturating_sub(1);
         let mut position_result = PositionResult::None;
-        let mut order_position_result = PositionResult::None;
+        //let mut order_position_result = PositionResult::None;
 
         let pending_orders = order::get_pending(orders);
-
-        let trade_direction = match use_tick_prices {
-            true => self.trading_direction().clone(),
-            false => self
-                .set_trading_direction(index, instrument, htf_instrument)
-                .clone(),
-        };
 
         let open_positions = match trades_in.len().cmp(&trades_out.len()) {
             Ordering::Greater => true,
             _ => false,
         };
 
-        order_position_result = self.pending_orders_activated(
+        let order_position_result = self.pending_orders_activated(
             index,
             instrument,
             &pending_orders,
@@ -135,48 +133,57 @@ pub trait Strategy: DynClone {
             use_tick_prices,
         );
 
-        if open_positions {
-            let current_trade_fulfilled = match trades_in.last() {
-                Some(trade) => trade.is_fulfilled(),
-                None => true,
-            };
+        let trade_direction = match use_tick_prices {
+            true => self.trading_direction().clone(),
+            false => self
+                .set_trading_direction(index, instrument, htf_instrument)
+                .clone(),
+        };
 
-            if current_trade_fulfilled {
-                let current_trade_in = trades_in.last().unwrap();
+        if !use_tick_prices || (use_tick_prices && positions_on_tick_stream) {
+            if open_positions {
+                let current_trade_fulfilled = match trades_in.last() {
+                    Some(trade) => trade.is_fulfilled(),
+                    None => true,
+                };
 
-                position_result = self.should_exit_position(
-                    index,
-                    instrument,
-                    htf_instrument,
-                    current_trade_in,
-                    tick,
-                );
-            } else {
-                if !use_tick_prices {
-                    log::warn!("Previous tradeIn no fulfilled");
+                if current_trade_fulfilled {
+                    let current_trade_in = trades_in.last().unwrap();
+
+                    position_result = self.should_exit_position(
+                        index,
+                        instrument,
+                        htf_instrument,
+                        current_trade_in,
+                        tick,
+                    );
+                } else {
+                    if !use_tick_prices {
+                        log::warn!("Previous tradeIn no fulfilled");
+                    }
                 }
             }
-        }
 
-        if !open_positions {
-            let current_trade_fulfilled = match trades_out.last() {
-                Some(trade) => trade.is_fulfilled(),
-                None => true,
-            };
+            if !open_positions {
+                let current_trade_fulfilled = match trades_out.last() {
+                    Some(trade) => trade.is_fulfilled(),
+                    None => true,
+                };
 
-            if current_trade_fulfilled {
-                position_result = self.should_open_position(
-                    index,
-                    instrument,
-                    htf_instrument,
-                    orders,
-                    trades_out,
-                    &trade_direction,
-                    tick,
-                );
-            } else {
-                if !use_tick_prices {
-                    log::warn!("Previous tradeOut no fulfilled");
+                if current_trade_fulfilled {
+                    position_result = self.should_open_position(
+                        index,
+                        instrument,
+                        htf_instrument,
+                        orders,
+                        trades_out,
+                        &trade_direction,
+                        tick,
+                    );
+                } else {
+                    if !use_tick_prices {
+                        log::warn!("Previous tradeOut no fulfilled");
+                    }
                 }
             }
         }
