@@ -89,44 +89,16 @@ where
                 .parse::<u64>()
                 .unwrap();
 
-            let symbol = session.symbol.clone();
+            let symbol = session.symbol.as_ref();
             let mut broker_stream = initialize_broker_stream(&symbol).await.unwrap();
             let mut interval = time::interval(Duration::from_millis(keepalive_interval));
-            //let mut sent_messages: HashSet<String> = HashSet::with_capacity(3);
 
             loop {
-                // match broker_stream.get_stream().await.next().await {
-                //     Some(Ok(data)) => {
-                //  let txt = data.as_ref().unwrap().to_string();
-                //  if sent_messages.insert(txt) {
-                //      handle_strean_data::<BK>(&tx, &session, data).await;
-                //   }
-                //     }
-                //     Some(Err(err)) => {
-                //         log::warn!("Stream {} stopped!", session.bot_name());
-                //         break;
-                //     }
-                //     None => {
-                //         log::error!("No stream data");
-                //         message::send_reconnect(&session, ReconnectOptions { clean_data: true })
-                //             .await;
-                //         tx.send(()).await.unwrap();
-                //     }
-                // }
-
-                // broker_stream.keepalive_ping().await.unwrap();
-                // let mut guard = broker.lock().await;
-                // guard.keepalive_ping().await.unwrap();
-
-                // interval.tick().await;
                 tokio::select! {
                     stream = broker_stream.get_stream().await.next() => {
                         match stream {
                             Some(data) => {
-                                //let txt = data.as_ref().unwrap().to_string();
-                                //if sent_messages.insert(txt) {
-                                    handle_strean_data::<BK>(&tx, &session, data).await;
-                               // }
+                                handle_strean_data::<BK>(&tx, &session, data).await;
                             }
                             None => {
                                 log::error!("No stream data");

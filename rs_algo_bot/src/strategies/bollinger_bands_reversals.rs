@@ -3,7 +3,6 @@ use super::strategy::*;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;
-use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::OrderType;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
@@ -104,12 +103,15 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         &self.higher_time_frame
     }
 
-    fn trading_direction(
+    fn trading_direction(&self) -> &TradeDirection {
+        &self.trading_direction
+    }
+
+    fn set_trading_direction(
         &mut self,
         index: usize,
         instrument: &Instrument,
         htf_instrument: &HTFInstrument,
-        _market_hours: &MarketHours,
     ) -> &TradeDirection {
         self.trading_direction = time_frame::get_htf_trading_direction(
             index,
@@ -155,11 +157,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_stoploss = std::env::var("ATR_STOPLOSS")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
-
         let data = &instrument.data();
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
@@ -186,15 +183,20 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let pips_margin = std::env::var("PIPS_MARGIN")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
-
         let entry_condition = self.trading_direction == TradeDirection::Long
             && is_closed
             && close_price < low_band
             && (prev_close_price > prev_low_band);
+
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+
+        let pips_margin = std::env::var("PIPS_MARGIN")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
 
         let buy_price = close_price + to_pips(pips_margin, tick);
 
@@ -214,15 +216,15 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _tick: &InstrumentTick,
+        tick: &InstrumentTick,
     ) -> Position {
         let data = &instrument.data();
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
-        let is_closed = candle.is_closed();
-
-        let close_price = &candle.close();
+        let price = &candle.close();
+        let tick_price = &tick.bid();
+        let is_valid_tick = tick_price > &0.0;
         let prev_close_price = &prev_candle.close();
 
         let top_band = instrument
@@ -242,8 +244,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition =
-            is_closed && close_price < top_band && (prev_close_price > prev_top_band);
+        let exit_condition = (tick_price < top_band && is_valid_tick || price < top_band)
+            && (prev_close_price > prev_top_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -258,11 +260,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        let atr_stoploss = std::env::var("ATR_STOPLOSS")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
-
         let data = &instrument.data();
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
@@ -271,11 +268,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let close_price = &candle.close();
         let prev_close_price = &prev_candle.close();
-
-        let pips_margin = std::env::var("PIPS_MARGIN")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
 
         let top_band = instrument
             .indicators
@@ -297,8 +289,18 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
 
         let entry_condition = self.trading_direction == TradeDirection::Short
             && is_closed
-            && close_price < top_band
-            && (prev_close_price > prev_top_band);
+            && close_price > top_band
+            && (prev_close_price < prev_top_band);
+
+        let pips_margin = std::env::var("PIPS_MARGIN")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
+
+        let atr_stoploss = std::env::var("ATR_STOPLOSS")
+            .unwrap()
+            .parse::<f64>()
+            .unwrap();
 
         let buy_price = close_price - to_pips(pips_margin, tick);
 
@@ -318,15 +320,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        _tick: &InstrumentTick,
+        tick: &InstrumentTick,
     ) -> Position {
         let data = &instrument.data();
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
-        let is_closed = candle.is_closed();
 
-        let close_price = &candle.close();
+        let price = &candle.close();
+        let tick_price = &tick.bid();
+        let is_valid_tick = tick_price > &0.0;
         let prev_close_price = &prev_candle.close();
 
         let low_band = instrument
@@ -337,6 +340,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get_data_b()
             .get(index)
             .unwrap();
+
         let prev_low_band = instrument
             .indicators
             .bb
@@ -346,8 +350,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition =
-            is_closed && close_price < low_band && (prev_close_price > prev_low_band);
+        let exit_condition = (tick_price > low_band && is_valid_tick || price > low_band)
+            && (prev_close_price < prev_low_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
