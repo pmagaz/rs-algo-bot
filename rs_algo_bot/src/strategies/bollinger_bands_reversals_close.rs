@@ -226,7 +226,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let price = &candle.close();
         let tick_price = &tick.bid();
         let is_valid_tick = tick_price > &0.0;
-        let is_closed = candle.is_closed();
         let prev_close_price = &prev_candle.close();
 
         let top_band = instrument
@@ -246,7 +245,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = is_closed
+        let exit_condition = candle.is_closed()
             && (tick_price < top_band && is_valid_tick || price < top_band)
             && (prev_close_price > prev_top_band);
 
@@ -333,7 +332,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let price = &candle.close();
         let tick_price = &tick.bid();
         let is_valid_tick = tick_price > &0.0;
-        let is_closed = candle.is_closed();
         let prev_close_price = &prev_candle.close();
 
         let low_band = instrument
@@ -354,7 +352,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = is_closed
+        let exit_condition = candle.is_closed()
             && (tick_price > low_band && is_valid_tick || price > low_band)
             && (prev_close_price < prev_low_band);
 
