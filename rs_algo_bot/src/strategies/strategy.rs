@@ -93,7 +93,7 @@ pub trait Strategy: DynClone {
         trades_out: &Vec<TradeOut>,
         orders: &Vec<Order>,
         tick: &InstrumentTick,
-        use_tick_prices: bool,
+        use_tick_price: bool,
     ) -> (PositionResult, PositionResult) {
         let max_spread = env::var("MAX_SPREAD_PIPS").unwrap().parse::<f64>().unwrap();
         let positions_on_tick_stream = env::var("POSITIONS_ON_TICK_STREAM")
@@ -115,10 +115,7 @@ pub trait Strategy: DynClone {
 
         let index = instrument.data.len().saturating_sub(1);
         let mut position_result = PositionResult::None;
-        // let mut order_position_result = PositionResult::None;
-
         let pending_orders = order::get_pending(orders);
-
         let open_positions = match trades_in.len().cmp(&trades_out.len()) {
             Ordering::Greater => true,
             _ => false,
@@ -130,17 +127,17 @@ pub trait Strategy: DynClone {
             &pending_orders,
             trades_in,
             tick,
-            use_tick_prices,
+            use_tick_price,
         );
 
-        let trade_direction = match use_tick_prices {
-            true => self.trading_direction().clone(),
-            false => self
-                .set_trading_direction(index, instrument, htf_instrument)
-                .clone(),
-        };
+        if !use_tick_price || (use_tick_price && positions_on_tick_stream) {
+            let trade_direction = match use_tick_price {
+                true => self.trading_direction().clone(),
+                false => self
+                    .set_trading_direction(index, instrument, htf_instrument)
+                    .clone(),
+            };
 
-        if !use_tick_prices || (use_tick_prices && positions_on_tick_stream) {
             if open_positions {
                 let current_trade_fulfilled = match trades_in.last() {
                     Some(trade) => trade.is_fulfilled(),
@@ -158,7 +155,7 @@ pub trait Strategy: DynClone {
                         tick,
                     );
                 } else {
-                    if !use_tick_prices {
+                    if !use_tick_price {
                         log::warn!("Previous tradeIn no fulfilled");
                     }
                 }
@@ -181,7 +178,7 @@ pub trait Strategy: DynClone {
                         tick,
                     );
                 } else {
-                    if !use_tick_prices {
+                    if !use_tick_price {
                         log::warn!("Previous tradeOut no fulfilled");
                     }
                 }
@@ -422,9 +419,6 @@ pub trait Strategy: DynClone {
         tick: &InstrumentTick,
         use_tick_price: bool,
     ) -> PositionResult {
-        let max_spread = env::var("MAX_SPREAD_PIPS").unwrap().parse::<f64>().unwrap();
-        let spread_pips = calc::get_spread_pips(&instrument.symbol, tick);
-
         match order::resolve_active_orders(index, instrument, pending_orders, tick, use_tick_price)
         {
             Position::MarketInOrder(mut order) => {

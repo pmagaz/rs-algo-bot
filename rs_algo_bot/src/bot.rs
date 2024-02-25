@@ -3,7 +3,7 @@ use crate::helpers::vars::*;
 use crate::message;
 use crate::strategies::strategy::*;
 
-use rs_algo_shared::helpers::date::{Local, Timelike};
+use rs_algo_shared::helpers::date::{self, Local, Timelike};
 use rs_algo_shared::helpers::uuid::*;
 use rs_algo_shared::helpers::{date::*, uuid};
 use rs_algo_shared::models::bot::BotData;
@@ -25,7 +25,6 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::env;
 use std::time::Duration;
-use tokio::join;
 use tokio::time::sleep;
 
 #[derive(Serialize)]
@@ -48,7 +47,9 @@ pub struct Bot {
     date_start: DbDateTime,
     last_update: DbDateTime,
     #[serde(skip_serializing)]
-    last_received: DateTime<Local>,
+    last_stream_received: DateTime<Local>,
+    #[serde(skip_serializing)]
+    last_tick_received: DateTime<Local>,
     instrument: Instrument,
     htf_instrument: HTFInstrument,
     trades_in: Vec<TradeIn>,
@@ -804,8 +805,8 @@ impl Bot {
                                     let data = payload.data;
                                     let msg_date = data.0;
 
-                                    if self.last_received != msg_date {
-                                        self.last_received = msg_date;
+                                    if self.last_stream_received != msg_date {
+                                        self.last_stream_received = msg_date;
                                         let index =
                                             self.instrument.data.len().checked_sub(1).unwrap();
                                         let new_candle = self.instrument.next(data).unwrap();
@@ -915,13 +916,11 @@ impl Bot {
                                             );
                                         }
 
-                                        let update_bot_on_stream =
-                                            env::var("SEND_UPDATE_ON_STREAM")
-                                                .unwrap()
-                                                .parse::<bool>()
-                                                .unwrap();
-
-                                        if update_bot_on_stream {
+                                        if env::var("SEND_UPDATE_ON_STREAM")
+                                            .unwrap()
+                                            .parse::<bool>()
+                                            .unwrap()
+                                        {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                     } else {
@@ -930,7 +929,8 @@ impl Bot {
                                 }
                                 MessageType::StreamTickResponse(res) => {
                                     let tick = res.payload.unwrap();
-                                    let tick = InstrumentTick::new()
+                                    let now = Local::now();
+                                    self.tick = InstrumentTick::new()
                                         .symbol(self.symbol.clone())
                                         .ask(tick.ask())
                                         .bid(tick.bid())
@@ -962,10 +962,22 @@ impl Bot {
                                     )
                                     .await;
 
-                                    //UPDATE TMP INDICATORS HERE for TF and HTF
-                                    // 1 create a candle with tick data
-                                    // call update_tmp_indicators
-                                    self.tick = tick;
+                                    if env::var("UPDATE_INDICATORS_TICK")
+                                        .unwrap()
+                                        .parse::<bool>()
+                                        .unwrap()
+                                    {
+                                        if now
+                                            >= self.last_tick_received
+                                                + date::Duration::milliseconds(2500)
+                                        {
+                                            self.last_tick_received = now;
+                                            let mut last_candle =
+                                                self.instrument.data.last().unwrap().clone();
+                                            last_candle.close = self.tick.bid();
+                                            self.instrument.update_tmp_indicators(&last_candle);
+                                        }
+                                    }
                                 }
 
                                 MessageType::TradeInFulfilled(res) => {
@@ -1227,7 +1239,8 @@ impl BotBuilder {
                 higher_time_frame: self.higher_time_frame,
                 date_start: to_dbtime(Local::now()),
                 last_update: to_dbtime(Local::now()),
-                last_received: Local::now(),
+                last_stream_received: Local::now(),
+                last_tick_received: Local::now(),
                 websocket,
                 instrument,
                 htf_instrument,
