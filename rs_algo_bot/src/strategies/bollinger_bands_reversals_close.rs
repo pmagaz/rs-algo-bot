@@ -3,7 +3,6 @@ use super::strategy::*;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;
-use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::OrderType;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
@@ -162,6 +161,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
+
         let close_price = &candle.close();
         let prev_close_price = &prev_candle.close();
 
@@ -241,8 +241,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = (tick_price < top_band && is_valid_tick || price < top_band)
-            && (prev_close_price > prev_top_band);
+        let exit_condition =
+            candle.is_closed() && price < top_band && (prev_close_price > prev_top_band);
 
         match exit_condition {
             true => Position::MarketOut(None),
@@ -261,6 +261,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
+
         let close_price = &candle.close();
         let prev_close_price = &prev_candle.close();
 
@@ -343,8 +344,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let exit_condition = (tick_price > low_band && is_valid_tick || price > low_band)
-            && (prev_close_price < prev_low_band);
+        let exit_condition =
+            candle.is_closed() && (price > low_band) && (prev_close_price < prev_low_band);
 
         match exit_condition {
             true => Position::MarketOut(None),

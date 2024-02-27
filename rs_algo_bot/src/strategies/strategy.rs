@@ -497,15 +497,26 @@ pub fn set_strategy(
     higher_time_frame: Option<&str>,
     strategy_type: StrategyType,
 ) -> Box<dyn Strategy> {
-    let strategies: Vec<Box<dyn Strategy>> = vec![Box::new(
-        strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
-            Some("BB_Reversals"),
-            Some(time_frame),
-            higher_time_frame,
-            Some(strategy_type.clone()),
-        )
-        .unwrap(),
-    )];
+    let strategies: Vec<Box<dyn Strategy>> = vec![
+        Box::new(
+            strategies::bollinger_bands_reversals::BollingerBandsReversals::new(
+                Some("BB_Reversals"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_close::BollingerBandsReversals::new(
+                Some("BB_Reversals_Close"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+    ];
 
     let mut strategy = strategies[0].clone();
     let mut found = false;
