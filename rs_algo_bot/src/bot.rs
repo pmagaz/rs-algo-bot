@@ -969,7 +969,7 @@ impl Bot {
                                     {
                                         if now
                                             >= self.last_tick_received
-                                                + date::Duration::milliseconds(2500)
+                                                + date::Duration::milliseconds(5000)
                                         {
                                             self.last_tick_received = now;
                                             let mut last_candle =
