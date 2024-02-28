@@ -162,7 +162,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
-        let is_closed = candle.is_closed();
 
         let close_price = &candle.close();
         let prev_close_price = &prev_candle.close();
@@ -184,10 +183,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let entry_condition = self.trading_direction == TradeDirection::Long
-            && is_closed
-            && close_price < low_band
-            && (prev_close_price > prev_low_band);
+        let entry_condition =
+            candle.is_closed() && close_price < low_band && (prev_close_price > prev_low_band);
 
         let atr_stoploss = std::env::var("ATR_STOPLOSS")
             .unwrap()
@@ -265,8 +262,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
-        let is_closed = candle.is_closed();
-
         let close_price = &candle.close();
         let prev_close_price = &prev_candle.close();
 
@@ -288,10 +283,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .get(prev_index)
             .unwrap();
 
-        let entry_condition = self.trading_direction == TradeDirection::Short
-            && is_closed
-            && close_price > top_band
-            && (prev_close_price < prev_top_band);
+        let entry_condition =
+            candle.is_closed() && close_price > top_band && (prev_close_price < prev_top_band);
 
         let pips_margin = std::env::var("PIPS_MARGIN")
             .unwrap()
