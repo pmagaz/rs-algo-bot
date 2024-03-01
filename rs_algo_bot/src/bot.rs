@@ -499,7 +499,6 @@ impl Bot {
             .await
             .unwrap();
 
-        log::info!("5555555 {:?}", tick);
         self.tick = tick;
     }
 

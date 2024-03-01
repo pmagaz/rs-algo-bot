@@ -1,7 +1,7 @@
 use super::strategy::*;
 
 use rs_algo_shared::error::Result;
-use rs_algo_shared::helpers::calc::*;
+use rs_algo_shared::helpers::calc::{self, *};
 use rs_algo_shared::indicators::Indicator;
 use rs_algo_shared::models::order::OrderType;
 use rs_algo_shared::models::stop_loss::*;
@@ -200,23 +200,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .parse::<f64>()
             .unwrap();
 
-        let atr_profit_target = std::env::var("ATR_PROFIT_TARGET")
-            .unwrap()
-            .parse::<f64>()
-            .unwrap();
-
         let pips_margin = std::env::var("PIPS_MARGIN")
             .unwrap()
             .parse::<f64>()
             .unwrap();
 
         let buy_price = close_price + to_pips(pips_margin, tick);
-        let sell_price = buy_price + (atr_profit_target * atr_value) + tick.spread();
 
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderLong(self.order_size, buy_price),
-                OrderType::SellOrderLong(self.order_size, sell_price),
                 OrderType::StopLossLong(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
@@ -229,10 +222,17 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        _trade_in: &TradeIn,
+        trade_in: &TradeIn,
         tick: &InstrumentTick,
     ) -> Position {
-        Position::None
+        let price_in = trade_in.price_in;
+        let pips_profit = 5.;
+        let sell_price = price_in + to_pips(pips_profit, tick);
+        let exit_condition = tick.bid() > sell_price;
+        match exit_condition {
+            true => Position::MarketOut(None),
+            false => Position::None,
+        }
     }
 
     fn entry_short(
@@ -242,6 +242,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
+        log::info!("222222 {:?}", tick);
         let data = &instrument.data();
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
@@ -295,12 +296,9 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .unwrap();
 
         let buy_price = close_price - to_pips(pips_margin, tick);
-        let sell_price = buy_price - (atr_profit_target * atr_value) - tick.spread();
-
         match entry_condition {
             true => Position::Order(vec![
                 OrderType::BuyOrderShort(self.order_size, buy_price),
-                OrderType::SellOrderShort(self.order_size, sell_price),
                 OrderType::StopLossShort(StopLossType::Atr(atr_stoploss), buy_price),
             ]),
 
@@ -313,9 +311,16 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        _trade_in: &TradeIn,
+        trade_in: &TradeIn,
         tick: &InstrumentTick,
     ) -> Position {
-        Position::None
+        let price_in = trade_in.price_in;
+        let pips_profit = 5.;
+        let sell_price = price_in - to_pips(pips_profit, tick);
+        let exit_condition = tick.bid() < sell_price;
+        match exit_condition {
+            true => Position::MarketOut(None),
+            false => Position::None,
+        }
     }
 }
