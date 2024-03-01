@@ -225,7 +225,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         trade_in: &TradeIn,
         tick: &InstrumentTick,
     ) -> Position {
+        let data = instrument.data();
+        let candle = data.get(index).unwrap();
+        let price = candle.close();
         let price_in = trade_in.price_in;
+        let tick_price = tick.bid();
+        let is_valid_tick = tick_price > 0.0;
+
         let atr_profit_target = std::env::var("ATR_PROFIT_TARGET")
             .unwrap()
             .parse::<f64>()
@@ -241,7 +247,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .unwrap();
 
         let sell_price = price_in + (atr_profit_target * atr_value);
-        let exit_condition = tick.bid() > sell_price;
+        let exit_condition = tick_price < sell_price && is_valid_tick || price > sell_price;
+
         match exit_condition {
             true => Position::MarketOut(None),
             false => Position::None,
@@ -255,7 +262,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        log::info!("222222 {:?}", tick);
         let data = &instrument.data();
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
@@ -327,7 +333,12 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         trade_in: &TradeIn,
         tick: &InstrumentTick,
     ) -> Position {
+        let data = instrument.data();
+        let candle = data.get(index).unwrap();
+        let price = candle.close();
         let price_in = trade_in.price_in;
+        let tick_price = tick.bid();
+        let is_valid_tick = tick_price > 0.0;
 
         let atr_profit_target = std::env::var("ATR_PROFIT_TARGET")
             .unwrap()
@@ -344,7 +355,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .unwrap();
 
         let sell_price = price_in - tick.spread() - (atr_profit_target * atr_value);
-        let exit_condition = tick.bid() < sell_price;
+        let exit_condition = tick_price < sell_price && is_valid_tick || price < sell_price;
+
         match exit_condition {
             true => Position::MarketOut(None),
             false => Position::None,
