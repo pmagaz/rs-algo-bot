@@ -519,8 +519,8 @@ pub fn set_strategy(
             .unwrap(),
         ),
         Box::new(
-            strategies::bollinger_bands_reversals_sell_atr::BollingerBandsReversals::new(
-                Some("BB_Reversals_Backtest_Sell_Atr2"),
+            strategies::bollinger_bands_reversals_close::BollingerBandsReversals::new(
+                Some("BB_Reversals_Backtest_Close_B"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),
