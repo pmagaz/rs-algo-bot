@@ -213,15 +213,13 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        tick: &InstrumentTick,
+        _tick: &InstrumentTick,
     ) -> Position {
         let data = &instrument.data();
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
         let price = &candle.close();
-        let tick_price = &tick.bid();
-        let is_valid_tick = tick_price > &0.0;
         let prev_close_price = &prev_candle.close();
 
         let top_band = instrument
@@ -314,7 +312,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
         _trade_in: &TradeIn,
-        tick: &InstrumentTick,
+        _tick: &InstrumentTick,
     ) -> Position {
         let data = &instrument.data();
         let prev_index = get_prev_index(index);
@@ -322,8 +320,6 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_candle = &data.get(prev_index).unwrap();
 
         let price = &candle.close();
-        let tick_price = &tick.bid();
-        let is_valid_tick = tick_price > &0.0;
         let prev_close_price = &prev_candle.close();
 
         let low_band = instrument

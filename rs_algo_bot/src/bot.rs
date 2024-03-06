@@ -929,7 +929,7 @@ impl Bot {
                                 }
                                 MessageType::StreamTickResponse(res) => {
                                     let tick = res.payload.unwrap();
-                                    let now = Local::now();
+                                    //let now = Local::now();
                                     self.tick = InstrumentTick::new()
                                         .symbol(self.symbol.clone())
                                         .ask(tick.ask())
@@ -967,16 +967,15 @@ impl Bot {
                                         .parse::<bool>()
                                         .unwrap()
                                     {
-                                        if now
-                                            >= self.last_tick_received
-                                                + date::Duration::milliseconds(5000)
-                                        {
-                                            self.last_tick_received = now;
-                                            let mut last_candle =
-                                                self.instrument.data.last().unwrap().clone();
-                                            last_candle.close = self.tick.bid();
-                                            self.instrument.update_tmp_indicators(&last_candle);
-                                        }
+                                        // if now
+                                        //     >= self.last_tick_received
+                                        //         + date::Duration::milliseconds(1000)
+                                        // {
+                                        //self.last_tick_received = now;
+                                        let mut last_candle =
+                                            self.instrument.data.last().unwrap().clone();
+                                        last_candle.close = self.tick.bid();
+                                        self.instrument.update_tmp_indicators(&last_candle);
                                     }
                                 }
 

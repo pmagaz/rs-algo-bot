@@ -17,7 +17,7 @@ use std::cmp::Ordering;
 use std::env;
 
 #[async_trait(?Send)]
-pub trait Strategy: DynClone {
+pub trait Strategy: DynClone + Send {
     fn new(
         name: Option<&'static str>,
         time_frame: Option<&str>,
@@ -510,6 +510,15 @@ pub fn set_strategy(
         Box::new(
             strategies::bollinger_bands_reversals_close::BollingerBandsReversals::new(
                 Some("BB_Reversals_Close"),
+                Some(time_frame),
+                higher_time_frame,
+                Some(strategy_type.clone()),
+            )
+            .unwrap(),
+        ),
+        Box::new(
+            strategies::bollinger_bands_reversals_sell::BollingerBandsReversals::new(
+                Some("BB_Reversals_Sell"),
                 Some(time_frame),
                 higher_time_frame,
                 Some(strategy_type.clone()),

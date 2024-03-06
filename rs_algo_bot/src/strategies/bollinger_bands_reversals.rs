@@ -3,7 +3,6 @@ use super::strategy::*;
 use rs_algo_shared::error::Result;
 use rs_algo_shared::helpers::calc::*;
 use rs_algo_shared::indicators::Indicator;
-use rs_algo_shared::models::market::MarketHours;
 use rs_algo_shared::models::order::OrderType;
 use rs_algo_shared::models::stop_loss::*;
 use rs_algo_shared::models::strategy::StrategyType;
@@ -162,6 +161,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();
         let prev_candle = &data.get(prev_index).unwrap();
+
         let close_price = &candle.close();
         let prev_close_price = &prev_candle.close();
 
@@ -212,7 +212,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         index: usize,
         instrument: &Instrument,
         _htf_instrument: &HTFInstrument,
-        _trade_in: &TradeIn,
+        trade_in: &TradeIn,
         tick: &InstrumentTick,
     ) -> Position {
         let data = &instrument.data();

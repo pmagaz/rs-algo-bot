@@ -399,7 +399,6 @@ where
                 CommandType::GetInstrumentTick => {
                     log::info!("Getting {} tick data", symbol);
                     let response = broker.lock().await.get_instrument_tick(symbol).await;
-
                     match response {
                         Ok(res) => match serde_json::to_string(&res) {
                             Ok(json_res) => Some(json_res),
