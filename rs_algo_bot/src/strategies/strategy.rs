@@ -516,15 +516,15 @@ pub fn set_strategy(
             )
             .unwrap(),
         ),
-        Box::new(
-            strategies::bollinger_bands_reversals_sell::BollingerBandsReversals::new(
-                Some("BB_Reversals_Sell"),
-                Some(time_frame),
-                higher_time_frame,
-                Some(strategy_type.clone()),
-            )
-            .unwrap(),
-        ),
+        // Box::new(
+        //     strategies::bollinger_bands_reversals_sell::BollingerBandsReversals::new(
+        //         Some("BB_Reversals_Sell2"),
+        //         Some(time_frame),
+        //         higher_time_frame,
+        //         Some(strategy_type.clone()),
+        //     )
+        //     .unwrap(),
+        // ),
     ];
 
     let mut strategy = strategies[0].clone();
