@@ -138,9 +138,14 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let is_long = htf_ema_a > htf_ema_b;
                 let is_short = htf_ema_a < htf_ema_b;
 
+                log::info!("Direction {:?}", (htf_ema_a, htf_ema_b));
+
                 if is_long {
+                    log::info!("Loooong");
+
                     TradeDirection::Long
                 } else if is_short {
+                    log::info!("Shoort");
                     TradeDirection::Short
                 } else {
                     TradeDirection::None
@@ -196,6 +201,17 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
             .unwrap();
 
         let buy_price = close_price + to_pips(pips_margin, tick);
+
+        // log::info!(
+        //     "long {:?},{:?},{:?},{:?}",
+        //     close_price,
+        //     low_band,
+        //     prev_close_price,
+        //     prev_low_band
+        // );
+        if entry_condition {
+            log::info!("entry looooong");
+        }
 
         match entry_condition {
             true => Position::Order(vec![
@@ -285,6 +301,17 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         let entry_condition =
             candle.is_closed() && close_price > top_band && (prev_close_price < prev_top_band);
 
+        // log::info!(
+        //     "short {:?},{:?},{:?},{:?}",
+        //     close_price,
+        //     top_band,
+        //     prev_close_price,
+        //     prev_top_band
+        // );
+
+        if entry_condition {
+            log::info!("entry shoooort");
+        }
         let pips_margin = std::env::var("PIPS_MARGIN")
             .unwrap()
             .parse::<f64>()

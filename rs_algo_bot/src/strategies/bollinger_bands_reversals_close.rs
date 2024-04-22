@@ -139,8 +139,10 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 let is_short = htf_ema_a < htf_ema_b;
 
                 if is_long {
+                    log::info!("Loooong");
                     TradeDirection::Long
                 } else if is_short {
+                    log::info!("Short");
                     TradeDirection::Short
                 } else {
                     TradeDirection::None
