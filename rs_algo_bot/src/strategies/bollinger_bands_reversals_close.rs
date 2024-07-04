@@ -141,20 +141,8 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
                 log::info!(
                     "{:?}, {:?}, {:?}",
                     idx,
-                    htf_inst
-                        .indicators
-                        .ema_a
-                        .as_ref()
-                        .unwrap()
-                        .get_data_a()
-                        .len(),
-                    htf_inst
-                        .indicators
-                        .ema_b
-                        .as_ref()
-                        .unwrap()
-                        .get_data_a()
-                        .len(),
+                    htf_inst.indicators.ema_a.as_ref().unwrap().get_data_a(),
+                    htf_inst.indicators.ema_b.as_ref().unwrap().get_data_a()
                 );
                 log::info!("{:?}, {:?}", htf_ema_a, htf_ema_b);
 
