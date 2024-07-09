@@ -1035,11 +1035,12 @@ impl Bot {
                                     match accepted {
                                         true => {
                                             log::info!(
-                                                "{:?} {} fulfilled ask: {} bid: {}",
+                                                "{:?} {} fulfilled ask: {} bid: {} profit: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
                                                 &payload.data.bid,
+                                                &payload.data.profit,
                                             );
 
                                             let trade_out: TradeOut = payload.data;
