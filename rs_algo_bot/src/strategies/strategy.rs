@@ -95,8 +95,6 @@ pub trait Strategy: DynClone + Send {
         tick: &InstrumentTick,
         use_tick_price: bool,
     ) -> (PositionResult, PositionResult) {
-        let use_tick_price = true;
-
         let max_spread = env::var("MAX_SPREAD_PIPS").unwrap().parse::<f64>().unwrap();
         let positions_on_tick_stream = env::var("POSITIONS_ON_TICK_STREAM")
             .unwrap()
