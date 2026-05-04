@@ -90,29 +90,26 @@ where
                     let session_data = match &query.data {
                         Some(data) => {
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
-                            let uuid = bot.uuid();
-                            let symbol = data["symbol"].as_str().unwrap();
-                            let time_frame = data["time_frame"].as_str().unwrap();
-                            let strategy_name = data["strategy_name"].as_str().unwrap();
-                            let id = data["_id"].as_str().unwrap();
+                            let symbol = bot.symbol().to_string();
+                            let time_frame = bot.time_frame().to_string();
+                            let strategy_name = bot.strategy_name().clone();
+                            let uuid = bot.uuid().clone();
 
-                            let bot_data = match db::bot::find_by_uuid(db_client, uuid).await {
+                            let bot_data = match db::bot::find_by_uuid(db_client, &uuid).await {
                                 Some(bot) => {
                                     log::info!(
-                                        "Restoring session data for {}_{} {}",
+                                        "Restoring session data for {}_{}",
                                         symbol,
                                         time_frame,
-                                        id
                                     );
                                     bot
                                 }
                                 None => {
                                     db::bot::insert(db_client, &bot).await.unwrap();
                                     log::info!(
-                                        "Creating session data for {}_{} {}",
+                                        "Creating session data for {}_{}",
                                         symbol,
                                         time_frame,
-                                        id
                                     );
                                     bot
                                 }
@@ -120,7 +117,7 @@ where
 
                             session::find(sessions, addr, |session| {
                                 *session = session
-                                    .update_bot_name(symbol, time_frame, strategy_name)
+                                    .update_bot_name(&symbol, &time_frame, &strategy_name)
                                     .clone();
                             })
                             .await;
