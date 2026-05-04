@@ -8,7 +8,11 @@ pub async fn connect(
     db_name: &str,
     uri: &str,
 ) -> Result<Client, RsAlgoError> {
-    let db_uri = ["mongodb://", username, ":", password, uri].concat();
+    let db_uri = if username.is_empty() {
+        uri.to_string()
+    } else {
+        format!("mongodb://{}:{}@{}", username, password, uri)
+    };
     log::info!("Connecting to {}...", db_name);
 
     let client_options = ClientOptions::parse(db_uri).await.unwrap();

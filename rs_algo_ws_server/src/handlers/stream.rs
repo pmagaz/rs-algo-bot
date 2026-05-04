@@ -19,8 +19,8 @@ pub fn listen<BK: BrokerStream + Send + 'static>(broker: Arc<Mutex<BK>>, session
             .parse::<u64>()
             .unwrap();
 
-        let symbol = session.symbol.as_ref().to_string();
-        let strategy_name = session.strategy.as_ref().to_string();
+        let symbol = session.symbol.clone();
+        let strategy_name = session.strategy.clone();
 
         // subscribe_stream() is the only broker call here.
         // The broker manages its own internal WS subscription and message parsing.

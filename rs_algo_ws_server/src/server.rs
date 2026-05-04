@@ -5,7 +5,7 @@ use crate::heart_beat;
 use crate::message;
 
 use crate::handlers::session::Sessions;
-use rs_algo_shared::broker::{create_broker, AnyBroker};
+use rs_algo_shared::broker::{create_broker, AnyBroker, BrokerStream};
 
 use futures_channel::mpsc::unbounded;
 use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
@@ -22,9 +22,10 @@ pub async fn run(addr: String) -> Result<(), RsAlgoErrorKind> {
         .parse::<SocketAddr>()
         .map_err(|_| RsAlgoErrorKind::InvalidAddress)?;
     let mut sessions = Sessions::new(Mutex::new(HashMap::new()));
-    let socket = TcpListener::bind(&addr)
-        .await
-        .map_err(|_| RsAlgoErrorKind::SocketError)?;
+    let socket = TcpListener::bind(&addr).await.map_err(|e| {
+        log::error!("Failed to bind {}: {}", addr, e);
+        RsAlgoErrorKind::SocketError
+    })?;
 
     let username = env::var("DB_USERNAME").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
     let password = env::var("DB_PASSWORD").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
