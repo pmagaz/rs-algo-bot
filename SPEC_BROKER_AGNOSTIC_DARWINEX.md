@@ -920,23 +920,33 @@ All other env vars (`ENV`, `SYMBOL`, `MARKET`, `STRATEGY_NAME`, `TIME_FRAME`, et
 
 ---
 
+## Multi-Client Server Architecture
+
+The server already handles multiple independent WS clients correctly and this is preserved in the new design:
+
+- `server.rs` calls `tokio::spawn` per incoming TCP connection → each bot runs in its own async task
+- Each connection creates its own `broker` instance (currently `Xtb::new().await`, will become `create_broker().await`)
+- `Sessions = Arc<Mutex<HashMap<SocketAddr, Session>>>` — shared registry, keyed by socket address
+- **Old design**: each bot spawned TWO broker connections (command socket + separate stream socket via `initialize_broker_stream`)
+- **New design**: one broker per bot; broker internally manages the stream channel — simpler, same isolation
+
+No architectural change needed for multi-client support. The refactor reduces broker connections per bot from 2 → 1.
+
+---
+
 ## Implementation Order
 
 Execute in this sequence to minimize compilation breakage:
 
 ```
-1. rs_algo_shared/Cargo.toml          → edition + deps only (compile check)
-2. rs_algo_shared/src/broker/models.rs + xtb_models.rs   → split structs
-3. rs_algo_shared/src/broker/broker_trait.rs              → new trait file
-4. rs_algo_shared/src/broker/xtb_stream.rs                → remove trait, keep impl
-5. rs_algo_shared/src/broker/mod.rs                       → AnyBroker + factory
-6. rs_algo_shared/src/broker/darwinex.rs                  → Darwinex impl
-7. rs_algo_shared/src/ws/ws_stream_client.rs              → tungstenite 0.26 compat
-8. rs_algo_ws_server/Cargo.toml                           → deps + feature change
-9. rs_algo_ws_server/src/server.rs                        → broker factory
-10. rs_algo_ws_server/src/handlers/stream.rs              → channel-based streaming
-11. rs_algo_ws_server/src/message.rs                      → InitSession cleanup
-12. rs_algo_bot/Cargo.toml                                → edition + dep update
-13. Test Darwinex integration end-to-end
-14. Gate XTB behind feature flag / remove
+✅ 1. rs_algo_shared/Cargo.toml          → edition 2024 + dep update (all 3 Cargo files)
+✅ 2. rs_algo_shared/src/broker/models.rs + xtb_models.rs   → split structs
+🔄 3. broker_trait.rs (created) + xtb_stream.rs (in progress) → extract trait, remove get_stream
+4. rs_algo_shared/src/broker/mod.rs                       → AnyBroker + factory
+5. rs_algo_shared/src/broker/darwinex.rs                  → Darwinex impl
+6. rs_algo_ws_server/src/server.rs                        → broker factory (remove hardcoded Xtb)
+7. rs_algo_ws_server/src/handlers/stream.rs               → channel-based streaming
+8. rs_algo_ws_server/src/message.rs                       → InitSession cleanup
+9. Test Darwinex integration end-to-end
+10. Gate XTB behind feature flag / remove
 ```
