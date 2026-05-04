@@ -5,7 +5,7 @@ use crate::heart_beat;
 use crate::message;
 
 use crate::handlers::session::Sessions;
-use rs_algo_shared::broker::xtb_stream::*;
+use rs_algo_shared::broker::{create_broker, AnyBroker};
 
 use futures_channel::mpsc::unbounded;
 use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
@@ -64,10 +64,10 @@ async fn handle_connection(
             Ok(msg) => {
                 log::info!("New connection from: {addr}");
 
-                let username = &env::var("BROKER_USERNAME").unwrap();
-                let password = &env::var("BROKER_PASSWORD").unwrap();
-                let mut broker = Xtb::new().await;
-                broker.login(username, password).await.unwrap();
+                let username = env::var("BROKER_USERNAME").unwrap();
+                let password = env::var("BROKER_PASSWORD").unwrap();
+                let mut broker = create_broker().await;
+                broker.login(&username, &password).await.unwrap();
 
                 let broker = Arc::new(Mutex::new(broker));
                 let new_session = session::create(&mut sessions, &addr, recipient).await;

@@ -3,6 +3,7 @@ use crate::error;
 
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
+use rs_algo_shared::broker::BrokerStream;
 
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode;
@@ -58,7 +59,7 @@ pub async fn handle<'a, BK>(
     db_client: &mongodb::Client,
 ) -> Option<String>
 where
-    BK: stream::BrokerStream + Send + Sync + 'static,
+    BK: BrokerStream + Send + Sync + 'static,
 {
     let data = match msg {
         Message::Ping(_bytes) => {
