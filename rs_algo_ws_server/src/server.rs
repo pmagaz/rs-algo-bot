@@ -23,7 +23,7 @@ pub async fn run(addr: String) -> Result<(), RsAlgoErrorKind> {
         .map_err(|_| RsAlgoErrorKind::InvalidAddress)?;
     let mut sessions = Sessions::new(Mutex::new(HashMap::new()));
     let socket = TcpListener::bind(&addr).await.map_err(|e| {
-        log::error!("Failed to bind {}: {}", addr, e);
+        tracing::error!("Server: failed to bind {}: {}", addr, e);
         RsAlgoErrorKind::SocketError
     })?;
 
@@ -63,7 +63,7 @@ async fn handle_connection(
 
         match accept_async(&mut *raw_stream).await {
             Ok(msg) => {
-                log::info!("New connection from: {addr}");
+                tracing::info!("WS: new connection from [{}]", addr);
 
                 let username = env::var("BROKER_USERNAME").unwrap();
                 let password = env::var("BROKER_PASSWORD").unwrap();
@@ -95,10 +95,10 @@ async fn handle_connection(
                 future::select(broadcast_incoming, receive_from_others).await;
             }
             Err(err) => {
-                log::error!("Client connection error: {:?}", err);
+                tracing::error!("WS: connection error from [{}]: {:?}", addr, err);
 
                 session::find(&mut sessions, &addr, |session| {
-                    log::error!("Communication with {} {} lost!", session.bot_name(), addr);
+                    tracing::error!("WS: lost connection to '{}' [{}]", session.bot_name(), addr);
                 })
                 .await;
 

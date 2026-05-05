@@ -13,18 +13,19 @@ pub async fn connect(
     } else {
         format!("mongodb://{}:{}@{}", username, password, uri)
     };
-    log::info!("Connecting to {}...", db_name);
 
-    let client_options = ClientOptions::parse(db_uri).await.unwrap();
+    tracing::info!("MongoDB: connecting to '{}'", uri);
 
+    let client_options = ClientOptions::parse(&db_uri).await.unwrap();
     let client = Client::with_options(client_options).unwrap();
+
     client
-        .database(db_name)
+        .database("admin")
         .run_command(doc! {"ping": 1}, None)
         .await
         .unwrap();
 
-    log::info!("Connected to {} ", db_name);
+    tracing::info!("MongoDB: server ready, using database '{}'", db_name);
 
     Ok(client)
 }

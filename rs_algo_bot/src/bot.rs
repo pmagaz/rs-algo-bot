@@ -79,8 +79,8 @@ impl Bot {
     }
 
     pub async fn init_session(&mut self) {
-        log::info!(
-            "Creating session for {}_{}_{}_{}",
+        tracing::info!(
+            "BOT: Initializing session for {}_{}_{}_{}",
             &self.symbol,
             &self.strategy_name,
             &self.time_frame,
@@ -89,7 +89,7 @@ impl Bot {
 
         self.uuid = self.generate_bot_uuid();
 
-        log::info!("Session uuid: {}", &self.uuid);
+        tracing::info!("BOT: Session uuid {}", &self.uuid);
 
         let update_bot_data_command = Command {
             command: CommandType::InitSession,
@@ -107,8 +107,8 @@ impl Bot {
         let time_frame_from =
             TimeFrame::get_starting_bar(num_bars, &self.time_frame, &ExecutionMode::Bot);
 
-        log::info!(
-            "Requesting {}_{} data from {:?}",
+        tracing::info!(
+            "BOT: Requesting {}_{} candles from {:?}",
             &self.symbol,
             &self.time_frame,
             time_frame_from
@@ -151,8 +151,8 @@ impl Bot {
                 .await
                 .unwrap();
 
-            log::info!(
-                "Requesting HTF {}_{} data from {:?}",
+            tracing::info!(
+                "BOT: Requesting HTF {}_{} candles from {:?}",
                 &self.symbol,
                 &higher_time_frame,
                 time_frame_from
@@ -176,7 +176,7 @@ impl Bot {
     }
 
     pub async fn is_market_open(&mut self) {
-        log::info!("Checking {} market is open...", &self.symbol,);
+        tracing::info!("BOT: Checking {} market is open", &self.symbol);
 
         let instrument_pricing_data = Command {
             command: CommandType::IsMarketOpen,
@@ -193,8 +193,8 @@ impl Bot {
     }
 
     pub async fn subscribing_to_stream(&mut self) {
-        log::info!(
-            "Subscribing to {}_{} stream",
+        tracing::info!(
+            "BOT: Subscribing to {}_{} stream",
             &self.symbol,
             &self.time_frame
         );
@@ -266,8 +266,8 @@ impl Bot {
 
             *open_positions = should_open;
 
-            log::info!(
-                "Sending activated order {} {:?} ...",
+            tracing::info!(
+                "BOT: Sending activated order {} {:?}",
                 trade.get_index_in(),
                 trade.get_type()
             );
@@ -292,14 +292,14 @@ impl Bot {
 
         let has_active_trade = match num_trades_in.checked_sub(num_trades_out) {
             Some(diff) => diff < max_buy_orders,
-            None => false, // Handle overflow case
+            None => false,
         };
 
         if has_active_trade {
             self.trades_in.push(trade_in.clone());
         } else {
-            log::error!(
-                "Uncontrolled trade in. TradesIn: {} TradesOut: {}",
+            tracing::error!(
+                "BOT: Uncontrolled trade in — trades_in: {} trades_out: {}",
                 num_trades_in,
                 num_trades_out
             );
@@ -314,12 +314,11 @@ impl Bot {
         if has_active_trade {
             self.trades_out.push(trade_out.clone());
         } else {
-            log::error!(
-                "Uncontrolled trade out. TradesIn: {} TradesOut: {}",
+            tracing::error!(
+                "BOT: Uncontrolled trade out — trades_in: {} trades_out: {}",
                 num_trades_in,
                 num_trades_out
             );
-            //panic!();
         }
     }
 
@@ -331,8 +330,8 @@ impl Bot {
     ) {
         match new_position {
             PositionResult::MarketIn(TradeResult::TradeIn(trade_in), _) if !*open_positions => {
-                log::info!(
-                    "Sending tradeIn {} {:?} ...",
+                tracing::info!(
+                    "BOT: Sending TradeIn {} {:?}",
                     trade_in.get_index_in(),
                     trade_in.get_type()
                 );
@@ -350,8 +349,8 @@ impl Bot {
                 *open_positions = true;
             }
             PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) if *open_positions => {
-                log::info!(
-                    "Sending tradeOut {} {:?} ...",
+                tracing::info!(
+                    "BOT: Sending TradeOut {} {:?}",
                     trade_out.get_index_in(),
                     trade_out.get_type()
                 );
@@ -492,7 +491,7 @@ impl Bot {
     }
 
     pub async fn get_active_positions(&mut self) {
-        log::info!("Getting {} active positons...", &self.symbol,);
+        tracing::info!("BOT: Getting {} active positions", &self.symbol);
 
         let active_positions_command = Command {
             command: CommandType::GetActivePositions,
@@ -509,7 +508,7 @@ impl Bot {
     }
 
     pub async fn get_market_hours(&mut self) {
-        log::info!("Checking {} trading hours...", &self.symbol,);
+        tracing::info!("BOT: Checking {} trading hours", &self.symbol);
 
         let data = Command {
             command: CommandType::GetMarketHours,
@@ -537,10 +536,9 @@ impl Bot {
             .subsec_nanos()
             % 11) as u64;
 
-        // Add the random number to secs
         secs += ten_random_secs;
 
-        log::info!("Reconnecting in {} secs...", secs);
+        tracing::info!("BOT: Reconnecting in {} secs", secs);
 
         sleep(Duration::from_secs(secs)).await;
         self.websocket.re_connect().await;
@@ -561,16 +559,19 @@ impl Bot {
 
                             match msg_type {
                                 MessageType::Connected(_res) => {
-                                    log::info!("{} connected to server", bot_str);
+                                    tracing::info!("BOT: {} connected to server", bot_str);
                                 }
                                 MessageType::Reconnect(_res) => {
-                                    log::info!("{} reconnect msg received!", bot_str);
+                                    tracing::info!(
+                                        "BOT: {} reconnect requested by server",
+                                        bot_str
+                                    );
                                     self.reconnect().await;
                                 }
                                 MessageType::InitSession(res) => {
                                     let env = environment::from_str(&env::var("ENV").unwrap());
 
-                                    log::info!("Getting {} previous session", bot_str);
+                                    tracing::info!("BOT: Restoring {} session", bot_str);
 
                                     let now = Local::now();
                                     let bot_data = res.payload.unwrap();
@@ -582,11 +583,14 @@ impl Bot {
                                     let num_active_trades = trades_in - trades_out;
                                     match trades_in.cmp(&trades_out) {
                                         Ordering::Greater => {
-                                            log::info!("{} active trades found", num_active_trades);
+                                            tracing::info!(
+                                                "BOT: {} active trades found",
+                                                num_active_trades
+                                            );
                                             open_positions = true
                                         }
                                         _ => {
-                                            log::info!("No active trades found");
+                                            tracing::info!("BOT: No active trades found");
                                         }
                                     };
 
@@ -605,21 +609,21 @@ impl Bot {
 
                                     match num_active_stop_losses.cmp(&0) {
                                         Ordering::Greater => {
-                                            log::info!(
-                                                "{} active stop losses found",
+                                            tracing::info!(
+                                                "BOT: {} active stop losses found",
                                                 active_stop_losses.len()
                                             );
                                             open_positions = true
                                         }
                                         _ => {
-                                            log::info!("No active stop losses");
+                                            tracing::info!("BOT: No active stop losses");
                                             open_positions = false
                                         }
                                     };
 
                                     if num_active_trades != num_active_stop_losses {
-                                        log::error!(
-                                            "Active trades {} do not match active stop losses {} !",
+                                        tracing::error!(
+                                            "BOT: Trade/stop-loss mismatch — {} active trades, {} active stop losses",
                                             num_active_trades,
                                             num_active_stop_losses
                                         );
@@ -628,7 +632,6 @@ impl Bot {
                                         self.get_market_hours().await;
                                     }
 
-                                    //TODO RECONCILIATION
                                     if env.is_prod() {
                                         self.get_active_positions().await;
                                     }
@@ -642,8 +645,8 @@ impl Bot {
                                             orders,
                                         ) => {
                                             if trade::trade_exists(&self.trades_in, trade_in.id) {
-                                                log::info!(
-                                                    "Active position {:?} {} found. Updating position...",
+                                                tracing::info!(
+                                                    "BOT: Active position {:?} {} found, updating",
                                                     trade_in.trade_type,
                                                     trade_in.id
                                                 );
@@ -663,8 +666,8 @@ impl Bot {
                                                     None => (),
                                                 }
                                             } else {
-                                                log::info!(
-                                                    "Active position {:?} {} not found. Adding position...",
+                                                tracing::info!(
+                                                    "BOT: Active position {:?} {} not found, adding",
                                                     trade_in,
                                                     trade_in.id
                                                 );
@@ -685,9 +688,9 @@ impl Bot {
                                             open_positions = true;
                                         }
                                         _ => {
-                                            log::info!("No active positions found");
+                                            tracing::info!("BOT: No active positions found");
                                             if open_positions {
-                                                log::error!("Divergence between broker open positions and db trades!");
+                                                tracing::error!("BOT: Divergence between broker open positions and db trades");
                                                 open_positions = true;
                                                 sleep(Duration::from_secs(86400)).await;
                                             }
@@ -698,7 +701,10 @@ impl Bot {
                                     let market_hours = res.payload.unwrap();
                                     let is_trading_hours = market_hours.is_trading_time();
 
-                                    log::info!("Trading hours {}", &is_trading_hours);
+                                    tracing::info!(
+                                        "BOT: Trading hours active: {}",
+                                        &is_trading_hours
+                                    );
 
                                     match is_trading_hours {
                                         true => self.is_market_open().await,
@@ -710,13 +716,15 @@ impl Bot {
                                                 .num_seconds()
                                                 as u64;
 
-                                            log::info!(
-                                                "Not in trading hours. Trading available at {}. Waiting {} secs / {} hours",
-                                                will_open_at, wait_until, wait_until / 3600
+                                            tracing::info!(
+                                                "BOT: Market closed, trading opens at {}. Waiting {} secs ({} hours)",
+                                                will_open_at,
+                                                wait_until,
+                                                wait_until / 3600
                                             );
 
                                             sleep(Duration::from_secs(wait_until)).await;
-                                            log::info!("{} Reconnecting", bot_str);
+                                            tracing::info!("BOT: {} reconnecting", bot_str);
                                             self.reconnect().await;
                                         }
                                     };
@@ -727,7 +735,10 @@ impl Bot {
                                     let is_market_open = true;
                                     match is_market_open {
                                         true => {
-                                            log::info!("{} Market open!", self.symbol);
+                                            tracing::info!(
+                                                "BOT: {} market open, fetching data",
+                                                self.symbol
+                                            );
                                             self.get_instrument_data().await;
                                             self.get_tick_data().await;
                                         }
@@ -737,8 +748,8 @@ impl Bot {
                                                 .parse::<u64>()
                                                 .unwrap();
 
-                                            log::warn!(
-                                                "{} Market closed!. Retrying after {} secs...",
+                                            tracing::warn!(
+                                                "BOT: {} market closed, retrying in {} secs",
                                                 self.symbol,
                                                 secs_to_retry
                                             );
@@ -763,8 +774,8 @@ impl Bot {
                                     };
 
                                     if is_base_time_frame(&self.time_frame, &time_frame) {
-                                        log::info!(
-                                            "Instrument {} data received from {:?}",
+                                        tracing::info!(
+                                            "BOT: {} candle data received since {}",
                                             bot_str,
                                             &since_date,
                                         );
@@ -784,8 +795,8 @@ impl Bot {
                                                     Some(x) => x.date().to_string(),
                                                     None => "".to_owned(),
                                                 };
-                                                log::info!(
-                                                    "Instrument {}_{} HTF data received from {:?}",
+                                                tracing::info!(
+                                                    "BOT: {}_{} HTF candle data received since {}",
                                                     &self.symbol,
                                                     &htf_instrument.time_frame(),
                                                     &since_date
@@ -855,13 +866,13 @@ impl Bot {
                                         );
 
                                         if new_candle.is_closed() {
-                                            log::info!(
-                                            "{} {:?} Session - Candle {:?} closed - Open pos: {} ",
-                                            &self.env.value(),
-                                            &current_session,
-                                            close_date,
-                                            open_positions
-                                        );
+                                            tracing::info!(
+                                                "BOT: {} {:?} candle {} closed — open_pos: {}",
+                                                &self.env.value(),
+                                                &current_session,
+                                                close_date,
+                                                open_positions
+                                            );
 
                                             self.instrument
                                                 .init_candle(data, &Some(self.time_frame.clone()));
@@ -875,12 +886,12 @@ impl Bot {
                                         if higher_candle.is_closed()
                                             && is_mtf_strategy(&self.strategy_type)
                                         {
-                                            log::info!(
-                                            "{:?} Session - HTF Candle {:?} closed - Open pos: {} ",
-                                            &current_session,
-                                            higher_candle.date(),
-                                            open_positions
-                                        );
+                                            tracing::info!(
+                                                "BOT: {:?} HTF candle {} closed — open_pos: {}",
+                                                &current_session,
+                                                higher_candle.date(),
+                                                open_positions
+                                            );
 
                                             if let HTFInstrument::HTFInstrument(
                                                 ref mut htf_instrument,
@@ -924,12 +935,11 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                     } else {
-                                        log::warn!("Duplicated stream data!");
+                                        tracing::warn!("BOT: Duplicated stream tick, skipping");
                                     }
                                 }
                                 MessageType::StreamTickResponse(res) => {
                                     let tick = res.payload.unwrap();
-                                    //let now = Local::now();
                                     self.tick = InstrumentTick::new()
                                         .symbol(self.symbol.clone())
                                         .ask(tick.ask())
@@ -967,11 +977,6 @@ impl Bot {
                                         .parse::<bool>()
                                         .unwrap()
                                     {
-                                        // if now
-                                        //     >= self.last_tick_received
-                                        //         + date::Duration::milliseconds(1000)
-                                        // {
-                                        //self.last_tick_received = now;
                                         let mut last_candle =
                                             self.instrument.data.last().unwrap().clone();
                                         last_candle.close = self.tick.bid();
@@ -985,8 +990,8 @@ impl Bot {
 
                                     match accepted {
                                         true => {
-                                            log::info!(
-                                                "{:?} {} fulfilled ask: {}",
+                                            tracing::info!(
+                                                "BOT: TradeIn {:?} {} fulfilled — ask: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
@@ -1012,8 +1017,8 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
-                                            log::error!(
-                                                "{:?} {} not fulfilled ask: {}",
+                                            tracing::error!(
+                                                "BOT: TradeIn {:?} {} not fulfilled — ask: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
@@ -1034,8 +1039,8 @@ impl Bot {
 
                                     match accepted {
                                         true => {
-                                            log::info!(
-                                                "{:?} {} fulfilled ask: {} bid: {} profit: {}",
+                                            tracing::info!(
+                                                "BOT: TradeOut {:?} {} fulfilled — ask: {} bid: {} profit: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
@@ -1051,8 +1056,8 @@ impl Bot {
                                                     &self.instrument.data,
                                                 );
 
-                                            log::info!(
-                                                "{:?} stats profit {} profit_per {} ",
+                                            tracing::info!(
+                                                "BOT: TradeOut {:?} stats — profit: {} profit_per: {}",
                                                 &updated_trade_out.trade_type,
                                                 &updated_trade_out.profit,
                                                 &updated_trade_out.profit_per,
@@ -1078,8 +1083,8 @@ impl Bot {
                                             self.send_bot_status(&bot_str).await;
                                         }
                                         false => {
-                                            log::error!(
-                                                "{:?} {} not fulfilled ask: {} bid: {}",
+                                            tracing::error!(
+                                                "BOT: TradeOut {:?} {} not fulfilled — ask: {} bid: {}",
                                                 &payload.data.trade_type,
                                                 &payload.data.id,
                                                 &payload.data.ask,
@@ -1102,9 +1107,8 @@ impl Bot {
                     };
                 }
                 Err(err) => {
-                    log::warn!("[ERROR] Disconnected from server: {:?}", err);
+                    tracing::warn!("BOT: Disconnected from server: {:?}", err);
                     self.reconnect().await;
-                    //Message::Ping(b"".to_vec())
                 }
             };
         }
@@ -1141,7 +1145,7 @@ impl BotBuilder {
     }
 
     pub fn env(mut self, val: Environment) -> Self {
-        log::warn!("Launching bot in {} env", &val.value());
+        tracing::info!("BOT: Launching in {} environment", &val.value());
         self.env = Some(val);
         self
     }

@@ -22,9 +22,6 @@ pub fn listen<BK: BrokerStream + Send + 'static>(broker: Arc<Mutex<BK>>, session
         let symbol = session.symbol.clone();
         let strategy_name = session.strategy.clone();
 
-        // subscribe_stream() is the only broker call here.
-        // The broker manages its own internal WS subscription and message parsing.
-        // The server receives pre-serialized ResponseBody JSON strings.
         let mut stream_rx = {
             let mut guard = broker.lock().await;
             guard
@@ -41,13 +38,19 @@ pub fn listen<BK: BrokerStream + Send + 'static>(broker: Arc<Mutex<BK>>, session
                     match msg {
                         Some(txt) => {
                             if message::send(&session, Message::Text(txt)).await.is_err() {
-                                log::error!("Can't send stream data to {:?}", session.bot_name());
+                                tracing::error!(
+                                    "Stream: failed to forward tick to '{}' — disconnecting",
+                                    session.bot_name()
+                                );
                                 message::send_reconnect(&session, ReconnectOptions { clean_data: false }).await;
                                 break;
                             }
                         }
                         None => {
-                            log::error!("Broker stream channel closed for {:?}", session.bot_name());
+                            tracing::error!(
+                                "Stream: broker channel closed for '{}' — reconnecting",
+                                session.bot_name()
+                            );
                             message::send_reconnect(&session, ReconnectOptions { clean_data: true }).await;
                             break;
                         }

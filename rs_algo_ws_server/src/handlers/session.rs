@@ -96,11 +96,6 @@ impl Session {
     }
 
     pub fn update_market_hours(&mut self, market_hours: MarketHours) -> &mut Self {
-        // log::info!(
-        //     "Updating {} market hours {:?}",
-        //     self.bot_name(),
-        //     market_hours
-        // );
         self.market_hours = market_hours;
         self
     }
@@ -122,23 +117,9 @@ impl Session {
     }
 }
 
-// pub async fn find_async<'a, C, F>(sessions: &Sessions, addr: &SocketAddr, callback: C)
-// where
-//     C: Fn(&mut Session) -> F,
-//     F: Future<Output = ()>,
-// {
-//     let mut sessions = sessions.lock().await;
-//     match sessions.get_mut(addr) {
-//         Some(session) => callback(session),
-//         None => panic!("Session not found!"),
-//     };
-// }
-
 pub async fn find<'a, F>(sessions: &'a mut Sessions, addr: &SocketAddr, callback: F)
 where
     F: Send + FnOnce(&mut Session),
-    // F: 'static + Send + FnMut(Message) -> T,
-    // T: Future<Output = Result<()>> + Send + 'static,
 {
     let mut sessions_guard = sessions.lock().await;
     match sessions_guard.get_mut(addr) {
@@ -158,7 +139,7 @@ pub async fn create<'a>(
         sessions.lock().await.insert(*addr, session.clone());
     }
 
-    log::warn!("Session {:?} created!", (addr, session.bot_name()));
+    tracing::info!("Session created for [{}]", addr);
 
     let msg: ResponseBody<String> = ResponseBody {
         response: ResponseType::Connected,
@@ -178,12 +159,12 @@ pub async fn destroy<'a>(sessions: &'a mut Sessions, addr: &SocketAddr) {
     match sessions_guard.get(addr) {
         Some(session) => {
             if session.symbol() != "init" {
-                log::warn!("Session {} {:?} destroyed!", addr, session.bot_name());
+                tracing::warn!("Session '{}' [{}] destroyed", session.bot_name(), addr);
                 sessions_guard.remove(addr);
             }
         }
         None => {
-            log::error!("Session {} not found.", addr);
+            tracing::error!("Session [{}] not found", addr);
         }
     };
 }

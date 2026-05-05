@@ -17,10 +17,9 @@ async-trait = "0.1.83"
 dyn-clone = "1.0.17"
 round = "0.1.2"
 futures = "0.3.31"
-env_logger = "0.11"
-log = "0.4"
+tracing = "0.1.41"
 futures-util = "0.3.31"
-rs_algo_shared = { path = "../../rs_algo_shared", features = ["oanda", "darwinex", "websocket"] }
+rs_algo_shared = { path = "../../rs_algo_shared", features = ["oanda", "darwinex", "websocket", "tracing"] }
 
 [profile.dev]
 opt-level = 0
