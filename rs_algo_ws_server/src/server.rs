@@ -65,10 +65,14 @@ async fn handle_connection(
             Ok(msg) => {
                 tracing::info!("WS: new connection from [{}]", addr);
 
-                let username = env::var("BROKER_USERNAME").unwrap();
-                let password = env::var("BROKER_PASSWORD").unwrap();
+                let username = env::var("BROKER_USERNAME").unwrap_or_default();
+                let password = env::var("BROKER_PASSWORD").unwrap_or_default();
                 let mut broker = create_broker().await;
-                broker.login(&username, &password).await.unwrap();
+                if let Err(e) = broker.login(&username, &password).await {
+                    tracing::error!("WS: broker login failed for [{}]: {:?}", addr, e);
+                    session::destroy(&mut sessions, &addr).await;
+                    break;
+                }
 
                 let broker = Arc::new(Mutex::new(broker));
                 let new_session = session::create(&mut sessions, &addr, recipient).await;

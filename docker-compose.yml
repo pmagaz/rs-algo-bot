@@ -1,0 +1,39 @@
+version: '3.8'
+
+# Local dev: run `docker-compose up ibeam` then `cargo run` in rs_algo_ws_server.
+# Full containerised: `docker-compose up` (builds ws_server from source).
+#
+# ibeam authenticates against IBKR using BROKER_USERNAME / BROKER_PASSWORD from .env.
+# Optional 2FA: set IBKR_TOTP_KEY in .env to your IBKR TOTP secret (base32).
+# If your account uses a hardware token, configure "Trusted IP" in IBKR instead.
+#
+# On first run ibeam takes 60-90s to complete the login flow.
+
+services:
+  ibeam:
+    image: voyz/ibeam:latest
+    environment:
+      IBEAM_ACCOUNT: ${BROKER_USERNAME}
+      IBEAM_PASSWORD: ${BROKER_PASSWORD}
+      IBEAM_KEY: ${IBKR_TOTP_KEY:-}
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-sf", "https://localhost:5000/v1/api/iserver/auth/status"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+
+  rs-algo-ws-server:
+    build:
+      context: .
+      dockerfile: rs_algo_ws_server/Dockerfile
+    env_file: .env
+    environment:
+      IBKR_GATEWAY_URL: https://ibeam:5000
+    ports:
+      - "9000:9000"
+    depends_on:
+      ibeam:
+        condition: service_healthy

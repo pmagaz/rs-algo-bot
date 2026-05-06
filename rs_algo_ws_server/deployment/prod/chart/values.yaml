@@ -61,3 +61,19 @@ affinity:
 tolerations: []
 
 podSecurityContext: {}
+
+# ibeam: Client Portal Gateway sidecar for automated IBKR authentication.
+# Set enabled: true when BROKER=ibkr. Reads BROKER_USERNAME / BROKER_PASSWORD
+# from the existing envSecretName secret.
+# totpKey: set to true if IBKR_TOTP_KEY is present in the secret (2FA via TOTP app).
+ibeam:
+  enabled: true
+  image: voyz/ibeam:latest
+  totpKey: false
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
