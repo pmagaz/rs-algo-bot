@@ -11,10 +11,17 @@ services:
   ibeam:
     image: voyz/ibeam:latest
     environment:
-      IBEAM_ACCOUNT: ${BROKER_USERNAME}
-      IBEAM_PASSWORD: ${BROKER_PASSWORD}
+      IBEAM_ACCOUNT: ${IBKR_USERNAME}
+      IBEAM_PASSWORD: ${IBKR_PASSWORD}
+      IBEAM_TOTP_KEY: ${IBKR_TOTP_KEY:-}
+      IBEAM_PAGE_LOAD_TIMEOUT: 60
+      IBEAM_OAUTH_TIMEOUT: 60
+    volumes:
+      - ./ibeam/proxy.py:/srv/inputs/proxy.py
     ports:
       - "5000:5000"
+      - "5001:5001"
+      - "5100:5100"
     healthcheck:
       test: ["CMD", "curl", "-k", "-sf", "https://localhost:5000/v1/api/iserver/auth/status"]
       interval: 15s
