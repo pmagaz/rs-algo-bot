@@ -198,10 +198,10 @@ where
                         TimeFrame::get_starting_bar(num_bars, &time_frame, &execution_mode);
 
                     tracing::info!(
-                        "Requesting {} Instrument data since {} {:?}",
+                        "WS: requesting {} {} bars from {}",
+                        num_bars,
                         time_frame,
-                        time_frame_from,
-                        (num_bars)
+                        time_frame_from.format("%Y-%m-%d %H:%M"),
                     );
 
                     let response = broker
@@ -215,10 +215,14 @@ where
                         .await;
 
                     match response {
-                        Ok(res) => match serde_json::to_string(&res) {
-                            Ok(json_res) => Some(json_res),
-                            Err(e) => Some(error::serialization(e, &command)),
-                        },
+                        Ok(res) => {
+                            let count = res.payload.as_ref().map(|p| p.data.len()).unwrap_or(0);
+                            tracing::info!("WS: {} {} bars received from broker", count, time_frame);
+                            match serde_json::to_string(&res) {
+                                Ok(json_res) => Some(json_res),
+                                Err(e) => Some(error::serialization(e, &command)),
+                            }
+                        }
                         Err(e) => error::executed_command(e, &command),
                     }
                 }

@@ -20,13 +20,17 @@ trap cleanup INT TERM
 
 if [ "$BROKER" = "ibkr" ]; then
   docker-compose up -d ibeam
-  # TCP proxy inside ibeam container: routes host connections to gateway localhost
   docker-compose exec -d ibeam python3 /srv/inputs/proxy.py 2>/dev/null || true
-  # Override gateway URL to go through the proxy (port 5100 -> container localhost:5000)
   IBKR_PROXY_PORT="${IBKR_PROXY_PORT:-5100}"
   export IBKR_GATEWAY_URL="https://localhost:${IBKR_PROXY_PORT}"
   docker-compose logs -f --no-log-prefix ibeam 2>&1 | sed 's/^/[ibeam] /' &
   IBEAM_LOG_PID=$!
+
+  echo "Waiting for ibeam to authenticate..."
+  until curl -sf http://localhost:5001/readyz > /dev/null 2>&1; do
+    sleep 5
+  done
+  echo "ibeam ready — starting server and bot"
 fi
 
 "$CARGO" build 2>&1

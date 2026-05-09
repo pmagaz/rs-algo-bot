@@ -135,6 +135,13 @@ impl Bot {
         };
 
         if is_mtf_strategy(&self.strategy_type) {
+            tracing::info!(
+                "BOT: Requesting {}_{} HTF bars from {:?}",
+                &self.symbol,
+                &higher_time_frame,
+                time_frame_from
+            );
+
             let get_higher_instrument_data = Command {
                 command: CommandType::GetInstrumentData,
                 data: Some(InstrumentDataPayload {
@@ -150,13 +157,6 @@ impl Bot {
                 .send(&serde_json::to_string(&get_higher_instrument_data).unwrap())
                 .await
                 .unwrap();
-
-            tracing::info!(
-                "BOT: Requesting HTF {}_{} candles from {:?}",
-                &self.symbol,
-                &higher_time_frame,
-                time_frame_from
-            );
         }
     }
 
@@ -699,11 +699,15 @@ impl Bot {
                                 }
                                 MessageType::MarketHours(res) => {
                                     let market_hours = res.payload.unwrap();
-                                    let is_trading_hours = market_hours.is_trading_time();
+                                    let force_open = env::var("FORCE_MARKET_OPEN")
+                                        .map(|v| v == "true" || v == "1")
+                                        .unwrap_or(false);
+                                    let is_trading_hours = force_open || market_hours.is_trading_time();
 
                                     tracing::info!(
-                                        "BOT: Trading hours active: {}",
-                                        &is_trading_hours
+                                        "BOT: Trading hours active: {}{}",
+                                        is_trading_hours,
+                                        if force_open { " (forced)" } else { "" }
                                     );
 
                                     match is_trading_hours {
@@ -775,8 +779,9 @@ impl Bot {
 
                                     if is_base_time_frame(&self.time_frame, &time_frame) {
                                         tracing::info!(
-                                            "BOT: {} candle data received since {}",
-                                            bot_str,
+                                            "BOT: {} {} bars received since {}",
+                                            data.len(),
+                                            &time_frame,
                                             &since_date,
                                         );
 
@@ -790,16 +795,11 @@ impl Bot {
                                             HTFInstrument::HTFInstrument(
                                                 ref mut htf_instrument,
                                             ) => {
-                                                let since_date = match &htf_instrument.data.first()
-                                                {
-                                                    Some(x) => x.date().to_string(),
-                                                    None => "".to_owned(),
-                                                };
                                                 tracing::info!(
-                                                    "BOT: {}_{} HTF candle data received since {}",
-                                                    &self.symbol,
-                                                    &htf_instrument.time_frame(),
-                                                    &since_date
+                                                    "BOT: {} {} HTF bars received since {}",
+                                                    data.len(),
+                                                    &time_frame,
+                                                    &since_date,
                                                 );
 
                                                 htf_instrument.set_data(data).unwrap();
@@ -823,10 +823,9 @@ impl Bot {
                                         let new_candle = self.instrument.next(data).unwrap();
                                         let candle_date = data.0;
                                         let mut higher_candle: Candle = new_candle.clone();
-                                        let current_session = &self
+                                        let current_session = self
                                             .market_hours
-                                            .current_session(candle_date)
-                                            .unwrap();
+                                            .current_session(candle_date);
 
                                         if is_mtf_strategy(&self.strategy_type) {
                                             if let HTFInstrument::HTFInstrument(
@@ -869,7 +868,7 @@ impl Bot {
                                             tracing::info!(
                                                 "BOT: {} {:?} candle {} closed — open_pos: {}",
                                                 &self.env.value(),
-                                                &current_session,
+                                                current_session,
                                                 close_date,
                                                 open_positions
                                             );
@@ -888,7 +887,7 @@ impl Bot {
                                         {
                                             tracing::info!(
                                                 "BOT: {:?} HTF candle {} closed — open_pos: {}",
-                                                &current_session,
+                                                current_session,
                                                 higher_candle.date(),
                                                 open_positions
                                             );

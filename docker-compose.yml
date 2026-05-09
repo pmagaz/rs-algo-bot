@@ -14,10 +14,13 @@ services:
       IBEAM_ACCOUNT: ${IBKR_USERNAME}
       IBEAM_PASSWORD: ${IBKR_PASSWORD}
       IBEAM_TOTP_KEY: ${IBKR_TOTP_KEY:-}
-      IBEAM_PAGE_LOAD_TIMEOUT: 60
-      IBEAM_OAUTH_TIMEOUT: 60
+      IBEAM_REQUEST_RETRIES: 10
+      IBEAM_PAGE_LOAD_TIMEOUT: 90
+      IBEAM_OAUTH_TIMEOUT: 90
+      IBEAM_OUTPUTS_DIR: /srv/outputs
     volumes:
       - ./ibeam/proxy.py:/srv/inputs/proxy.py
+      - ./ibeam/outputs:/srv/outputs
     ports:
       - "5000:5000"
       - "5001:5001"

@@ -2,5 +2,3 @@ listenSsl: true
 listenPort: 5000
 sslCert: root/cacert.jks
 proxyRemoteSsl: true
-allowedHosts:
-  - "*"
