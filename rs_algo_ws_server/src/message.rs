@@ -3,6 +3,7 @@ use crate::error;
 
 use crate::handlers::*;
 use crate::handlers::{session::Session, session::Sessions};
+use rs_algo_shared::broker::BrokerStream;
 
 use rs_algo_shared::models::bot::BotData;
 use rs_algo_shared::models::mode;
@@ -21,14 +22,14 @@ pub async fn send(
     session.recipient.unbounded_send(msg)
     // match session.recipient.unbounded_send(msg) {
     //     Err(_) => {
-    //         log::error!("Can't send message to {:?}", session.bot_name());
+    //         tracing::error!("Can't send message to {:?}", session.bot_name());
     //     }
     //     _ => (),
     // }
 }
 
 pub async fn send_reconnect(session: &Session, options: ReconnectOptions) {
-    log::info!("Sending Reconnect");
+    tracing::info!("Sending Reconnect");
 
     let msg: ResponseBody<ReconnectOptions> = ResponseBody {
         response: ResponseType::Reconnect,
@@ -58,11 +59,11 @@ pub async fn handle<'a, BK>(
     db_client: &mongodb::Client,
 ) -> Option<String>
 where
-    BK: stream::BrokerStream + Send + Sync + 'static,
+    BK: BrokerStream + Send + Sync + 'static,
 {
     let data = match msg {
         Message::Ping(_bytes) => {
-            log::info!("Client Ping received from {addr}");
+            tracing::info!("Client Ping received from {addr}");
             None
         }
         Message::Pong(_) => {
@@ -89,29 +90,26 @@ where
                     let session_data = match &query.data {
                         Some(data) => {
                             let bot: BotData = serde_json::from_value(data.clone()).unwrap();
-                            let uuid = bot.uuid();
-                            let symbol = data["symbol"].as_str().unwrap();
-                            let time_frame = data["time_frame"].as_str().unwrap();
-                            let strategy_name = data["strategy_name"].as_str().unwrap();
-                            let id = data["_id"].as_str().unwrap();
+                            let symbol = bot.symbol().to_string();
+                            let time_frame = bot.time_frame().to_string();
+                            let strategy_name = bot.strategy_name().clone();
+                            let uuid = bot.uuid().clone();
 
-                            let bot_data = match db::bot::find_by_uuid(db_client, uuid).await {
+                            let bot_data = match db::bot::find_by_uuid(db_client, &uuid).await {
                                 Some(bot) => {
-                                    log::info!(
-                                        "Restoring session data for {}_{} {}",
+                                    tracing::info!(
+                                        "Restoring session data for {}_{}",
                                         symbol,
                                         time_frame,
-                                        id
                                     );
                                     bot
                                 }
                                 None => {
                                     db::bot::insert(db_client, &bot).await.unwrap();
-                                    log::info!(
-                                        "Creating session data for {}_{} {}",
+                                    tracing::info!(
+                                        "Creating session data for {}_{}",
                                         symbol,
                                         time_frame,
-                                        id
                                     );
                                     bot
                                 }
@@ -119,7 +117,7 @@ where
 
                             session::find(sessions, addr, |session| {
                                 *session = session
-                                    .update_bot_name(symbol, time_frame, strategy_name)
+                                    .update_bot_name(&symbol, &time_frame, &strategy_name)
                                     .clone();
                             })
                             .await;
@@ -138,13 +136,13 @@ where
                     match serde_json::to_string(&response) {
                         Ok(s) => Some(s),
                         Err(e) => {
-                            log::error!("Failed to serialize {:?} response: {:?}", command, e);
+                            tracing::error!("Failed to serialize {:?} response: {:?}", command, e);
                             None
                         }
                     }
                 }
                 CommandType::GetMarketHours => {
-                    log::info!("Requesting {} trading hours", symbol);
+                    tracing::info!("Requesting {} trading hours", symbol);
 
                     let response = broker.lock().await.get_market_hours(symbol).await;
 
@@ -171,7 +169,7 @@ where
                     }
                 }
                 CommandType::IsMarketOpen => {
-                    log::info!("Checking {} market is open", symbol);
+                    tracing::info!("Checking {} market is open", symbol);
                     let response = broker.lock().await.is_market_open(symbol).await;
 
                     match response {
@@ -199,11 +197,11 @@ where
                     let time_frame_from =
                         TimeFrame::get_starting_bar(num_bars, &time_frame, &execution_mode);
 
-                    log::info!(
-                        "Requesting {} Instrument data since {} {:?}",
+                    tracing::info!(
+                        "WS: requesting {} {} bars from {}",
+                        num_bars,
                         time_frame,
-                        time_frame_from,
-                        (num_bars)
+                        time_frame_from.format("%Y-%m-%d %H:%M"),
                     );
 
                     let response = broker
@@ -217,10 +215,14 @@ where
                         .await;
 
                     match response {
-                        Ok(res) => match serde_json::to_string(&res) {
-                            Ok(json_res) => Some(json_res),
-                            Err(e) => Some(error::serialization(e, &command)),
-                        },
+                        Ok(res) => {
+                            let count = res.payload.as_ref().map(|p| p.data.len()).unwrap_or(0);
+                            tracing::info!("WS: {} {} bars received from broker", count, time_frame);
+                            match serde_json::to_string(&res) {
+                                Ok(json_res) => Some(json_res),
+                                Err(e) => Some(error::serialization(e, &command)),
+                            }
+                        }
                         Err(e) => error::executed_command(e, &command),
                     }
                 }
@@ -241,7 +243,7 @@ where
                                     TradeResult::TradeIn(trade_in),
                                     orders,
                                 ) => {
-                                    log::info!(
+                                    tracing::info!(
                                         "{} TradeIn {} position received",
                                         symbol,
                                         trade_in.id
@@ -258,13 +260,13 @@ where
                                             Err(e) => Some(error::serialization(e, &command)),
                                         },
                                         Err(err) => {
-                                            log::error!("{:?} Command error {}", command, err);
+                                            tracing::error!("{:?} Command error {}", command, err);
                                             None
                                         }
                                     }
                                 }
                                 PositionResult::MarketOut(TradeResult::TradeOut(trade_out)) => {
-                                    log::info!(
+                                    tracing::info!(
                                         "{} TradeOut {} position received",
                                         symbol,
                                         trade_out.id
@@ -280,7 +282,7 @@ where
                                             Err(e) => Some(error::serialization(e, &command)),
                                         },
                                         Err(err) => {
-                                            log::error!("{:?} Command error {}", command, err);
+                                            tracing::error!("{:?} Command error {}", command, err);
                                             None
                                         }
                                     }
@@ -289,7 +291,7 @@ where
                                     TradeResult::TradeIn(trade_in),
                                     order,
                                 ) => {
-                                    log::info!(
+                                    tracing::info!(
                                         "{} MarketInOerder {} position received",
                                         symbol,
                                         order.id
@@ -312,7 +314,7 @@ where
                                             Err(e) => Some(error::serialization(e, &command)),
                                         },
                                         Err(err) => {
-                                            log::error!("{:?} Command error {}", command, err);
+                                            tracing::error!("{:?} Command error {}", command, err);
                                             None
                                         }
                                     }
@@ -321,7 +323,7 @@ where
                                     TradeResult::TradeOut(trade_out),
                                     order,
                                 ) => {
-                                    log::info!(
+                                    tracing::info!(
                                         "{} MarketOutOrder {} position received",
                                         symbol,
                                         order.id
@@ -344,7 +346,7 @@ where
                                             Err(e) => Some(error::serialization(e, &command)),
                                         },
                                         Err(err) => {
-                                            log::error!("{:?} Command error {}", command, err);
+                                            tracing::error!("{:?} Command error {}", command, err);
                                             None
                                         }
                                     }
@@ -366,7 +368,7 @@ where
                         .unwrap_or_default()
                         .to_string();
 
-                    log::info!("Getting {}_{} active positions", symbol, strategy_name);
+                    tracing::info!("Getting {}_{} active positions", symbol, strategy_name);
 
                     let response = broker
                         .lock()
@@ -397,7 +399,7 @@ where
                     None
                 }
                 CommandType::GetInstrumentTick => {
-                    log::info!("Getting {} tick data", symbol);
+                    tracing::info!("Getting {} tick data", symbol);
                     let response = broker.lock().await.get_instrument_tick(symbol).await;
                     match response {
                         Ok(res) => match serde_json::to_string(&res) {
@@ -415,7 +417,7 @@ where
                     Some("".to_string())
                 }
                 _ => {
-                    log::error!("Unknown command received {:?}", &command);
+                    tracing::error!("Unknown command received {:?}", &command);
                     None
                 }
             };
@@ -423,7 +425,7 @@ where
         }
         Message::Close(err) => {
             session::find(sessions, addr, |session| {
-                log::error!("{} disconnected! {:?}", session.bot_name(), err);
+                tracing::error!("{} disconnected! {:?}", session.bot_name(), err);
             })
             .await;
 
@@ -431,7 +433,7 @@ where
             None
         }
         _ => {
-            log::error!("Wrong command format {:?}", msg);
+            tracing::error!("Wrong command format {:?}", msg);
             None
         }
     };

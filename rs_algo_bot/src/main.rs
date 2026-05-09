@@ -15,7 +15,9 @@ use std::env;
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+
+    rs_algo_shared::trace::initialize()
+        .unwrap_or_else(|e| eprintln!("Failed to initialize logging: {}", e));
 
     let env = env::var("ENV").unwrap();
     let symbol = env::var("SYMBOL").unwrap();

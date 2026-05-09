@@ -38,17 +38,17 @@ pub async fn init(sessions: &mut Sessions) {
             {
                 let mut session_guard = sessions.lock().await;
                 let len = session_guard.len();
-                log::info!("Active sessions: {:?}", len);
+                tracing::info!("Heartbeat: {} active session(s)", len);
 
                 for (addr, session) in session_guard.iter_mut() {
                     let last_data = session.last_data;
                     let bot_name = session.bot_name();
 
                     if last_data < hb_timeout && session.symbol() != "init" {
-                        log::info!(
-                            "No HB received from {:?} since {}. Sending Reconnect!.",
-                            &bot_name,
-                            &last_data
+                        tracing::warn!(
+                            "Heartbeat: no data from '{}' since {} — sending reconnect",
+                            bot_name,
+                            last_data
                         );
 
                         let session_clone = session.clone();
@@ -74,9 +74,13 @@ pub async fn init(sessions: &mut Sessions) {
 
                 for addr in sessions_to_remove.iter() {
                     if let Some(session) = session_guard.remove(addr) {
-                        log::warn!("Session {:?} {} destroyed!", session.bot_name(), addr);
+                        tracing::warn!(
+                            "Session '{}' [{}] removed after heartbeat timeout",
+                            session.bot_name(),
+                            addr
+                        );
                     } else {
-                        log::error!("Session {} not found.", addr);
+                        tracing::error!("Session [{}] not found during cleanup", addr);
                     }
                 }
             }

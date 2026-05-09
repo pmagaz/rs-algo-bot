@@ -34,15 +34,15 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           volumeMounts:
-            {{- toYaml .Values.volumeMounts | default "" | nindent 12 }} 
+            {{- toYaml .Values.volumeMounts | default "" | nindent 12 }}
           envFrom:
           - configMapRef:
               name: {{ .Release.Name }}-configmap
           - secretRef:
-              name: {{ .Values.envSecretName }} 
+              name: {{ .Values.envSecretName }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.targetPort }} 
+              containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
           livenessProbe:
             exec:
@@ -56,6 +56,44 @@ spec:
             periodSeconds: 90
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+        {{- if .Values.ibeam.enabled }}
+        - name: ibeam
+          image: "{{ .Values.ibeam.image }}"
+          imagePullPolicy: Always
+          env:
+            - name: IBEAM_ACCOUNT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.envSecretName }}
+                  key: BROKER_USERNAME
+            - name: IBEAM_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.envSecretName }}
+                  key: BROKER_PASSWORD
+            {{- if .Values.ibeam.totpKey }}
+            - name: IBEAM_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.envSecretName }}
+                  key: IBKR_TOTP_KEY
+            {{- end }}
+          ports:
+            - containerPort: 5000
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - -k
+                - -sf
+                - https://localhost:5000/v1/api/iserver/auth/status
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.ibeam.resources | nindent 12 }}
+        {{- end }}
       {{- with .Values.volumes}}
       volumes:
         {{- toYaml . | nindent 8 }}

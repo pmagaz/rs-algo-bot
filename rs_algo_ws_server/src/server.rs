@@ -5,7 +5,7 @@ use crate::heart_beat;
 use crate::message;
 
 use crate::handlers::session::Sessions;
-use rs_algo_shared::broker::xtb_stream::*;
+use rs_algo_shared::broker::{create_broker, AnyBroker, BrokerStream};
 
 use futures_channel::mpsc::unbounded;
 use futures_util::{future, pin_mut, stream::TryStreamExt, StreamExt};
@@ -22,9 +22,10 @@ pub async fn run(addr: String) -> Result<(), RsAlgoErrorKind> {
         .parse::<SocketAddr>()
         .map_err(|_| RsAlgoErrorKind::InvalidAddress)?;
     let mut sessions = Sessions::new(Mutex::new(HashMap::new()));
-    let socket = TcpListener::bind(&addr)
-        .await
-        .map_err(|_| RsAlgoErrorKind::SocketError)?;
+    let socket = TcpListener::bind(&addr).await.map_err(|e| {
+        tracing::error!("Server: failed to bind {}: {}", addr, e);
+        RsAlgoErrorKind::SocketError
+    })?;
 
     let username = env::var("DB_USERNAME").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
     let password = env::var("DB_PASSWORD").map_err(|_| RsAlgoErrorKind::EnvVarNotFound)?;
@@ -62,12 +63,16 @@ async fn handle_connection(
 
         match accept_async(&mut *raw_stream).await {
             Ok(msg) => {
-                log::info!("New connection from: {addr}");
+                tracing::info!("WS: new connection from [{}]", addr);
 
-                let username = &env::var("BROKER_USERNAME").unwrap();
-                let password = &env::var("BROKER_PASSWORD").unwrap();
-                let mut broker = Xtb::new().await;
-                broker.login(username, password).await.unwrap();
+                let username = env::var("BROKER_USERNAME").unwrap_or_default();
+                let password = env::var("BROKER_PASSWORD").unwrap_or_default();
+                let mut broker = create_broker().await;
+                if let Err(e) = broker.login(&username, &password).await {
+                    tracing::error!("WS: broker login failed for [{}]: {:?}", addr, e);
+                    session::destroy(&mut sessions, &addr).await;
+                    break;
+                }
 
                 let broker = Arc::new(Mutex::new(broker));
                 let new_session = session::create(&mut sessions, &addr, recipient).await;
@@ -94,10 +99,10 @@ async fn handle_connection(
                 future::select(broadcast_incoming, receive_from_others).await;
             }
             Err(err) => {
-                log::error!("Client connection error: {:?}", err);
+                tracing::error!("WS: connection error from [{}]: {:?}", addr, err);
 
                 session::find(&mut sessions, &addr, |session| {
-                    log::error!("Communication with {} {} lost!", session.bot_name(), addr);
+                    tracing::error!("WS: lost connection to '{}' [{}]", session.bot_name(), addr);
                 })
                 .await;
 

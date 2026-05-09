@@ -242,7 +242,7 @@ impl<'a> Strategy for BollingerBandsReversals<'a> {
         _htf_instrument: &HTFInstrument,
         tick: &InstrumentTick,
     ) -> Position {
-        log::info!("222222 {:?}", tick);
+        tracing::debug!("BOT: Sell strategy tick {:?}", tick);
         let data = &instrument.data();
         let prev_index = get_prev_index(index);
         let candle = data.get(index).unwrap();

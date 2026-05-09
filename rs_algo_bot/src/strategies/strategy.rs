@@ -105,8 +105,8 @@ pub trait Strategy: DynClone + Send {
         let is_max_spread = spread_pips > max_spread;
 
         if is_max_spread {
-            log::warn!(
-                "Max spread limit of {:?} pips reached! Spread: {}",
+            tracing::warn!(
+                "BOT: Max spread limit {:?} pips reached, spread is {}",
                 max_spread,
                 spread_pips
             );
@@ -156,7 +156,7 @@ pub trait Strategy: DynClone + Send {
                     );
                 } else {
                     if !use_tick_price {
-                        log::warn!("Previous tradeIn no fulfilled");
+                        tracing::warn!("BOT: Previous TradeIn not fulfilled");
                     }
                 }
             }
@@ -179,7 +179,7 @@ pub trait Strategy: DynClone + Send {
                     );
                 } else {
                     if !use_tick_price {
-                        log::warn!("Previous tradeOut no fulfilled");
+                        tracing::warn!("BOT: Previous TradeOut not fulfilled");
                     }
                 }
             }
@@ -246,7 +246,7 @@ pub trait Strategy: DynClone + Send {
                                 },
                             };
 
-                            log::info!("New Position: {:?}", trade_type);
+                            tracing::info!("BOT: New position {:?}", trade_type);
 
                             PositionResult::MarketIn(trade_in_result, new_orders)
                         }
@@ -303,7 +303,7 @@ pub trait Strategy: DynClone + Send {
                                 },
                             };
 
-                            log::info!("New Position: {:?}", trade_type);
+                            tracing::info!("BOT: New position {:?}", trade_type);
 
                             PositionResult::MarketIn(trade_in_result, new_orders)
                         }
@@ -438,7 +438,7 @@ pub trait Strategy: DynClone + Send {
                     TradeResult::TradeIn(trade_in) => trade_in.id,
                     _ => 0,
                 };
-                log::info!("Order activated: {:?} ", order.order_type);
+                tracing::info!("BOT: Order activated {:?}", order.order_type);
 
                 order.set_trade_id(trade_id);
                 PositionResult::MarketInOrder(trade_in_result, order)
@@ -457,7 +457,7 @@ pub trait Strategy: DynClone + Send {
                     None => TradeResult::None,
                 };
 
-                log::info!("Order activated: {:?} ", order.order_type);
+                tracing::info!("BOT: Order activated {:?}", order.order_type);
 
                 PositionResult::MarketOutOrder(trade_out_result, order)
             }
@@ -536,7 +536,7 @@ pub fn set_strategy(
         }
     }
     if found {
-        log::info!("Using strategy {}", strategy.name());
+        tracing::info!("BOT: Using strategy {}", strategy.name());
     } else {
         panic!("Strategy {} not found!", strategy_name);
     }
@@ -557,7 +557,7 @@ fn log_created_orders(orders: &[Order]) {
             });
 
     if !orders_created.is_empty() {
-        log::info!("Orders created: {:?}", orders_created);
+        tracing::info!("BOT: Orders created {:?}", orders_created);
     }
 }
 
